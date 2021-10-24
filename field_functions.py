@@ -19,3 +19,20 @@ def GetLengthFromAge(age, lengths=[3.00, 4.51, 6.02, 11.65, 16.91, 21.83, 26.43,
     if age >= len(lengths):
         age = len(lengths)-1
     return lengths[age]/100 # Convert to meters
+
+def getVmax(age, length_classes, vmax_a, vmax_b, timestep, units='m_per_sec'):
+    Vmax = vmax_a * np.power(GetLengthFromAge(age, length_classes), vmax_b)
+    if units is 'nm_per_timestep':
+        Vmax = Vmax * ((timestep)/1852)
+    return Vmax
+
+def getTaxis((dHdx, dHdy), lat, vmax, timestep, Tscaler=1, units='m_per_sec'):
+    # This 250*1.852*15 is something to do with hard-coding 1/4 degree res
+    # we need to re-visit and generalise this...
+    Tx = vmax * dHdx * 250*1.852*15 * math.cos(lat*math.pi/180) * Tscaler
+    Ty = vmax * dHdy * 250*1.852*15 * Tscaler
+    # Need to check if there are further changes to make for nautical mile
+    #apart from those made during Vmax calculation
+    #if units is 'nm_per_timestep':
+
+    return (Tx, Ty)
