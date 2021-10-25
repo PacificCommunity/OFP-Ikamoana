@@ -27,6 +27,8 @@ import numpy as np
 
 from .. import dymfiles as df
 
+# TODO : Supprimer les champs cohort_to_compute et layer_number s'ils ne sont plus utiles
+
 def seapodymFieldConstructor(filepath: str,
                              dym_varname : str = None,
                              dym_attributs : str = None) -> xr.DataArray :
@@ -77,9 +79,14 @@ def _loadMask(variables_dictionary, from_text=None, expend_time=True) :
 
     # Read mask values #################################################
     if from_text is None :
-        tmp_mask = (  np.isfinite(variables_dictionary["temperature_L1"][0,:,:]).astype(np.int)
-                    + np.isfinite(variables_dictionary["temperature_L2"][0,:,:]).astype(np.int)
-                    + np.isfinite(variables_dictionary["temperature_L3"][0,:,:]).astype(np.int))
+        tmp_mask = (
+            np.isfinite(variables_dictionary["temperature_L1"].sel(
+                variables_dictionary["temperature_L1"].time.data[0]))
+            + np.isfinite(variables_dictionary["temperature_L2"].sel(
+                variables_dictionary["temperature_L2"].time.data[0]))
+            + np.isfinite(variables_dictionary["temperature_L3"].sel(
+                variables_dictionary["temperature_L3"].time.data[0]))
+            )
     else :
         tmp_mask = np.loadtxt(from_text)
 
@@ -92,8 +99,6 @@ def _loadMask(variables_dictionary, from_text=None, expend_time=True) :
     global_mask = {"mask_L1" : ((tmp_mask == 1) + (tmp_mask == 2) + (tmp_mask == 3)),
                    "mask_L2" : ((tmp_mask == 2) + (tmp_mask == 3)),
                    "mask_L3" : (tmp_mask == 3)}
-
-    del tmp_mask
 
     return global_mask
 
@@ -185,8 +190,8 @@ def _daysLength(coords, model=None, float_32=True) :
             buffer_list.extend([day_length] * len(longitude))
 
     days_length = np.ndarray((len(days_of_year),len(latitude),len(longitude)),
-                                 buffer=np.array(buffer_list),
-                                 dtype=(np.float32 if float_32 else np.float64))
+                             buffer=np.array(buffer_list),
+                             dtype=(np.float32 if float_32 else np.float64))
 
     return xr.DataArray(data=days_length,dims=["time", "lat", "lon"],
                         coords=dict(lon=longitude,lat=latitude,time=coords['time']),
@@ -397,9 +402,9 @@ def _loadVariablesFromFilepaths(root, temperature_filepaths, oxygen_filepaths,
     variables_dictionary['days_length'] = _daysLength(coords, float_32=float_32)
 
     return (variables_dictionary,
-           global_mask, coords,
-           cohorts_mean_length,
-           cohorts_mean_weight)
+            global_mask, coords,
+            cohorts_mean_length,
+            cohorts_mean_weight)
 
 
 

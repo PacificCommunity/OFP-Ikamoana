@@ -6,7 +6,7 @@
 # Actual error is probably because of :
 #   type(self)(variable, coords, name=name, fastpath=True, indexes=indexes)
 #
-# in DataArray._replace which is calling SeapodymField.__init__() with
+# in DataArray._replace() which is calling SeapodymField.__init__() with
 # DataArray.__init__() arguments.
 
 # class SeapodymField(xr.DataArray) :
