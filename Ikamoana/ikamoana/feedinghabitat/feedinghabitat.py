@@ -4,12 +4,13 @@
 Summary
 -------
 This module is implementing the FeedingHabitat class which can simulate the
-feeding habitat the same way as the SEAPODYM model (2020-08). This class start
-with a initialization using the readFiles module, then performe computation
-for each cohort.
+feeding habitat the same way as the SEAPODYM model (2020-08).
+This class start by initalizing the HabitatDataStructure class using the
+FeedingHabitatConfigReader module. Then, it performes computation of the
+Feeding Habitat, for each cohort specified in argument, returned as a DataSet.
 
 """
-import os
+
 from typing import List, Union
 from . import feedinghabitatconfigreader as fhcr
 from . import habitatdatastructure as hds
@@ -22,8 +23,7 @@ class FeedingHabitat :
     
     def __init__(self,
                  xml_filepath: str,
-                 partial_cohorts_computation: List[int] = None,
-                 float_32: bool = True) -> None :
+                 float_32: bool = True) :
         """
         Initialize the FeedingHabitat instance according to the XML 
         configuration file passed in argument.
@@ -47,20 +47,89 @@ class FeedingHabitat :
         
         Returns
         -------
-        None.
+        FeedingHabitat
         """
 
         self.data_structure = hds.HabitatDataStructure(
-            fhcr.loadFromXml(xml_filepath,partial_cohorts_computation,float_32)
+            fhcr.loadFromXml(xml_filepath,float_32)
         )
 
 ###############################################################################
+
+    def __scaling__(self, data) :
+        """
+        The normalization function used by SEAPODYM. Set all values in
+        range [0,1].
+        Very similar to : If data > 1 then 1 Else data.
+
+        Parameters
+        ----------
+        data : Numpy.array
+            Contains the habitat to normalize.
+
+        Returns
+        -------
+        Numpy.array
+            Return the normalized data.
+        """
+
+        # parameters of hyperbola
+        phi = 22.5 * pi/180.0
+        a = 0.07
+        e = 1.0 / cos(phi)
+        b = a * sqrt(e*e - 1.0)
     
+        # coordinate center
+        # shift is to have all y>=0
+        x0 = 1.0-0.00101482322788
+        y0 = 1.0
+    
+        # equation for hyperbola
+        sinsq = sin(phi) * sin(phi)
+        cossq = 1.0-sinsq
+        rasq  = 1.0 / (a*a)
+        rbsq  = 1.0 / (b*b)
+        A = sinsq*rasq - cossq*rbsq
+        B = -2.0 * (data-x0) * cos(phi) * sin(phi) * (rasq+rbsq)
+        C = 1.0 - (data-x0) * (data-x0) * (sinsq*rbsq - cossq*rasq)
+    
+        return (y0+(B+np.sqrt(B*B-4.0*A*C))/(2*A))
+
+    def _selSubDataArray(self,
+                         data_array: xr.DataArray,
+                         time_start: int = None, time_end: int = None,
+                         lat_min: int = None, lat_max: int = None,
+                         lon_min: int = None, lon_max: int = None) -> xr.DataArray :
+        """Select a part of the DataArray passed in argument according to time,
+        latitude and longitude"""
+
+        return data_array.sel(
+            time=data_array.time.data[
+                time_start:time_end if time_end is None else time_end+1 ],
+            lat=data_array.lat.data[
+                lat_min:lat_max if lat_max is None else lat_max+1],
+            lon=data_array.lon.data[
+                lon_min:lon_max if lon_max is None else lon_max+1])
+
+    def _selSubMask(self,
+                    mask: str,
+                    lat_min: int = None, lat_max: int = None,
+                    lon_min: int = None, lon_max: int = None) -> np.ndarray :
+        """Select a part of the Mask (Numpy array) passed in argument
+        according to time, latitude and longitude"""
+            
+        tmp = self.data_structure.global_mask[mask]
+
+        return tmp[:,
+                    lat_min:lat_max if lat_max is None else lat_max+1,
+                    lon_min:lon_max if lon_max is None else lon_max+1]
+
     def __sigmaStar__(self, sigma_0, sigma_K) :
         """Return sigmaStar (the termal tolerance intervals, i.e. standard
         deviation) for each cohorts."""
         
-        cohorts_mean_weight = self.data_structure.species_dictionary['cohorts_mean_weight']
+        cohorts_mean_weight = self.data_structure.species_dictionary[
+            'cohorts_mean_weight']
         max_weight = np.max(cohorts_mean_weight)
 
         return sigma_0 + ((sigma_K - sigma_0)
@@ -69,236 +138,12 @@ class FeedingHabitat :
     def __tStar__(self, T_star_1, T_star_K, bT) :
         """Return T_star (optimal temperature, i.e. mean) for each cohorts"""
         
-        cohorts_mean_length = self.data_structure.species_dictionary['cohorts_mean_length']
+        cohorts_mean_length = self.data_structure.species_dictionary[
+            'cohorts_mean_length']
         max_length = np.max(cohorts_mean_length)
         
         return T_star_1 - ((T_star_1 - T_star_K)
                            * ((cohorts_mean_length / max_length)**bT))
-
-# TODO : Supprimer si plus utile
-    # def __temperatureNthCohort__(
-    #         self, sigma_0, sigma_K, T_star_1,
-    #         T_star_K, bT, Nth_cohort) :
-    #     """Return accessibility for the Nth cohort to each layer according to
-    #     temperature"""
-        
-    #     layers = ["temperature_L1", "temperature_L2","temperature_L3"]
-
-    #     sigma_star = self.__sigmaStar__(sigma_0, sigma_K)
-    #     T_star = self.__tStar__(T_star_1, T_star_K, bT)
-    #     sigma_star_a = sigma_star[Nth_cohort]
-    #     T_star_a = T_star[Nth_cohort]
-
-    #     layer_buffer = []
-    #     for layer, mask in zip(layers, self.data_structure.global_mask.keys()) :
-            
-    #         variable = self.data_structure.variables_dictionary[layer]
-    #         layer_buffer.append(
-    #             np.exp(
-    #                   (- np.power((variable - T_star_a), 2) )
-    #                   / (2.0 * (sigma_star_a**2)),
-    #                   out=np.zeros_like(variable),
-    #                   where=self.data_structure.global_mask[mask])
-    #             )
-                
-    #     return np.array(layer_buffer) 
-    
-    # def __temperatureNthCohortAtDate__(
-    #         self, position, sigma_0, sigma_K, T_star_1,
-    #         T_star_K, bT, Nth_cohort) :
-    #     """Return accessibility for the Nth cohort at date to each layer
-    #     according to temperature"""
-        
-    #     layers = ["temperature_L1", "temperature_L2","temperature_L3"]
-
-    #     sigma_star = self.__sigmaStar__(sigma_0, sigma_K)
-    #     T_star = self.__tStar__(T_star_1, T_star_K, bT)
-    #     sigma_star_a = sigma_star[Nth_cohort]
-    #     T_star_a = T_star[Nth_cohort]
-
-    #     layer_buffer = []
-    #     for layer, mask in zip(layers, self.data_structure.global_mask.keys()) :
-            
-    #         variable = self.data_structure.variables_dictionary[layer][position]
-    #         layer_buffer.append(
-    #             np.exp(
-    #                   (- np.power((variable - T_star_a), 2) )
-    #                   / (2.0 * (sigma_star_a**2)),
-    #                   out=np.zeros_like(variable),
-    #                   where=self.data_structure.global_mask[mask][0])
-    #             )
-                
-    #     return np.array(layer_buffer)
-    
-    # def __oxygen__(self, gamma, o_star) :
-    #     """Return accessibility for the Nth cohort to each layer
-    #     according to oxygen"""
-        
-    #     layers = ["oxygen_L1", "oxygen_L2", "oxygen_L3"]
-
-    #     layer_buffer = []
-    #     for layer, mask in zip(layers, self.data_structure.global_mask.keys()) :
-    #         variable = self.data_structure.variables_dictionary[layer]
-    #         #Take into account the case where oxygen time serie is shorter
-    #         layer_buffer.append(
-    #             np.where(
-    #                 self.data_structure.global_mask[mask],
-    #                 1.0 / (1.0 + (np.power(gamma,(variable - o_star)))),
-    #                 0.0)
-    #             )
-            
-    #     result = np.array(layer_buffer)
-        
-    #     return result 
-
-    # def __oxygenAtDate__(self, position, gamma, o_star) :
-    #     """Return accessibility for the Nth cohort at a date to each
-    #     layer according to oxygen"""
-        
-    #     layers = ["oxygen_L1", "oxygen_L2", "oxygen_L3"]
-
-    #     if self.data_structure.partial_oxygen_time_axis :
-    #         position %= 12
-
-    #     layer_buffer = []
-    #     for layer, mask in zip(layers, self.data_structure.global_mask.keys()) :
-    #         variable = self.data_structure.variables_dictionary[layer][position] 
-    #         layer_buffer.append(
-    #             np.where(
-    #                 self.global_mask[mask][0],
-    #                 1.0 / (1.0 + (np.power(gamma,(variable - o_star)))),
-    #                 0.0)
-    #             )
-        
-    #     return np.array(layer_buffer)
-
-    # def __forage__(self, forage_preference_coefficients) :
-    #     """Return forage quantity and weight accessibility in each layer"""
-        
-    #     # Initialization
-    #     days_length = self.data_structure.variables_dictionary['days_length'].data
-    #     night_length = np.ones_like(days_length) - days_length
-
-    #     #L1 ###################################################################
-    #     epi     = (self.data_structure.variables_dictionary["forage_epi"]
-    #                * forage_preference_coefficients[0]).data
-    #     mumeso   = (self.data_structure.variables_dictionary["forage_mumeso"]
-    #                * forage_preference_coefficients[2]).data
-    #     hmlmeso = (self.data_structure.variables_dictionary["forage_hmlmeso"]
-    #                * forage_preference_coefficients[5]).data
-        
-    #     day_l1  = days_length * epi
-    #     night_l1  = night_length * (epi + mumeso + hmlmeso)
-
-    #     tmp_L1 = np.add(day_l1, night_l1, out=np.zeros_like(days_length),
-    #                     where=self.data_structure.global_mask['mask_L1'])
-    #     del epi, day_l1, night_l1
-
-    #     #L2 ###################################################################
-    #     umeso    = (self.data_structure.variables_dictionary["forage_umeso"]
-    #                * forage_preference_coefficients[1]).data
-    #     mlmeso  = (self.data_structure.variables_dictionary["forage_mlmeso"]
-    #                * forage_preference_coefficients[4]).data
-        
-    #     day_l2  = days_length * (umeso + mumeso)
-    #     night_l2  = night_length * (umeso + mlmeso)
-        
-    #     tmp_L2 = np.add(day_l2, night_l2, out=np.zeros_like(days_length),
-    #                     where=self.data_structure.global_mask['mask_L2'])
-    #     del umeso, mumeso, day_l2, night_l2
-
-    #     #L3 ###################################################################
-    #     lmeso   = (self.data_structure.variables_dictionary["forage_lmeso"]
-    #                * forage_preference_coefficients[3]).data
-        
-    #     day_l3  = days_length * (lmeso + mlmeso + hmlmeso)
-    #     night_l3  = night_length * (lmeso)
-        
-    #     tmp_L3 = np.add(day_l3, night_l3, out=np.zeros_like(days_length),
-    #                     where=self.data_structure.global_mask['mask_L3'])
-    #     del lmeso, mlmeso, hmlmeso, day_l3, night_l3, night_length
-
-    #     # Result ##############################################################
-    #     result = np.array([tmp_L1, tmp_L2, tmp_L3])
-    #     del tmp_L1, tmp_L2, tmp_L3
-    
-    #     return result
-    
-    # def __forageAtDate__(self, date, position, forage_preference_coefficients) :
-        """Return forage quantity and weight accessibility in each layer """
-        
-        # Initialization
-        days_length = self.data_structure.variables_dictionary['days_length'].sel(time=[date])
-        night_length = np.ones_like(days_length) - days_length
-
-        #L1 ###################################################################
-        epi     = (self.data_structure.variables_dictionary["forage_epi"][position]
-                   * forage_preference_coefficients[0])
-        mumeso   = (self.data_structure.variables_dictionary["forage_mumeso"][position]
-                   * forage_preference_coefficients[2])
-        hmlmeso = (self.data_structure.variables_dictionary["forage_hmlmeso"][position]
-                   * forage_preference_coefficients[5])
-        
-        day_l1  = days_length * epi
-        night_l1  = night_length * (epi + mumeso + hmlmeso)
-        
-        tmp_L1 = np.add(day_l1, night_l1, out=np.zeros_like(days_length),
-                        where=self.data_structure.global_mask['mask_L1'][0])
-        del epi, day_l1, night_l1
-
-        #L2 ###################################################################
-        umeso    = (self.data_structure.variables_dictionary["forage_umeso"][position]
-                   * forage_preference_coefficients[1])
-        mlmeso  = (self.data_structure.variables_dictionary["forage_mlmeso"][position]
-                   * forage_preference_coefficients[4])
-        
-        day_l2  = days_length * (umeso + mumeso)
-        night_l2  = night_length * (umeso + mlmeso)
-        
-        tmp_L2 = np.add(day_l2, night_l2, out=np.zeros_like(days_length),
-                        where=self.data_structure.global_mask['mask_L2'][0])
-        del umeso, mumeso, day_l2, night_l2
-
-        #L3 ###################################################################
-        lmeso   = (self.data_structure.variables_dictionary["forage_lmeso"][position]
-                   * forage_preference_coefficients[3])
-        
-        day_l3  = days_length * (lmeso + mlmeso + hmlmeso)
-        night_l3  = night_length * (lmeso)
-        
-        tmp_L3 = np.add(day_l3, night_l3, out=np.zeros_like(days_length),
-                        where=self.data_structure.global_mask['mask_L3'][0])
-        del lmeso, mlmeso, hmlmeso, day_l3, night_l3, night_length
-
-        # Result ##############################################################
-        result = np.array([tmp_L1, tmp_L2, tmp_L3])
-        del tmp_L1, tmp_L2, tmp_L3
-    
-        return result
-
-# New Version : 
-
-    def _selSubDataArray(self,
-                         data_array: xr.DataArray,
-                         time_start: int = None, time_end: int = None,
-                         lat_min: int = None, lat_max: int = None,
-                         lon_min: int = None, lon_max: int = None) -> xr.DataArray :
-        
-        return data_array.sel(
-                time=data_array.time.data[time_start:time_end if time_end is None else time_end+1 ],
-                lat=data_array.lat.data[lat_min:lat_max if lat_max is None else lat_max+1],
-                lon=data_array.lon.data[lon_min:lon_max if lon_max is None else lon_max+1])
-
-    def _selSubMask(self,
-                    mask: str,
-                    lat_min: int = None, lat_max: int = None,
-                    lon_min: int = None, lon_max: int = None) -> np.ndarray :
-
-            tmp = self.data_structure.global_mask[mask]
-
-            return tmp[:,
-                       lat_min:lat_max if lat_max is None else lat_max+1,
-                       lon_min:lon_max if lon_max is None else lon_max+1]
 
     def _temperature(self,
                      cohort: int,
@@ -448,27 +293,61 @@ class FeedingHabitat :
 # ---------------------------------  MAIN  ---------------------------------- #
 ###############################################################################
 
-# TODO :    Terminer cette fonction :
-#           - Ajouter des attributs a la description de chaque DataArray comme l'age, le poid, la taille etc..
-#           - Ajouter des attributs a la description du DataSet comme les parametres utilisées, lmin et max de lat lon et time ...
-
     def computeFeedingHabitat(self,
                               cohorts: Union[int, List[int]],
                               time_start: int = None, time_end: int = None,
                               lat_min: int = None, lat_max: int = None,
-                              lon_min: int = None, lon_max: int = None) -> xr.DataArray :
+                              lon_min: int = None, lon_max: int = None,
+                              verbose: bool = False) -> xr.Dataset :
         """
-        Description
+        The main function of the FeedingHabitat class. It will compute the
+        feeding habitat of each cohort specify in the `cohorts` argument.
+
+        Parameters
+        ----------
+        cohorts : Union[int, List[int]]
+            Specify the cohorts we want to compute the feeding habitat.
+        time_start : int = None, optional
+            Starting position in the coords['time'] coordinate.
+            The default is None, converted into 0.
+        time_end : int = None, optional
+            Ending position in the coords['time'] coordinate.
+            The default is None, converted into last position in `coords['time']`.
+        lat_min : int = None, optional
+            Starting position in the coords['lat'] coordinate.
+            The default is None, converted into 0.
+        lat_max : int = None, optional
+            Ending position in the coords['lat'] coordinate.
+            The default is None, converted into last position in `coords['lat']`.
+        lon_min : int = None, optional
+            Starting position in the coords['lon'] coordinate.
+            The default is None, converted into 0.
+        lon_max : int = None, optional
+            Ending position in the coords['lon'] coordinate.
+            The default is None, converted into last position in `coords['lon']`.
+        verbose : boolean, optional
+            If True, print some informations about the running state.
+            The default is False.
+
+        Returns
+        -------
+        xarray.DataSet
+            A DataSet containing Feeding Habitat of each cohort specified
+            in the `cohorts` argument.
+
         """
 
         if isinstance(cohorts, int) :
             cohorts = [cohorts]
 
         def controlArguments(data_structure: hds.HabitatDataStructure,
-                             cohorts,time_start,time_end,lat_min,lat_max,lon_min,lon_max) :
+                             cohorts, time_start, time_end, lat_min,
+                             lat_max, lon_min, lon_max) :
+
             for elmt in cohorts :
                 if elmt < 0 or elmt >= data_structure.cohorts_number :
-                    raise ValueError("cohort out of bounds. Min is 0 and Max is %d"%(self.data_structure.cohorts_number-1))
+                    raise ValueError("cohort out of bounds. Min is 0 and Max is %d"%(
+                        self.data_structure.cohorts_number-1))
 
             coords = data_structure.coords
             
@@ -505,23 +384,29 @@ class FeedingHabitat :
             if (time_start is not None) and (time_end is not None) and (time_start > time_end) :
                 raise ValueError("time_start must be <= to time_end.")     
 
-        controlArguments(self.data_structure,
-                         cohorts,time_start,time_end,lat_min,lat_max,lon_min,lon_max)
+        controlArguments(
+            self.data_structure, cohorts, time_start, time_end, lat_min,
+            lat_max, lon_min, lon_max)
         
-        print("OXYGEN : ",self._oxygen(time_start, time_end, lat_min, lat_max, lon_min, lon_max).shape)
-        fh_oxygen = self._oxygen(time_start, time_end, lat_min, lat_max, lon_min, lon_max)
+        fh_oxygen = self._oxygen(
+            time_start, time_end, lat_min, lat_max, lon_min, lon_max)
 
-        print("FORAGE : ",self._forage(time_start, time_end, lat_min, lat_max, lon_min, lon_max).shape)
-        fh_forage = self._forage(time_start, time_end, lat_min, lat_max, lon_min, lon_max)
+        fh_forage = self._forage(
+            time_start, time_end, lat_min, lat_max, lon_min, lon_max)
 
         result = {}
-        mask_L1 = self._selSubMask('mask_L1', lat_min, lat_max, lon_min, lon_max)
+        mask_L1 = self._selSubMask(
+            'mask_L1', lat_min, lat_max, lon_min, lon_max)
 
-        for elmt in cohorts :
-            print("TEMPERATURE : ",self._temperature(elmt, time_start, time_end, lat_min, lat_max, lon_min, lon_max).shape)
-            fh_temperature = self._temperature(elmt, time_start, time_end, lat_min, lat_max, lon_min, lon_max)
+        for cohort_number in cohorts :
+            if verbose :
+                print("Computing Feeding Habitat for cohort %d."%(cohort_number))
 
-            name = 'Feeding_Habitat_Cohort_%d'%(elmt)
+            fh_temperature = self._temperature(
+                cohort_number, time_start, time_end, lat_min, lat_max,
+                lon_min, lon_max)
+
+            name = 'Feeding_Habitat_Cohort_%d'%(cohort_number)
 
             result_np_array = np.where(
                 mask_L1,
@@ -541,7 +426,16 @@ class FeedingHabitat :
                     time=self.data_structure.coords['time'].data[
                         time_start:time_end if time_end is None else time_end+1]),
                 dims=["time", "lat", "lon"],
-                attrs={'Cohort number':elmt}
+                attrs={
+                    'Cohort number':cohort_number,
+                    'Age start (days)' : self.data_structure.species_dictionary[
+                        'cohorts_starting_age'][cohort_number], 
+                    'Age end (days)' : self.data_structure.species_dictionary[
+                        'cohorts_final_age'][cohort_number],
+                    'Length (cm)' : self.data_structure.species_dictionary[
+                        'cohorts_mean_length'][cohort_number],
+                    'Weight (kg)' : self.data_structure.species_dictionary[
+                        'cohorts_mean_weight'][cohort_number]}
             )
             result[name] = result_xr_data_array
 
@@ -556,237 +450,6 @@ class FeedingHabitat :
             result,
             attrs=dataset_attributs
         )
-
-
-# TODO : Supprimer si plus utile
-    # def OBSOLETEcomputeFeedingHabitat(self, filepath=None, verbose=True) :
-    #     """
-    #     The main function of the FeedingHabitat class. It will compute the
-    #     feeding habitat of each cohort specify in the cohorts_to_compute
-    #     attribut of the instance.
-
-    #     Parameters
-    #     ----------
-    #     filepath : string, optional
-    #         The filepath where to save all the netCDF we will produce during
-    #         this function execution. If None, the output filepath in the XML 
-    #         configuration file will be used.
-    #         The default is None.
-    #     verbose : boolean, optional
-    #         If True, print some informations about the running state.
-    #         The default is True.
-
-    #     Returns
-    #     -------
-    #     None.
-
-    #     """
-    #     if filepath is None :
-    #         path_save = self.data_structure.output_directory
-    #     else :
-    #         path_save = filepath
-        
-    #     if verbose : print('Files will be saved at : %s' % path_save)
-        
-    #     # FORAGE ##############################################################
-    #     if verbose : print('Computing  forage')
-    #     ha_forage = self.__forage__(self.data_structure.parameters_dictionary['eF_list'])
-        
-    #     # OXYGEN ##############################################################
-    #     if verbose : print('Computing oxygen')
-    #     ha_oxygen = self.__oxygen__(self.data_structure.parameters_dictionary['gamma'],
-    #                                 self.data_structure.parameters_dictionary['o_star'])
-    #     # When oxygen is from climat model (only 1 year)
-    #     if self.data_structure.partial_oxygen_time_axis :
-    #         buffer = []
-    #         for time_unit in range(ha_forage.shape[2]) :
-    #             buffer.append(ha_oxygen[:,time_unit % ha_oxygen.shape[1],:,:])
-    #         ha_oxygen = np.transpose(np.array(buffer),(1,0,2,3))
-        
-    #     # Select the cohorts to compute the feeding habitat
-    #     if self.data_structure.cohorts_to_compute is None :
-    #         cohorts_range = range(self.data_structure.cohorts_number)
-    #     else :
-    #         cohorts_range = self.data_structure.cohorts_to_compute
-        
-    #     # For each cohort compute habitat then save in netCDF file
-    #     for cohort in cohorts_range:
-            
-    #         # TEMPERATURE #####################################################
-    #         if verbose : print('Cohort %d : computing temperature' % cohort)
-    #         ha_temperature = self.__temperatureNthCohort__(
-    #             self.data_structure.parameters_dictionary['sigma_0'],
-    #             self.data_structure.parameters_dictionary['sigma_K'], 
-    #             self.data_structure.parameters_dictionary['T_star_1'],
-    #             self.data_structure.parameters_dictionary['T_star_K'], 
-    #             self.data_structure.parameters_dictionary['bT'],
-    #             Nth_cohort=cohort)
-            
-    #         # SAVE ############################################################
-    #         if verbose : print('Cohort %d : saving Ha in NetCDF file' % cohort)
-            
-    #         # WARNING :  1e-4 is added on layer access to copy SEAPODYM behavior
-    #         # TODO : 1e-4 is added on layer access to copy SEAPODYM behavior
-    #         ha_result = np.where(
-    #             self.data_structure.global_mask['mask_L1'],
-    #             self.__scaling__(
-    #                 np.sum(
-    #                     ha_forage * (ha_temperature * ha_oxygen + 1e-4),
-    #                     axis=0)),
-    #             np.NaN)
-            
-    #         da_to_save = xr.DataArray(
-    #             data=ha_result,
-    #             dims=["time", "lat", "lon"],
-    #             coords=dict(
-    #                 lon=self.data_structure.coords['lon'],
-    #                 lat=self.data_structure.coords['lat'],
-    #                 time=self.data_structure.coords['time']),
-    #             attrs=dict(description=("Ha_cohort_%d" %cohort)))
-            
-    #         if not os.path.exists(path_save):
-    #             os.makedirs(path_save)
-                
-    #         da_to_save.to_netcdf(path_save +("ha_cohort_%d.nc" % cohort))
-    
-
-    # def OBSOLETEcomputeFeedingHabitatForSpecificAgeAndDate(
-    #         self, age, date, verbose=False) :
-    #     """
-    #     Compute feeding habitat of a cohort at a specific date.
-
-    #     Parameters
-    #     ----------
-    #     age : int
-    #         Position of the cohort in the length and weight tabs.
-    #         The first one (larvae) is at position 0.
-    #     date : str, int, numpy.datetime64
-    #         3 formats:
-    #             - string as "2010-07-17T12:00:00.000000000"
-    #             - numpy.datetime64 (see also. FeedingHabitat.coords['time'])
-    #             - integer, starting with 0.
-    #     verbose : bool, optional
-    #         Print some informations about the selected cohort.
-    #         The default is False.
-            
-    #     Notes
-    #     -----
-    #     If oxygen is climatologic (1 year only), it must begin in January.
-
-    #     Raises
-    #     ------
-    #     TypeError
-    #         If date type is not str, int or numpy.datetime64 an error will be raised.
-
-    #     Returns
-    #     -------
-    #     ha_result_da : TYPE
-    #         The feeding habitat of the Nth cohort (according to age argument)
-    #         at a specific date (according to the date argument).
-
-    #     """
-        
-    #     if isinstance(date, str) :
-    #         date = np.datetime64(date)
-    #         position = np.where(self.data_structure.coords['time'].data == date)
-    #     elif isinstance(date, int) :
-    #         position = date
-    #         date = self.data_structure.coords['time'].data[date]
-    #     elif isinstance(date, np.datetime64) :
-    #         position = np.where(self.data_structure.coords['time'].data == date)
-    #     else :
-    #         raise TypeError("Date must be : String, Integer or Numpy.datetime64")
-        
-    #     if verbose :
-    #         print("At age %d, length is %f and weight is %f."%(age,
-    #             self.data_structure.species_dictionary['cohorts_mean_length'][age],
-    #             self.data_structure.species_dictionary['cohorts_mean_weight'][age]))
-        
-    #     # FORAGE ##############################################################
-    #     ha_forage = self.__forageAtDate__(
-    #         date, position,
-    #         self.data_structure.parameters_dictionary['eF_list'])
-        
-    #     # OXYGEN ##############################################################
-    #     ha_oxygen = self.__oxygenAtDate__(
-    #         position, self.data_structure.parameters_dictionary['gamma'],
-    #         self.data_structure.parameters_dictionary['o_star'])
-        
-    #     # TEMPERATURE #########################################################
-    #     ha_temperature = self.__temperatureNthCohortAtDate__(
-    #         position,
-    #         self.data_structure.parameters_dictionary['sigma_0'],
-    #         self.data_structure.parameters_dictionary['sigma_K'], 
-    #         self.data_structure.parameters_dictionary['T_star_1'],
-    #         self.data_structure.parameters_dictionary['T_star_K'], 
-    #         self.data_structure.parameters_dictionary['bT'],
-    #         Nth_cohort=age)
-        
-    #     # SAVE ################################################################
-       
-    #     # WARNING : 1e-4 is added on layer access to copy SEAPODYM behavior
-    #     # TODO : 1e-4 is added on layer access to copy SEAPODYM behavior.
-    #     #        Should it be removed ?
-    #     ha_result = np.where(
-    #         self.data_structure.global_mask['mask_L1'],
-    #         self.__scaling__(
-    #             np.sum(
-    #                 ha_forage * (ha_temperature * ha_oxygen + 1e-4),
-    #                 axis=0)),
-    #         np.NaN)
-        
-    #     ha_result_da = xr.DataArray(
-    #             data=ha_result[0],
-    #             dims=["lat", "lon"],
-    #             coords=dict(lon=self.data_structure.coords['lon'],
-    #                         lat=self.data_structure.coords['lat']),
-    #             attrs=dict(description=(("Ha_cohort_%d_at_date_"%age)+str(date)),
-    #                        date=str(date)))
-
-    #     return ha_result_da 
-            
-###############################################################################
-# ---------------------------------  TOOLS  --------------------------------- #
-###############################################################################        
-        
-    def __scaling__(self, data) :
-        """
-        The normalization function used by SEAPODYM. Set all values in
-        range [0,1].
-        Very similar to : If data > 1 then 1 Else data.
-
-        Parameters
-        ----------
-        data : Numpy.array
-            Contains the habitat to normalize.
-
-        Returns
-        -------
-        Numpy.array
-            Return the normalized data.
-        """
-
-        # parameters of hyperbola
-        phi = 22.5 * pi/180.0
-        a = 0.07
-        e = 1.0 / cos(phi)
-        b = a * sqrt(e*e - 1.0)
-    
-        # coordinate center
-        # shift is to have all y>=0
-        x0 = 1.0-0.00101482322788
-        y0 = 1.0
-    
-        # equation for hyperbola
-        sinsq = sin(phi) * sin(phi)
-        cossq = 1.0-sinsq
-        rasq  = 1.0 / (a*a)
-        rbsq  = 1.0 / (b*b)
-        A = sinsq*rasq - cossq*rbsq
-        B = -2.0 * (data-x0) * cos(phi) * sin(phi) * (rasq+rbsq)
-        C = 1.0 - (data-x0) * (data-x0) * (sinsq*rbsq - cossq*rasq)
-    
-        return (y0+(B+np.sqrt(B*B-4.0*A*C))/(2*A))
 
     def correctEpiTempWithZeu(self) :
         """

@@ -45,7 +45,7 @@ def equalCoords(data_array_1: xr.DataArray,
     
     return lat_condition and lon_condition and time_condition
 
-def groupArrayByCoords(variables_dictionary: dict) -> list :
+def groupArrayByCoords(variables_dictionary: dict) -> List[List[str]] :
     list_compare = []
     for _, item in variables_dictionary.items() :
         list_tmp = []
@@ -109,7 +109,6 @@ class HabitatDataStructure :
         self.output_directory         = kargs['output_directory']
         self.layers_number            = kargs['layers_number']
         self.cohorts_number           = kargs['cohorts_number']
-        self.cohorts_to_compute       = kargs['cohorts_to_compute']
         self.partial_oxygen_time_axis = kargs['partial_oxygen_time_axis']
         self.global_mask              = kargs['global_mask']
         self.coords                   = kargs['coords']
@@ -117,24 +116,15 @@ class HabitatDataStructure :
         self.parameters_dictionary    = kargs['parameters_dictionary']
         self.species_dictionary       = kargs['species_dictionary']
 
-
-    def setCohorts_to_compute(self, cohorts_to_compute: List[int]) -> None :
-        """
-        You can change the list of cohorts you want to compute the habitat at
-        any moment by using this setter.
-
-        Parameters
-        ----------
-        cohorts_to_compute : list of int
-            If you want to perform a partial feeding habitat computation, you
-            can  specify a group of cohort using a number corresponding to the
-            position in the cohort list.
-            Warning : The first cohort is number 0.
-            For example, if you want to compute the feeding habitat of the
-            second and third cohort : partial_cohorts_computation = [1,2].
-
-        """
-        self.cohorts_to_compute = cohorts_to_compute
+        pred = 0
+        start_age = []
+        end_age = []
+        for unit in self.species_dictionary['cohorts_sp_unit'] :
+            start_age.append(pred)
+            pred = pred + unit
+            end_age.append(pred)
+        self.species_dictionary['cohorts_starting_age'] = np.array(start_age)
+        self.species_dictionary['cohorts_final_age'] = np.array(end_age)
 
     def summary(self) :
 
@@ -144,10 +134,10 @@ class HabitatDataStructure :
         print("# Summary of this data structure #")
         print("# ------------------------------ #", end='\n\n')
 
-        print('Root directory is :\t'+self.root_directory, end='\n')
-        print('Output directory is :\t'+self.output_directory, end='')
+        print('Root directory is :\n\t'+self.root_directory, end='\n')
+        print('Output directory is :\n\t'+self.output_directory, end='')
 
-        print("\n\n# -------------------------------SPECIES----------------------------- #\n\n")
+        print("\n\n\n# -------------------------------SPECIES----------------------------- #\n\n\n",end='')
 
         print('The short name of the species is %s.'%(self.species_dictionary["sp_name"]),end='\n')
         print('There is(are) %d\tlife stages considered in the model which are : '%(
@@ -156,10 +146,11 @@ class HabitatDataStructure :
         for name, number in zip(self.species_dictionary['life_stage'], self.species_dictionary['nb_cohort_life_stage']) :
             print("\t- There is(are) %d\tcohort(s) in life stage %s."%(number, name))
         np.set_printoptions(suppress=True)
+        print('\nFinal age (in day) of each cohort is :\n', self.species_dictionary['cohorts_final_age'])
         print('\nMean length for each cohort is :\n', self.species_dictionary['cohorts_mean_length'])
         print('\nMean weight for each cohort is :\n', self.species_dictionary['cohorts_mean_weight'], end='')
 
-        print("\n\n# -----------------------------PARAMETERS---------------------------- #\n\n")
+        print("\n\n\n# -----------------------------PARAMETERS---------------------------- #\n\n\n",end='')
 
         print('The parameters used are the following :')
         for name, value in self.parameters_dictionary.items() :
@@ -187,4 +178,4 @@ class HabitatDataStructure :
         print('\n#\t#\t#\t#\t#\n')
         print('TIPS : The user can use equalCoords() or compareDims() functions to compare Coordinates.',end='')
         
-        print("\n\n# ------------------------------------------------------------------- #\n\n")
+        print("\n\n\n# ------------------------------------------------------------------- #\n\n")

@@ -32,6 +32,8 @@ from .. import dymfiles as df
 def seapodymFieldConstructor(filepath: str,
                              dym_varname : str = None,
                              dym_attributs : str = None) -> xr.DataArray :
+    """Return a Seapodym field as a DataArray using NetCDF or Dym method according
+    to the file extension : 'nc', 'cdf' or 'dym'. """
 
     #NetCDF
     if filepath.lower().endswith(('.nc', '.cdf')) :
@@ -51,17 +53,13 @@ def seapodymFieldConstructor(filepath: str,
 def _loadMask(variables_dictionary, from_text=None, expend_time=True) :
     """
     Load a mask file (i.e. texte file) as a dictionary of numpy array. Each
-    array corresponds to a pelagic layer (i.e. L1, L2 and L3). Mask file must contains 4
-    values :
-        - 0 = Ground / Land / etc...
-        - 1 = L1 / epipelagic
-        - 2 = L2 / mesopelagic superior
-        - 3 = L3 / mesopelagic inferior
+    array corresponds to a pelagic layer (i.e. L1, L2 and L3).
 
     Parameters
     ----------
-    variables_dictionary : TYPE
-        DESCRIPTION.
+    variables_dictionary : dict
+        Contains all variables used by the FeedingHabitat module. Must contains
+        "temperature_L1".
     from_text : string, optional
         Text file used to compute the mask. If from_text is None, the Nan
         values of the temperature_L(1, 2 and 3) netCDF will be used.
@@ -70,10 +68,20 @@ def _loadMask(variables_dictionary, from_text=None, expend_time=True) :
         Add a time axis to broadcast mask on variables. Cf. Numpy broadcast.
         The default is True.
 
+    Notes :
+    -------
+    Mask file must contains 4
+    values :
+        - 0 = Ground / Land / etc...
+        - 1 = L1 / epipelagic
+        - 2 = L2 / mesopelagic superior
+        - 3 = L3 / mesopelagic inferior
+
     Returns
     -------
-    global_mask : TYPE
-        DESCRIPTION.
+    global_mask : dict.
+        The dictionary contains "mask_L1", "mask_L2", "mask_L3" which are 
+        numpy arrays.
 
     """
 
@@ -101,7 +109,6 @@ def _loadMask(variables_dictionary, from_text=None, expend_time=True) :
                    "mask_L3" : (tmp_mask == 3)}
 
     return global_mask
-
 
 
 def __dayLengthPISCES__(jday, lat) :
@@ -148,15 +155,14 @@ def __dayLengthPISCES__(jday, lat) :
     return day_length / 24.0
 
 
-
 def _daysLength(coords, model=None, float_32=True) :
     """
-    Compute the day length.
+    Compute the day length using __dayLengthPISCES__ method.
 
     Parameters
     ----------
     coords : xarray.DataArray.coords
-        DESCRIPTION.
+        Time, latitude and longitude from the temperature_L1 field.
     model : TYPE, optional
         Base the time, latitude and longitude on model.
         If model is None, base on coords (i.e. xarray.DataArray.coords).
@@ -196,7 +202,6 @@ def _daysLength(coords, model=None, float_32=True) :
     return xr.DataArray(data=days_length,dims=["time", "lat", "lon"],
                         coords=dict(lon=longitude,lat=latitude,time=coords['time']),
                         attrs=dict(description="Day length.",units="hour"))
-
 
 
 def _readXmlConfigFilepaths(root, root_directory, layers_number) :
@@ -262,10 +267,9 @@ def _readXmlConfigFilepaths(root, root_directory, layers_number) :
             zeu_filepath, ordered_forage, mask_filepath, partial_oxygen_time_axis)
 
 
-
 def _readXmlConfigParameters(root, ordered_forage) :
     """Reads the parameters from the XML configuration file and stores
-     them in a dictionary."""
+    them in a dictionary."""
 
     parameters_dictionary = {}
     species_dictionary = {}
@@ -309,10 +313,12 @@ def _readXmlConfigParameters(root, ordered_forage) :
     return parameters_dictionary, species_dictionary
 
 
-
+# TODO : also load species age
 def _loadVariablesFromFilepaths(root, temperature_filepaths, oxygen_filepaths,
                                 forage_filepaths, sst_filepath, zeu_filepath,
                                 mask_filepath, sp_name, float_32=True) :
+    """Load all Seapodym Fields using the seapodymFieldConstructor method. Their
+    are stored in a dictionary and returned."""
 
     variables_dictionary = {}
 
@@ -389,11 +395,13 @@ def _loadVariablesFromFilepaths(root, temperature_filepaths, oxygen_filepaths,
         np.nan_to_num,
         seapodymFieldConstructor(zeu_filepath, "zeu"))
 
-    # LENGTHS & WEIGHT ########################################################
+    # LENGTHS, WEIGHT & AGE ###################################################
     cohorts_mean_length = np.array(
         [float(x) for x in root.find('length').find(sp_name).text.split()])
     cohorts_mean_weight = np.array(
         [float(x) for x in root.find('weight').find(sp_name).text.split()])
+    cohorts_sp_unit = np.array(
+        [float(x) for x in root.find('sp_unit_cohort').find(sp_name).text.split()])
 
     # MASK ####################################################################
     global_mask = _loadMask(variables_dictionary, from_text=mask_filepath)
@@ -404,7 +412,8 @@ def _loadVariablesFromFilepaths(root, temperature_filepaths, oxygen_filepaths,
     return (variables_dictionary,
             global_mask, coords,
             cohorts_mean_length,
-            cohorts_mean_weight)
+            cohorts_mean_weight,
+            cohorts_sp_unit)
 
 
 
@@ -413,7 +422,6 @@ def _loadVariablesFromFilepaths(root, temperature_filepaths, oxygen_filepaths,
 ###############################################################################
 
 def loadFromXml(xml_filepath: str,
-                partial_cohorts_computation: List[int] = None,
                 float_32: bool = True) -> dict :
     """
     This is the main function used by the feedingHabitat module. It is used to
@@ -424,11 +432,9 @@ def loadFromXml(xml_filepath: str,
 
     Parameters
     ----------
-    xml_filepath : TYPE
-        DESCRIPTION.
-    partial_cohorts_computation : TYPE, optional
-        DESCRIPTION. The default is None.
-    float_32 : TYPE, optional
+    xml_filepath : str
+        The filepath to the FeedingHabitat XML configuration file.
+    float_32 : bool, optional
         DESCRIPTION. The default is True.
 
     Returns
@@ -465,10 +471,6 @@ def loadFromXml(xml_filepath: str,
     output_directory = root_directory + root.find('strdir_output').attrib['value']
     layers_number  = int(root.find('nb_layer').attrib['value'])
 
-    cohorts_to_compute = None
-    if partial_cohorts_computation is not None :
-        cohorts_to_compute = set(partial_cohorts_computation)
-
     # Variables Filepaths #####################################################
     (temperature_filepaths,
      oxygen_filepaths,
@@ -491,24 +493,25 @@ def loadFromXml(xml_filepath: str,
     (variables_dictionary,
      global_mask, coords,
      cohorts_mean_length,
-     cohorts_mean_weight) = _loadVariablesFromFilepaths(root,
-                                                        temperature_filepaths,
-                                                        oxygen_filepaths,
-                                                        forage_filepaths,
-                                                        sst_filepath,
-                                                        zeu_filepath,
-                                                        mask_filepath,
-                                                        species_dictionary['sp_name'],
-                                                        float_32)
+     cohorts_mean_weight,
+     cohorts_sp_unit) = _loadVariablesFromFilepaths(root,
+                                                    temperature_filepaths,
+                                                    oxygen_filepaths,
+                                                    forage_filepaths,
+                                                    sst_filepath,
+                                                    zeu_filepath,
+                                                    mask_filepath,
+                                                    species_dictionary['sp_name'],
+                                                    float_32)
 
     species_dictionary['cohorts_mean_length'] = cohorts_mean_length
     species_dictionary['cohorts_mean_weight'] = cohorts_mean_weight
+    species_dictionary['cohorts_sp_unit'] = cohorts_sp_unit
 
     return dict(root_directory=root_directory,
                 output_directory=output_directory,
                 layers_number=layers_number,
                 cohorts_number=cohorts_number,
-                cohorts_to_compute=cohorts_to_compute,
                 partial_oxygen_time_axis=partial_oxygen_time_axis,
                 global_mask=global_mask,
                 coords=coords,
