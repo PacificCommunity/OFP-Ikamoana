@@ -337,7 +337,7 @@ class FeedingHabitat :
 
         """
 
-        if isinstance(cohorts, int) :
+        if isinstance(cohorts, (int, np.integer)) :
             cohorts = [cohorts]
 
         def controlArguments(data_structure: hds.HabitatDataStructure,
@@ -450,6 +450,143 @@ class FeedingHabitat :
             result,
             attrs=dataset_attributs
         )
+
+    def computeEvolvingFeedingHabitat(
+            self,
+            cohort_start: int = None, cohort_end: int = None,
+            time_start: int = None, time_end: int = None,
+            lat_min: int = None, lat_max: int = None,
+            lon_min: int = None, lon_max: int = None,
+            verbose: bool = False) -> xr.Dataset :
+        """
+        The feeding habitat evolves over time. Each time step corresponds to
+        a cohort at a specific age.
+        
+        Parameters
+        ----------
+        cohort_start : int, optional
+            Specify the first cohorts to start with.
+            Default is None (correspond to 0).
+        cohort_end : int, optional
+            Specify the latest cohort. If it is the oldest, the `time_end`
+            argument will specify when to stop the calculation.
+            The default value is None (corresponds to `cohort_number - 1`).
+        time_start : int = None, optional
+            Starting position in the coords['time'] coordinate.
+            The default is None, converted into 0.
+        time_end : int = None, optional
+            Ending position in the coords['time'] coordinate.
+            The default is None, converted into last position in `coords['time']`.
+        lat_min : int = None, optional
+            Starting position in the coords['lat'] coordinate.
+            The default is None, converted into 0.
+        lat_max : int = None, optional
+            Ending position in the coords['lat'] coordinate.
+            The default is None, converted into last position in `coords['lat']`.
+        lon_min : int = None, optional
+            Starting position in the coords['lon'] coordinate.
+            The default is None, converted into 0.
+        lon_max : int = None, optional
+            Ending position in the coords['lon'] coordinate.
+            The default is None, converted into last position in `coords['lon']`.
+        verbose : boolean, optional
+            If True, print some informations about the running state.
+            The default is False.
+
+        Returns
+        -------
+        xarray.DataArray
+            A DataArray containing Feeding Habitat of a cohort that will evolve
+            over time.
+        """
+
+        def controlArguments(
+            data_structure: hds.HabitatDataStructure,
+            cohort_start: int = None, cohort_end: int = None,
+            time_start: int = None, time_end: int = None) :
+
+            cohorts_number = data_structure.cohorts_number
+
+            if cohort_start is None :
+                cohort_start = 0
+            if cohort_end is None :
+                cohort_end = cohorts_number - 1
+            if (cohort_start < 0) or (cohort_start >= cohorts_number) :
+                raise ValueError("cohort_start out of bounds. Min is %d and Max is %d"%(
+                    0, cohorts_number - 1))
+            if (cohort_end < 0) or (cohort_end >= cohorts_number) :
+                raise ValueError("cohort_end out of bounds. Min is %d and Max is %d"%(
+                    0, cohorts_number - 1))
+            if cohort_start > cohort_end :
+                raise ValueError("cohort_start must be <= to cohort_end.")  
+            cohort_array = np.arange(cohort_start, cohort_end+1)
+
+            coords = data_structure.coords
+
+            if time_start is None :
+                time_start = 0
+            if time_end is None :
+                time_end = coords['time'].size - 1
+            if ((time_start < 0) or (time_start >= coords['time'].data.size)) :
+                raise ValueError("time_start out of bounds. Min is %d and Max is %d"%(
+                    0, coords['time'].data.size - 1))
+            if ((time_end < 0) or (time_end >= coords['time'].data.size)) :
+                raise ValueError("time_end out of bounds. Min is %d and Max is %d"%(
+                    0, coords['time'].data.size - 1))
+            if time_start > time_end :
+                raise ValueError("time_start must be <= to time_end.")
+            
+            time_array = np.arange(time_start, time_end+1)
+
+            if cohort_array[-1] < cohorts_number-1 :
+                max_size = min(cohort_array.size, time_array.size)
+                cohort_array = cohort_array[:max_size]
+                time_array = time_array[:max_size]
+
+
+            return cohort_array, time_array
+
+        cohort_array, time_array = controlArguments(
+            self.data_structure,
+            cohort_start, cohort_end, time_start, time_end)
+
+        cohort_axis = []
+        final_array = []
+        for i in range(cohort_array.size) :
+            # Oldest cohort with many time steps
+            if (cohort_array[i:].size == 1) and (time_array[i:].size > 1) :
+                cohort_axis.extend([cohort_array[i]] * time_array[i:].size)
+                final_array.append(self.computeFeedingHabitat(
+                    cohorts=cohort_array[i],
+                    time_start=time_array[i], time_end=time_array[-1],
+                    lat_min=lat_min, lat_max=lat_max,
+                    lon_min=lon_min, lon_max=lon_max).to_array().data[0,:,:,:])
+
+            # Others
+            else :
+                cohort_axis.append(cohort_array[i])
+                final_array.append(self.computeFeedingHabitat(
+                    cohorts=cohort_array[i],
+                    time_start=time_array[i], time_end=time_array[i],
+                    lat_min=lat_min, lat_max=lat_max,
+                    lon_min=lon_min, lon_max=lon_max).to_array().data[0,:,:,:])
+
+        return xr.DataArray(
+            data=np.concatenate(final_array),
+            dims=('time','lat','lon'),
+            coords=dict(
+                time=self.data_structure.coords['time'].data[time_array[0]:time_array[-1]+1],
+                lat=self.data_structure.coords['lat'].data[lat_min:lat_max],
+                lon=self.data_structure.coords['lon'].data[lon_min:lon_max],
+                cohorts=("time", cohort_axis)),
+            attrs=dict(
+                description="Feeding habitat of a species that evolves over time.",
+                cohort_start=cohort_axis[0],cohort_end=cohort_axis[-1],
+                time_start=time_array[0], time_end=time_array[-1],
+                lat_min=lat_min, lat_max=lat_max,
+                lon_min=lon_min, lon_max=lon_max,
+                **self.data_structure.parameters_dictionary) # Simple way to merge dictionary
+            )
 
     def correctEpiTempWithZeu(self) :
         """

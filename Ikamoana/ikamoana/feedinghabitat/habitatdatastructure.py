@@ -4,7 +4,7 @@ the data that the feedinghabitat module will use to calculate the
 feeding habitat.
 """
 
-from typing import List
+from typing import List, Union
 import xarray as xr
 import numpy as np
 import warnings
@@ -179,3 +179,49 @@ class HabitatDataStructure :
         print('TIPS : The user can use equalCoords() or compareDims() functions to compare Coordinates.',end='')
         
         print("\n\n\n# ------------------------------------------------------------------- #\n\n")
+
+    def findCohortByLength(self, length: Union[float, List[float]], verbose: bool = False) -> List[int] :
+        """Find the cohort number with the closest length."""
+        
+        length_list = self.species_dictionary['cohorts_mean_length']
+        length = np.ravel(length)
+        cohort_number_list = []
+
+        for l in length :
+            index = np.absolute(length_list-l).argmin()
+            if verbose :
+                print("The cohort with the length closest to %f is cohort number %d whose length is %f"%(l, index, length_list[index]))
+            cohort_number_list.append(index)
+
+        return  cohort_number_list
+    
+    def findCohortByWeight(self, weight: Union[float, List[float]], verbose: bool = False) -> List[int] :
+        """Find the cohort number with the closest weight."""
+        
+        weight_list = self.species_dictionary['cohorts_mean_weight']
+        weight = np.ravel(weight)
+        cohort_number_list = []
+
+        for w in weight :
+            index = np.absolute(weight_list-w).argmin()
+            if verbose :
+                print("The cohort with the weight closest to %f is cohort number %d whose weight is %f"%(w, index, weight_list[index]))
+            cohort_number_list.append(index)
+        
+        return cohort_number_list
+
+    def findLengthByCohort(self, cohort: Union[float, List[float]], verbose: bool = False) -> List[int] :
+        """Find cohort length according to cohort number."""
+        
+        cohort_length_list = self.species_dictionary['cohorts_mean_length']
+        cohort = np.ravel(cohort)
+
+        return  cohort_length_list[cohort]
+    
+    def findWeightByCohort(self, cohort: Union[float, List[float]], verbose: bool = False) -> List[int] :
+        """Find cohort weight according to cohort number."""
+
+        cohort_weight_list = self.species_dictionary['cohorts_mean_weight']
+        cohort = np.ravel(cohort)
+
+        return  cohort_weight_list[cohort]
