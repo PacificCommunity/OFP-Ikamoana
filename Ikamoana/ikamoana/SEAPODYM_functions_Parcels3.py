@@ -18,7 +18,7 @@ from xml.dom import minidom
 
 def getGradient(field: Field,
                 landmask: Field = None,
-                shallow_sea_zero=True,
+                shallow_sea_zero=False,
                 time_period=None):
 
     """
@@ -80,7 +80,7 @@ def getGradient(field: Field,
 
     if landmask is not None:
         landmask = np.transpose(landmask.data[0,:,:])
-        if shallow_sea_zero is False:
+        if shallow_sea_zero :
             landmask[np.where(landmask == 2)] = 0
         X = nlon if nlon <= landmask.shape[0] else landmask.shape[0]
         Y = nlat if nlat <= landmask.shape[1] else landmask.shape[1]
@@ -110,8 +110,7 @@ def getGradient(field: Field,
 
             ## Jules : Modifie les celules en bordures
 
-            # Edges always forward or backwards differencing
-            for x in range(nlon):
+            # Edgikaf.landmask(fh.computeFeedingHabitat(0)['Feeding_Habitat_Cohort_0'])x in range(nlon):
                 dVdy[t, 0, x] = (data[t, 1, x] - data[t, 0, x]) / dy[0, x]
                 dVdy[t, nlat-1, x] = (data[t, nlat-1, x] - data[t, nlat-2, x]) / dy[nlat-2, x]
 
@@ -228,9 +227,9 @@ def Create_Landmask(fields, lim=1e-45):
     pbar = ProgressBar()
     for i in pbar(range(nx)):
         for j in range(1, ny-1):
-            if isOcean(np.abs(fields.Ubathy.data[0, j, i]), lim) :
+            if isShallow(np.abs(fields.Ubathy.data[0, j, i]), lim) :
                 mask[i,j] = 2
-            if isShallow(fields.H.data[0, j, i], lim) :
+            if isOcean(fields.H.data[0, j, i], lim) :
                 mask[i,j] = 1
 
     Mask = Field('LandMask', mask, fields.H.grid.lon, fields.H.grid.lat,
@@ -601,7 +600,7 @@ def Field_from_DYM(filename, name=None, xlim=None, ylim=None, fromyear=None, fro
         'double' :'d',
         'char'   :'s'}
 
-        DymInputSize = 4
+        x1 = x2 = 0
 
         def __init__(self, fileName):
             self.file = open(fileName, 'rb')

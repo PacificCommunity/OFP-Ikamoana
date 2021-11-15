@@ -54,9 +54,15 @@ class FeedingHabitat :
             fhcr.loadFromXml(xml_filepath,float_32)
         )
 
+    def __str__(self) -> str:
+        return self.data_structure.__str__()
+    
+    def __repr__(self) -> str:
+        return self.data_structure.__repr__()
+
 ###############################################################################
 
-    def __scaling__(self, data) :
+    def _scaling(self, data) :
         """
         The normalization function used by SEAPODYM. Set all values in
         range [0,1].
@@ -124,7 +130,7 @@ class FeedingHabitat :
                     lat_min:lat_max if lat_max is None else lat_max+1,
                     lon_min:lon_max if lon_max is None else lon_max+1]
 
-    def __sigmaStar__(self, sigma_0, sigma_K) :
+    def _sigmaStar(self, sigma_0, sigma_K) :
         """Return sigmaStar (the termal tolerance intervals, i.e. standard
         deviation) for each cohorts."""
         
@@ -135,7 +141,7 @@ class FeedingHabitat :
         return sigma_0 + ((sigma_K - sigma_0)
                           * (cohorts_mean_weight / max_weight))
     
-    def __tStar__(self, T_star_1, T_star_K, bT) :
+    def _tStar(self, T_star_1, T_star_K, bT) :
         """Return T_star (optimal temperature, i.e. mean) for each cohorts"""
         
         cohorts_mean_length = self.data_structure.species_dictionary[
@@ -151,10 +157,10 @@ class FeedingHabitat :
                      lat_min: int = None, lat_max: int = None,
                      lon_min: int = None, lon_max: int = None) -> np.ndarray :
         
-        sigma_star = self.__sigmaStar__(
+        sigma_star = self._sigmaStar(
             self.data_structure.parameters_dictionary['sigma_0'],
             self.data_structure.parameters_dictionary['sigma_K'])
-        T_star = self.__tStar__(
+        T_star = self._tStar(
             self.data_structure.parameters_dictionary['T_star_1'],
             self.data_structure.parameters_dictionary['T_star_K'],
             self.data_structure.parameters_dictionary['bT'])
@@ -410,7 +416,7 @@ class FeedingHabitat :
 
             result_np_array = np.where(
                 mask_L1,
-                self.__scaling__(
+                self._scaling(
                     np.sum(
                         fh_forage * (fh_temperature * fh_oxygen + 1e-4),
                         axis=0)),
@@ -418,6 +424,7 @@ class FeedingHabitat :
 
             result_xr_data_array = xr.DataArray(
                 result_np_array,
+                name=name,
                 coords=dict(
                     lon=self.data_structure.coords['lon'].data[
                         lon_min:lon_max if lon_max is None else lon_max+1],
@@ -573,6 +580,7 @@ class FeedingHabitat :
 
         return xr.DataArray(
             data=np.concatenate(final_array),
+            name='Feeding_Habitat_Cohort_%d_to_%d'%(cohort_array[0], cohort_array[-1]),
             dims=('time','lat','lon'),
             coords=dict(
                 time=self.data_structure.coords['time'].data[time_array[0]:time_array[-1]+1],
