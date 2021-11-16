@@ -40,12 +40,16 @@ class IkamoanaFields :
              * np.power(length, self.ikamoana_fields_structure.vmax_b))
 
     def landmask(self, habitat_field : xr.DataArray = None,
-                 shallow_sea_to_land=False, lim=1e-45) -> xr.DataArray :
+                 shallow_sea_to_ocean=False, lim=1e-45) -> xr.DataArray :
         """Return the landmask of a given habitat or FeedingHabitat.global_mask.
         Mask values :
             2 -> is Shallow
             1 -> is Land or No_Data
             0 -> deep ocean with habitat data
+
+        Note:
+        -----
+            Landmask in Original (with Parcels Fields) is flipped on latitude axis.
         """
 
         if habitat_field is None :
@@ -55,7 +59,7 @@ class IkamoanaFields :
                 self.feeding_habitat_structure.data_structure.global_mask['mask_L3'])[0,:,:]
             
             landmask = np.zeros(mask_L1.shape, dtype=np.int8)
-            if not shallow_sea_to_land : landmask[mask_L3] = 2
+            if not shallow_sea_to_ocean : landmask[mask_L3] = 2
             landmask[mask_L1] = 1
 
             coords = self.feeding_habitat_structure.data_structure.coords
@@ -68,8 +72,8 @@ class IkamoanaFields :
             if habitat_f.shape != lmeso_f.shape :
                 raise ValueError("Habitat and forage_lmeso must have the same dimension.")
 
-            landmask = np.zeros_like(habitat_f, dtype=np.int8)
-            if not shallow_sea_to_land :
+            landmask = np.zeros_like(habitat_f)
+            if not shallow_sea_to_ocean :
                 landmask[(np.abs(lmeso_f) <= lim) | np.isnan(lmeso_f)] = 2
             landmask[(np.abs(habitat_f) <= lim) | np.isnan(habitat_f)] = 1
 
@@ -77,7 +81,7 @@ class IkamoanaFields :
 
         ## TODO : Ask why lon is between 1 and ny-1
         # Answer -> in-coming
-        landmask[:, -1] = landmask[:, 0] = 0
+        landmask[-1,:] = landmask[0,:] = 0
 
         return xr.DataArray(
                 data=landmask,
@@ -135,6 +139,7 @@ class IkamoanaFields :
         nlon = field.lon.size
 
         data = np.nan_to_num(field.data)
+        landmask = landmask.data
         dVdlon = np.zeros(data.shape, dtype=np.float32)
         dVdlat = np.zeros(data.shape, dtype=np.float32)
 
@@ -192,100 +197,54 @@ class IkamoanaFields :
             )
         )
 
-## TODO : Terminer cette fonction.
     def taxis(self, dHdlon: xr.DataArray, dHdlat: xr.DataArray) -> Tuple[xr.DataArray,xr.DataArray] : 
-
         """
-        Calculation of the Taxi field from the gradient.
+        Calculation of the Taxis field from the gradient.
         """
 
-        # start = 0
-        # end = dHdlon.time.size
+        def argumentCheck(array) :
+            if array.attrs.get('cohort_start') is not None :
+                is_evolving = True
+                age = array.cohorts
+            elif array.attrs.get('Cohort number') is not None :
+                is_evolving = False
+                age = array.attrs.get('Cohort number')
+            else :
+                raise ValueError("Fields must contain either 'cohort_start' or 'Cohort number'")
+            return is_evolving, age
 
-        lonData = dHdlon.data
-        latData = dHdlat.data
+        is_evolving, age = argumentCheck(dHdlon)
+        Tlon = np.zeros(dHdlon.data.shape, dtype=np.float32)
+        Tlat = np.zeros(dHdlat.data.shape, dtype=np.float32)
+        lat_flip_tile_transpose_cos = np.cos(
+            np.tile(dHdlon.lat.data, (dHdlon.lon.size, 1), ).T
+            * np.pi/180)
+        factor = self.ikamoana_fields_structure.taxis_scale * 250 * 1.852 * 15
 
-        Tlon = np.zeros(lonData.shape, dtype=np.float32)
-        Tlat = np.zeros(latData.shape, dtype=np.float32)
-
-        timestep = self.ikamoana_fields_structure.timestep
-        taxis_scale = self.ikamoana_fields_structure.taxis_scale
-
-        
-
-        if dHdlon.attrs.get('cohort_start') is not None :
-            is_evolving = True
-            age = dHdlon.cohorts
-
-        elif dHdlon.attrs.get('Cohort number') is not None :
-            is_evolving = False
-            age = dHdlon.attrs.get('Cohort number')
-
-        else :
-            raise ValueError("Fields must contain either 'cohort_start' or 'Cohort number'")
-        
         for t in range(dHdlon.time.size):
-
-            ## NOTE : Is it to limit to the oldest cohort ?
-            # Already done in the computeEvolvingFeedingHabitat()
-            #
-            # age = (start_age+t)*timestep
-            # if age - (age_class*timestep) >= (timestep):
-            #     age_class += 1
-            # l = GetLengthFromAge(age_class, length_classes)
-
-            ## TODO : no need to recompute each loop when age doesn't change
             t_age = age[t] if is_evolving else age
             t_length = self.feeding_habitat_structure.data_structure.findLengthByCohort(t_age)
 
+            Tlon[t,:,:] = (self.vMax(t_length)
+                           * dHdlon.data[t,:,:]
+                           * factor * lat_flip_tile_transpose_cos)
+            Tlat[t,:,:] = (self.vMax(t_length)
+                           * dHdlat.data[t,:,:]
+                           * factor)
 
-            ## TODO : Vectorize this
-            # - Take into account NaN values
+        if self.ikamoana_fields_structure.units == 'nm_per_timestep':
+            Tlon *= (16/1852)
+            Tlat *= (16/1852)
+        ## NOTE :       (timestep/1852) * (1000*1.852*60) * 1/timestep
+        #           <=> (250*1.852*15) * (16/1852)
 
-            for lon in range(dHdlon.lon.size):
-                    for lat in range(dHdlon.lat.size):
-
-                        if self.ikamoana_fields_structure.units == 'nm_per_timestep':
-                            Tlon[t, lat, lon] = (self.vMax(t_length)
-                                        * (timestep/1852)
-                                        * lonData[t, lat, lon]
-                                        * taxis_scale
-                                        * (1000*1.852*60
-                                           * np.cos(dHdlon.lat.data[lat]*np.pi/180))
-                                        * 1/timestep)
-                                       
-                            Tlat[t, lat, lon] = (self.vMax(t_length)
-                                        * (timestep/1852)
-                                        * latData[t, lat, lon]
-                                        * taxis_scale
-                                        * (1000*1.852*60)
-                                        * 1/timestep)
-
-                        else :
-                            Tlon[t, lat, lon] = (self.vMax(t_length)
-                                        * lonData[t, lat, lon]
-                                        * taxis_scale
-                                        * (250*1.852*15
-                                        * np.cos(dHdlon.lat.data[lat] * np.pi/180)))
-
-                            Tlat[t, lat, lon] = (self.vMax(t_length)
-                                        * latData[t, lat, lon]
-                                        * taxis_scale
-                                        * (250*1.852*15))
-
-        return (
-            xr.DataArray(
-                name = 'Tlon',
-                data = Tlon,
-                coords = dHdlon.coords,
-                dims=('time','lat','lon'),
-                attrs=dHdlon.attrs
-            ),
-            xr.DataArray(
-                name = 'Tlat',
-                data = Tlat,
-                coords = dHdlat.coords,
-                dims=('time','lat','lon'),
-                attrs=dHdlat.attrs
-            )
-        )
+        return (xr.DataArray(name = 'Tlon',
+                             data = Tlon,
+                             coords = dHdlon.coords,
+                             dims=('time','lat','lon'),
+                             attrs=dHdlon.attrs),
+                xr.DataArray(name = 'Tlat',
+                             data = Tlat,
+                             coords = dHdlat.coords,
+                             dims=('time','lat','lon'),
+                             attrs=dHdlat.attrs))

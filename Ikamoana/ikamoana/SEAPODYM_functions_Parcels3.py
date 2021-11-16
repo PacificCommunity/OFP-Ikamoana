@@ -242,7 +242,7 @@ def Create_SEAPODYM_F_Field(Effort, length_classes, name='F', start_age=4, verbo
                             r_asymp=0.2456242856428466, time_period=None, timestep=30*24*7*7):
     
     """
-    This is a function that compiles separate effort fields into instantaenous fishing
+    This is a function that compiles separate effort fields into instantaneous fishing
     mortality fields which are combined elsewhere
     """
 
