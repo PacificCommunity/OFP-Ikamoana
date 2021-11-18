@@ -31,9 +31,6 @@ def getGradient(field: Field,
     field.calc_cell_edge_sizes()
     # Previous cell sizes are stored in the field.grid.cell_edge_sizes dictionary
     dx, dy = field.grid.cell_edge_sizes['x'], field.grid.cell_edge_sizes['y'] #field.cell_distances()
-    print("DX SHAPE ", dx.shape)
-    print("DY SHAPE ", dy.shape)
-    print("Field for gradient calculation has time origin of " + str(field.grid.time_origin))
 
 ## NOTE : Define start_time, end_time et tsteps
 #
@@ -69,7 +66,6 @@ def getGradient(field: Field,
     ## Jules : Sélectionne une partie des données initialise dVdx et dVdy à la même taille
 
     data = field.data[range(start,end),:,:]
-    print("DATA SHAPE : ", data.shape)
     dVdx = np.zeros(data.shape, dtype=np.float32)
     dVdy = np.zeros(data.shape, dtype=np.float32)
 
@@ -82,7 +78,6 @@ def getGradient(field: Field,
 
     if landmask is not None:
         landmask = np.transpose(landmask.data[0,:,:])
-        print("LANDMASK SHAPE : ", landmask.shape)
         if shallow_sea_zero :
             landmask[np.where(landmask == 2)] = 0
         X = nlon if nlon <= landmask.shape[0] else landmask.shape[0]
@@ -400,10 +395,8 @@ def Create_SEAPODYM_Taxis_Fields(
                 for y in range(dHdx.grid.lat.size):
                     Tx[t, y, x] = (V_max(l, vmax_a, vmax_b) * xData[t, y, x] * taxis_scale
                                    * (250*1.852*15 * math.cos(dHdx.lat[y]*math.pi/180)))
-                                   # / ((1 / 1000. / 1.852 / 60.) / math.cos(dHdx.lat[y]*math.pi/180))
                     Ty[t, y, x] = (V_max(l, vmax_a, vmax_b) * yData[t, y, x]
                                    * taxis_scale * (250*1.852*15))
-                                   #/ (1 / 1000. / 1.852 / 60.)
 
     return (Field('Tx', Tx, dHdx.grid.lon, dHdx.grid.lat, time=dHdx.grid.time[tsteps],
                   time_origin=dHdx.grid.time_origin, interp_method=dHdx.interp_method,

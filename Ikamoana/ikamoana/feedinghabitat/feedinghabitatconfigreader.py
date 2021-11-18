@@ -110,8 +110,7 @@ def _loadMask(variables_dictionary, from_text=None, expend_time=True) :
 
     return global_mask
 
-
-def __dayLengthPISCES__(jday, lat) :
+def _dayLengthPISCES(jday, lat) :
     """
     Compute the day length depending on latitude and the day. New function
     provided by Laurent Bopp as used in the PISCES model and used by SEAPODYM
@@ -154,10 +153,9 @@ def __dayLengthPISCES__(jday, lat) :
 
     return day_length / 24.0
 
-
 def _daysLength(coords, model=None, float_32=True) :
     """
-    Compute the day length using __dayLengthPISCES__ method.
+    Compute the day length using _dayLengthPISCES method.
 
     Parameters
     ----------
@@ -190,7 +188,7 @@ def _daysLength(coords, model=None, float_32=True) :
     buffer_list = []
     for day in days_of_year :
         for lat in latitude :
-            day_length = __dayLengthPISCES__(day, lat)
+            day_length = _dayLengthPISCES(day, lat)
             if float_32 :
                 day_length = np.float32(day_length)
             buffer_list.extend([day_length] * len(longitude))
@@ -202,7 +200,6 @@ def _daysLength(coords, model=None, float_32=True) :
     return xr.DataArray(data=days_length,dims=["time", "lat", "lon"],
                         coords=dict(lon=longitude,lat=latitude,time=coords['time']),
                         attrs=dict(description="Day length.",units="hour"))
-
 
 def _readXmlConfigFilepaths(root, root_directory, layers_number) :
     """Reads the NetCDF filepaths from the XML configuration file and
@@ -264,10 +261,9 @@ def _readXmlConfigFilepaths(root, root_directory, layers_number) :
         mask_filepath = root_directory + root.find('strfile_mask').attrib['value']
 
     return (temperature_filepaths, oxygen_filepaths, forage_filepaths, sst_filepath,
-            zeu_filepath, ordered_forage, mask_filepath, partial_oxygen_time_axis)
+            zeu_filepath, mask_filepath, partial_oxygen_time_axis)
 
-
-def _readXmlConfigParameters(root, ordered_forage) :
+def _readXmlConfigParameters(root) :
     """Reads the parameters from the XML configuration file and stores
     them in a dictionary."""
 
@@ -311,7 +307,6 @@ def _readXmlConfigParameters(root, ordered_forage) :
         root.find('b_oxy_habitat').attrib[sp_name])
 
     return parameters_dictionary, species_dictionary
-
 
 # TODO : also load species age
 def _loadVariablesFromFilepaths(root, temperature_filepaths, oxygen_filepaths,
@@ -415,8 +410,6 @@ def _loadVariablesFromFilepaths(root, temperature_filepaths, oxygen_filepaths,
             cohorts_mean_weight,
             cohorts_sp_unit)
 
-
-
 ###############################################################################
 # ----------------------------- MAIN FUNCTION ------------------------------- #
 ###############################################################################
@@ -477,14 +470,13 @@ def loadFromXml(xml_filepath: str,
      forage_filepaths,
      sst_filepath,
      zeu_filepath,
-     ordered_forage,
      mask_filepath,
      partial_oxygen_time_axis) = _readXmlConfigFilepaths(root,
                                                          root_directory,
                                                          layers_number)
 
     # Parameters ##############################################################
-    parameters_dictionary, species_dictionary = _readXmlConfigParameters(root, ordered_forage)
+    parameters_dictionary, species_dictionary = _readXmlConfigParameters(root)
     cohorts_number = sum([int(x) for x in (
         root.find('nb_cohort_life_stage').find(species_dictionary['sp_name']).text.split(' ')
         )])

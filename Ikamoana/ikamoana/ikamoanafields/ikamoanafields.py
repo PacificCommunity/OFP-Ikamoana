@@ -105,21 +105,18 @@ class IkamoanaFields :
                 or (field.lon.size != landmask.lon.size)) :
             raise ValueError("Field and landmask must have the same dimension.")
 
-    ## TODO : Discuss about that.
-    ## WARNING : To have the same behavior as original gradient function,
-    # latitude must be south-north rather than north-south.
-        if field.lat[0] > field.lat[-1] :
-            field = field.reindex(lat=np.flip(field.lat))
+        ## WARNING : To have the same behavior as original gradient function,
+        # latitude must be south-north rather than north-south.
+
+        flip_lat = field.lat[0] > field.lat[-1]
+        if flip_lat : field = field.reindex(lat=np.flip(field.lat))
         if landmask.lat[0] > landmask.lat[-1] :
             landmask = landmask.reindex(lat=np.flip(landmask.lat))
 
         def getCellEdgeSizes(field) :
             """Copy of the Field.calc_cell_edge_sizes() function in Parcels.
             Avoid the convertion of DataArray into Field."""
-            
-            ## NOTE : Verify if reindex will impact dx and dy 
-            
-            
+        
             field_grid = parcels.grid.RectilinearZGrid(
                 field.lon.data, field.lat.data,
                 depth=None, time=None, time_origin=None,
@@ -128,8 +125,6 @@ class IkamoanaFields :
             field_grid.cell_edge_sizes['x'] = np.zeros((field_grid.ydim, field_grid.xdim), dtype=np.float32)
             field_grid.cell_edge_sizes['y'] = np.zeros((field_grid.ydim, field_grid.xdim), dtype=np.float32)
 
-            # x_conv = GeographicPolar() if field_grid.mesh == 'spherical' else UnitConverter()
-            # y_conv = Geographic() if self.grid.mesh == 'spherical' else UnitConverter()
             x_conv = GeographicPolar()
             y_conv = Geographic()
 
@@ -137,8 +132,8 @@ class IkamoanaFields :
                 for x, (lon, dlon) in enumerate(zip(field_grid.lon, np.gradient(field_grid.lon))):
                     field_grid.cell_edge_sizes['x'][y, x] = x_conv.to_source(dlon, lon, lat, field_grid.depth[0])
                     field_grid.cell_edge_sizes['y'][y, x] = y_conv.to_source(dlat, lon, lat, field_grid.depth[0])
-            
-            return field_grid.cell_edge_sizes['x'], np.flip(field_grid.cell_edge_sizes['y'])
+
+            return field_grid.cell_edge_sizes['x'], field_grid.cell_edge_sizes['y']
 
         dlon, dlat = getCellEdgeSizes(field)
         
@@ -151,14 +146,11 @@ class IkamoanaFields :
         dVdlat = np.zeros(data.shape, dtype=np.float32)
 
         ## NOTE : Parallelised execution may help to do it faster.
+        # I think it can also be vectorized.
         for t in range(field.time.size):
             for lon in range(1, nlon-1):
                 for lat in range(1, nlat-1):
                     if landmask[lat, lon] < 1:
-
-    ## TODO : Discuss about that :
-    ## WARNING : These if/elif/else conditions are dependent of the order we check value in landmask.
-    # See also : WARNING just above.
                         if landmask[lat, lon+1] == 1:
                             dVdlon[t,lat,lon] = (data[t,lat,lon] - data[t,lat,lon-1]) / dlon[lat, lon]
                         elif landmask[lat, lon-1] == 1:
@@ -176,36 +168,22 @@ class IkamoanaFields :
             for lon in range(nlon):
                 dVdlat[t,0,lon] = (data[t,1,lon] - data[t,0,lon]) / dlat[0,lon]
                 dVdlat[t,-1,lon] = (data[t,-1,lon] - data[t,-2,lon]) / dlat[-2,lon]
-
-    ## TODO : Discuss about that :
-    ## WARNING : Where is from lon ?
-    # -> dlon[lat,lon]
             for lat in range(nlat):
-                dVdlon[t,lat,0] = (data[t,lat,1] - data[t,lat,0]) / dlon[lat,-1] # lon ?
-                dVdlon[t,lat,-1] = (data[t,lat,-1] - data[t,lat,-2]) / dlon[lat,-1] # lon ?
+                dVdlon[t,lat,0] = (data[t,lat,1] - data[t,lat,0]) / dlon[lat,-1]
+                dVdlon[t,lat,-1] = (data[t,lat,-1] - data[t,lat,-2]) / dlon[lat,-1]
 
-        ## NOTE : May be removed.
-        assert not (True in np.isnan(dVdlon))
-        assert not (True in np.isnan(dVdlat))
-
-        ## TODO : Add a flip on latitude axis ?
-
-        return (
-            xr.DataArray(
-                name = 'd' + field.name + '_dlon',
-                data = dVdlon,
-                coords = field.coords,
-                dims=('time','lat','lon'),
-                attrs=field.attrs
-            ),
-            xr.DataArray(
-                name = 'd' + field.name + '_dlat',
-                data = dVdlat,
-                coords = field.coords,
-                dims=('time','lat','lon'),
-                attrs=field.attrs
-            )
-        )
+        return (xr.DataArray(
+                    name = 'd' + field.name + '_dlon',
+                    data = dVdlon,
+                    coords = field.coords,
+                    dims=('time','lat','lon'),
+                    attrs=field.attrs),
+                xr.DataArray(
+                    name = 'd' + field.name + '_dlat',
+                    data = np.flip(dVdlat, axis=1) if flip_lat else dVdlat,
+                    coords = field.coords,
+                    dims=('time','lat','lon'),
+                    attrs=field.attrs))
 
     def taxis(self, dHdlon: xr.DataArray, dHdlat: xr.DataArray) -> Tuple[xr.DataArray,xr.DataArray] : 
         """
@@ -230,10 +208,12 @@ class IkamoanaFields :
             np.tile(dHdlon.lat.data, (dHdlon.lon.size, 1)).T
             * np.pi/180)
         factor = self.ikamoana_fields_structure.taxis_scale * 250 * 1.852 * 15
+        f_length = self.feeding_habitat_structure.data_structure.findLengthByCohort
 
         for t in range(dHdlon.time.size):
             t_age = age[t] if is_evolving else age
-            t_length = self.feeding_habitat_structure.data_structure.findLengthByCohort(t_age)
+            # Convert cm to meter (/100) : See original function
+            t_length = f_length(t_age) / 100
 
             Tlon[t,:,:] = (self.vMax(t_length)
                            * dHdlon.data[t,:,:]

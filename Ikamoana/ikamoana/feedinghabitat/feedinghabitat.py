@@ -464,7 +464,7 @@ class FeedingHabitat :
             time_start: int = None, time_end: int = None,
             lat_min: int = None, lat_max: int = None,
             lon_min: int = None, lon_max: int = None,
-            verbose: bool = False) -> xr.Dataset :
+            verbose: bool = False) -> xr.DataArray :
         """
         The feeding habitat evolves over time. Each time step corresponds to
         a cohort at a specific age.

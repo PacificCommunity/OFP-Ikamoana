@@ -126,60 +126,6 @@ class HabitatDataStructure :
         self.species_dictionary['cohorts_starting_age'] = np.array(start_age)
         self.species_dictionary['cohorts_final_age'] = np.array(end_age)
 
-    ## NOTE : This is not needed since __str__ and __rep__ have been defined
-    #
-    # def summary(self) :
-
-    #     print("# ------------------------------ #")
-    #     print("# Summary of this data structure #")
-    #     print("# ------------------------------ #", end='\n\n')
-
-    #     print('Root directory is :\n\t'+self.root_directory, end='\n')
-    #     print('Output directory is :\n\t'+self.output_directory, end='')
-
-    #     print("\n\n\n# -------------------------------SPECIES----------------------------- #\n\n\n",end='')
-
-    #     print('The short name of the species is %s.'%(self.species_dictionary["sp_name"]),end='\n')
-    #     print('There is(are) %d\tlife stages considered in the model which are : '%(
-    #         self.species_dictionary['nb_life_stages']),end='')
-    #     print(self.species_dictionary['life_stage'],end='\n')
-    #     for name, number in zip(self.species_dictionary['life_stage'], self.species_dictionary['nb_cohort_life_stage']) :
-    #         print("\t- There is(are) %d\tcohort(s) in life stage %s."%(number, name))
-    #     np.set_printoptions(suppress=True)
-    #     print('\nFinal age (in day) of each cohort is :\n', self.species_dictionary['cohorts_final_age'])
-    #     print('\nMean length for each cohort is :\n', self.species_dictionary['cohorts_mean_length'])
-    #     print('\nMean weight for each cohort is :\n', self.species_dictionary['cohorts_mean_weight'], end='')
-
-    #     print("\n\n\n# -----------------------------PARAMETERS---------------------------- #\n\n\n",end='')
-
-    #     print('The parameters used are the following :')
-    #     for name, value in self.parameters_dictionary.items() :
-    #         print("\t- ",name,"   \t:", value)
-    #     print("Reminder : \n\t- Forage \t-> eF\n\t- Temperature\t-> sigma, T* and bT\n\t- Oxygen \t-> gamma and O*",end='')
-
-    #     print("\n\n# ------------------------------FIELDS------------------------------- #\n\n")
-
-    #     print('WARNING : Fields must start on the same date !\n')
-
-    #     print('Fields are grouped by coordinates :')
-
-    #     for group in groupArrayByCoords(self.variables_dictionary) :
-    #         print('\n#\t#\t#\t#\t#')
-    #         print('Group :', group)
-    #         print('Their coordinates are :\n',self.variables_dictionary[group[0]].coords)
-        
-    #     print('\n#\t#\t#\t#\t#\n')
-    #     print('Day Length is calculated using the main coordinates which are based on temperature (L1) field.')
-
-    #     if self.partial_oxygen_time_axis :
-    #         print('\n#\t#\t#\t#\t#\n')
-    #         print('Oxygen is a climatologic field. It meen that only 1 year is modelized in the DataArray.')
-
-    #     print('\n#\t#\t#\t#\t#\n')
-    #     print('TIPS : The user can use equalCoords() or compareDims() functions to compare Coordinates.',end='')
-        
-    #     print("\n\n\n# ------------------------------------------------------------------- #\n\n")
-    
     def _summaryToString(self) -> str :
         summary_str = (
             "# ------------------------------ #\n"
