@@ -31,7 +31,8 @@ def getGradient(field: Field,
     field.calc_cell_edge_sizes()
     # Previous cell sizes are stored in the field.grid.cell_edge_sizes dictionary
     dx, dy = field.grid.cell_edge_sizes['x'], field.grid.cell_edge_sizes['y'] #field.cell_distances()
-
+    print("DX SHAPE ", dx.shape)
+    print("DY SHAPE ", dy.shape)
     print("Field for gradient calculation has time origin of " + str(field.grid.time_origin))
 
 ## NOTE : Define start_time, end_time et tsteps
@@ -68,6 +69,7 @@ def getGradient(field: Field,
     ## Jules : Sélectionne une partie des données initialise dVdx et dVdy à la même taille
 
     data = field.data[range(start,end),:,:]
+    print("DATA SHAPE : ", data.shape)
     dVdx = np.zeros(data.shape, dtype=np.float32)
     dVdy = np.zeros(data.shape, dtype=np.float32)
 
@@ -80,6 +82,7 @@ def getGradient(field: Field,
 
     if landmask is not None:
         landmask = np.transpose(landmask.data[0,:,:])
+        print("LANDMASK SHAPE : ", landmask.shape)
         if shallow_sea_zero :
             landmask[np.where(landmask == 2)] = 0
         X = nlon if nlon <= landmask.shape[0] else landmask.shape[0]
@@ -109,11 +112,9 @@ def getGradient(field: Field,
                             dVdy[t,y,x] = (data[t,y+1,x] - data[t,y-1,x]) / (2*dy[y, x])
 
             ## Jules : Modifie les celules en bordures
-
-            # Edgikaf.landmask(fh.computeFeedingHabitat(0)['Feeding_Habitat_Cohort_0'])x in range(nlon):
+            for x in range(nlon):
                 dVdy[t, 0, x] = (data[t, 1, x] - data[t, 0, x]) / dy[0, x]
                 dVdy[t, nlat-1, x] = (data[t, nlat-1, x] - data[t, nlat-2, x]) / dy[nlat-2, x]
-
             for y in range(nlat):
                 dVdx[t, y, 0] = (data[t, y, 1] - data[t, y, 0]) / dx[y, x]
                 dVdx[t, y, nlon-1] = (data[t, y, nlon-1] - data[t, y, nlon-2]) / dx[y, x]
