@@ -1,23 +1,43 @@
+from typing import List, Tuple, Union
 import numpy as np
 import struct
 import math
+import parcels
 from parcels.field import Field, Geographic, GeographicPolar
 from parcels.fieldset import FieldSet
 from parcels.particle import *
 from netCDF4 import num2date
 from datetime import datetime
-from py import path
+
+## NOTE: this library is in maintenance mode and should not be used in new code.
+# from py import path
+
 from progressbar import ProgressBar
 from glob import glob
 from xml.dom import minidom
 
-### Gradient calculation for a parcels Field
-# seapodym-equivalent calculation requires LandMask
-# forward and backward differencing for domain edges and land/shallow sea cells
-def getGradient(field, landmask=None, shallow_sea_zero=True, time_period=None):
+def getGradient(field: Field,
+                landmask: Field = None,
+                shallow_sea_zero=False,
+                time_period=None):
+
+    """
+    Gradient calculation for a parcels Field seapodym-equivalent calculation
+    requires LandMask forward and backward differencing for domain edges
+    and land/shallow sea cells.
+    """
+
+    # Method to calculate cell sizes based on numpy.gradient method
     field.calc_cell_edge_sizes()
+    # Previous cell sizes are stored in the field.grid.cell_edge_sizes dictionary
     dx, dy = field.grid.cell_edge_sizes['x'], field.grid.cell_edge_sizes['y'] #field.cell_distances()
-    print("Field for gradient calculation has time origin of " + str(field.grid.time_origin))
+
+## NOTE : Define start_time, end_time et tsteps
+#
+# This function could have the same behavior as the functions computeFeedingHabitat
+# and computeEvolvingFeedingHabitat. It would take as arguments time_start,
+# time_end, lat_min, lat_max, lon_min, lon_max.
+
     if time_period is not None:
         # Now we must convert the absolute time to time that is relative to the grid
         start_time = field.grid.time_origin.reltime(time_period[0])
@@ -40,55 +60,75 @@ def getGradient(field, landmask=None, shallow_sea_zero=True, time_period=None):
     else:
         start = 0
         end = len(field.grid.time)
+
     tsteps = range(start, end)
+
+    ## Jules : Sélectionne une partie des données initialise dVdx et dVdy à la même taille
 
     data = field.data[range(start,end),:,:]
     dVdx = np.zeros(data.shape, dtype=np.float32)
     dVdy = np.zeros(data.shape, dtype=np.float32)
 
+    nlat = len(field.grid.lat)
+    nlon = len(field.grid.lon)
+
+    ## Jules : Vérification des tailles de tableaux
+
+## NOTE : What happens when landmask is not defined?
+
     if landmask is not None:
         landmask = np.transpose(landmask.data[0,:,:])
-        if shallow_sea_zero is False:
+        if shallow_sea_zero :
             landmask[np.where(landmask == 2)] = 0
-        X = len(field.grid.lon) if len(field.grid.lon) <= landmask.shape[0] else landmask.shape[0]
-        Y = len(field.grid.lat) if len(field.grid.lat) <= landmask.shape[1] else landmask.shape[1]
+        X = nlon if nlon <= landmask.shape[0] else landmask.shape[0]
+        Y = nlat if nlat <= landmask.shape[1] else landmask.shape[1]
+
+        ## Jules : Cette boucle calcul le gradient en parcourant les cases une à une. Possiblement long.
+        # Cf. Create_Landmask.
+        # landmask == 1 -> Ocean
+
         for t in range(len(tsteps)):
             for x in range(1, X-1):
                 for y in range(1, Y-1):
                     if landmask[x, y] < 1:
-                        if landmask[x+1, y] == 1:
-                            dVdx[t,y,x] = (data[t,y,x] - data[t,y,x-1])/dx[y, x]
-                        elif landmask[x-1, y] == 1:
-                            dVdx[t,y,x] = (data[t,y,x+1] - data[t,y,x])/dx[y, x]
-                        else:
-                            dVdx[t,y,x] = (data[t,y,x+1] - data[t,y,x-1])/(2*dx[y, x])
-                        if landmask[x, y+1] == 1:
-                            dVdy[t,y,x] = (data[t,y,x] - data[t,y-1,x])/dy[y, x]
-                        elif landmask[x, y-1] == 1:
-                            dVdy[t,y,x] = (data[t,y+1,x] - data[t,y,x])/dy[y, x]
-                        else:
-                            dVdy[t,y,x] = (data[t,y+1,x] - data[t,y-1,x])/(2*dy[y, x])
-            # Edges always forward or backwards differencing
-            for x in range(len(field.grid.lon)):
-                dVdy[t, 0, x] = (data[t, 1, x] - data[t, 0, x]) / dy[0, x]
-                dVdy[t, len(field.grid.lat)-1, x] = (data[t, len(field.grid.lat)-1, x] - data[t, len(field.grid.lat)-2, x]) / dy[len(field.grid.lat)-2, x]
-            for y in range(len(field.grid.lat)):
-                dVdx[t, y, 0] = (data[t, y, 1] - data[t, y, 0]) / dx[y, x]
-                dVdx[t, y, len(field.grid.lon)-1] = (data[t, y, len(field.grid.lon)-1] - data[t, y, len(field.grid.lon)-2]) / dx[y, x]
 
-    print(type(field.grid.time[0]))
-    print(type(field.grid.time[range(start,end)]))
-    print(type(field.grid.time[range(start,end)][0]))
-    return Field('d' + field.name + '_dx', dVdx, field.grid.lon, field.grid.lat, field.grid.depth, field.grid.time[range(start,end)], \
-                 time_origin=field.grid.time_origin, interp_method=field.interp_method, allow_time_extrapolation=field.allow_time_extrapolation),\
-           Field('d' + field.name + '_dy', dVdy, field.grid.lon, field.grid.lat, field.grid.depth, field.grid.time[range(start,end)], \
-                 time_origin=field.grid.time_origin, interp_method=field.interp_method, allow_time_extrapolation=field.allow_time_extrapolation)
+                        if landmask[x+1, y] == 1:
+                            dVdx[t,y,x] = (data[t,y,x] - data[t,y,x-1]) / dx[y, x]
+                        elif landmask[x-1, y] == 1:
+                            dVdx[t,y,x] = (data[t,y,x+1] - data[t,y,x]) / dx[y, x]
+                        else:
+                            dVdx[t,y,x] = (data[t,y,x+1] - data[t,y,x-1]) / (2*dx[y, x])
+
+                        if landmask[x, y+1] == 1:
+                            dVdy[t,y,x] = (data[t,y,x] - data[t,y-1,x]) / dy[y, x]
+                        elif landmask[x, y-1] == 1:
+                            dVdy[t,y,x] = (data[t,y+1,x] - data[t,y,x]) / dy[y, x]
+                        else:
+                            dVdy[t,y,x] = (data[t,y+1,x] - data[t,y-1,x]) / (2*dy[y, x])
+
+            ## Jules : Modifie les celules en bordures
+            for x in range(nlon):
+                dVdy[t, 0, x] = (data[t, 1, x] - data[t, 0, x]) / dy[0, x]
+                dVdy[t, nlat-1, x] = (data[t, nlat-1, x] - data[t, nlat-2, x]) / dy[nlat-2, x]
+            for y in range(nlat):
+                dVdx[t, y, 0] = (data[t, y, 1] - data[t, y, 0]) / dx[y, x]
+                dVdx[t, y, nlon-1] = (data[t, y, nlon-1] - data[t, y, nlon-2]) / dx[y, x]
+
+    return (
+        Field(
+            'd' + field.name + '_dx', dVdx, field.grid.lon, field.grid.lat, field.grid.depth,
+            field.grid.time[range(start,end)], time_origin=field.grid.time_origin,
+            interp_method=field.interp_method, allow_time_extrapolation=field.allow_time_extrapolation),
+        Field(
+            'd' + field.name + '_dy', dVdy, field.grid.lon, field.grid.lat, field.grid.depth,
+            field.grid.time[range(start,end)], time_origin=field.grid.time_origin,
+            interp_method=field.interp_method, allow_time_extrapolation=field.allow_time_extrapolation)
+    )
 
 
 def V_max(L, a=2.225841100458143, b=0.8348850216641774):
     V = a * np.power(L, b)
     return V
-
 
 def V_max_C(monthly_age):
     a=2.225841100458143# 0.7343607395421234 old parameters
@@ -96,7 +136,6 @@ def V_max_C(monthly_age):
     L = GetLengthFromAge(monthly_age)
     V = a * math.pow(L, b)
     return V
-
 
 def GetLengthFromAge(age, lengths=[3.00, 4.51, 6.02, 11.65, 16.91, 21.83, 26.43, 30.72, 34.73, 38.49, 41.99, 45.27,
                                   48.33, 51.19, 53.86, 56.36, 58.70, 60.88, 62.92, 64.83, 66.61, 68.27, 69.83, 71.28,
@@ -108,7 +147,6 @@ def GetLengthFromAge(age, lengths=[3.00, 4.51, 6.02, 11.65, 16.91, 21.83, 26.43,
     if age >= len(lengths):
         age = len(lengths)-1
     return lengths[age]/100 # Convert to meters
-
 
 def Mortality(age, MPmax=0.3, MPexp=0.1008314958945224, MSmax=0.006109001382111822, MSslope=0.8158285706493162,
               Mrange=1.430156372206337e-05, H=1):
@@ -126,7 +164,6 @@ def Mortality_C(age, H):
     Mvar = Mnat * math.pow(1 - Mrange, 1-H/2)
     return Mvar
 
-
 def getPopFromDensityField(grid, density_field='Start'):
     area = np.zeros(np.shape(grid.U.data[0, :, :]), dtype=np.float32)
     U = grid.U
@@ -141,15 +178,21 @@ def getPopFromDensityField(grid, density_field='Start'):
     total_fish = np.sum(getattr(grid, density_field).data * area)
     return total_fish
 
-### Seapodym landmask defined as where either there is no bathymetric
-# currently velocities (too shallow), or habitat data not defined
 def Create_Landmask(fields, lim=1e-45):
+    """
+    Seapodym landmask defined as where either there is no bathymetric 
+    currently velocities (too shallow), or habitat data not defined.
+    """
+
     assert hasattr(fields, 'H'), "H field must be loaded into ocean fieldset to create landmask"
     assert hasattr(fields, 'Ubathy'), "bathy field must be loaded into ocean fieldset to create landmask"
-    def isocean(p, lim):
-        return 1 if p < lim else 0
-    def isshallow(p, lim):
-        return 1 if p < lim else 0
+
+## NOTE : I'm not sure to understand the isOcean signification
+
+    def isOcean(p, lim):
+        return p < lim
+    def isShallow(p, lim):
+        return p < lim
 
     nx = fields.H.grid.lon.size
     ny = fields.H.grid.lat.size
@@ -157,14 +200,32 @@ def Create_Landmask(fields, lim=1e-45):
     assert(nx == fields.Ubathy.grid.lon.size), "Lon dimension must be the same for H AND bathy grids"
     assert(ny == fields.Ubathy.grid.lat.size), "Lat dimension must be the same for H AND bathy grids"
 
+## NOTE :
+# Is that good ?
+# mask == 2 -> is Shallow
+# mask == 1 -> is Land or No_Data
+# mask == 0 -> deep ocean with habitat data
+
+## NOTE :
+# In FeedingHabitat (H), mask is represented by NaN value. There is no
+# need to compare to lowest value (lim).
+#
+# In Ubathy (which should be 'lower meso' if my remember of the conversation
+# I had with Patrick is good) it is reprenseted by 0.
+#
+# Other solution :
+# ----------------
+# Landmask can also be taken from the FeedingHabitatDataStructure mask.
+# It corresponds to :
+# - FeedingHabitatDataStructure.fh.data_structure.global_mask['mask_L3']
+
     mask = np.zeros([nx, ny, 1], dtype=np.int8)
     pbar = ProgressBar()
     for i in pbar(range(nx)):
         for j in range(1, ny-1):
-            #if isshallow(np.abs(grid.bathy.data[0, 2, j, i]), lim):
-            if isshallow(np.abs(fields.Ubathy.data[0, j, i]), lim):
+            if isShallow(np.abs(fields.Ubathy.data[0, j, i]), lim) :
                 mask[i,j] = 2
-            if isocean(fields.H.data[0, j, i],lim):  # For each land point
+            if isOcean(fields.H.data[0, j, i], lim) :
                 mask[i,j] = 1
 
     Mask = Field('LandMask', mask, fields.H.grid.lon, fields.H.grid.lat,
@@ -172,11 +233,15 @@ def Create_Landmask(fields, lim=1e-45):
     Mask.interp_method = 'nearest'
     return Mask
 
-### This is a function that compiles separate effort fields into
-# instantaenous fishing mortality fields which are combined elsewhere
 def Create_SEAPODYM_F_Field(Effort, length_classes, name='F', start_age=4, verbose=False,
                             q=0.001032652877899101, selectivity_func=3, mu= 52.56103941719986, sigma=8.614813906820441,
                             r_asymp=0.2456242856428466, time_period=None, timestep=30*24*7*7):
+    
+    """
+    This is a function that compiles separate effort fields into instantaneous fishing
+    mortality fields which are combined elsewhere
+    """
+
     #fisheries = fishery_parameters['Fisheries']
     if time_period is not None:
         # Now we must convert the absolute time to time that is relative to the grid
@@ -232,7 +297,6 @@ def Create_SEAPODYM_F_Field(Effort, length_classes, name='F', start_age=4, verbo
     return(Field(name, F_Data, Effort.grid.lon, Effort.grid.lat, time=time,
            time_origin=Effort.grid.time_origin, interp_method='nearest'))
 
-
 def Create_SEAPODYM_Diffusion_Field(H, length_classes, timestep=30*24*60*60, sigma=0.1769952864978924, c=0.662573993401526, P=3,
                                     start_age=4, Vmax_slope=1, units='m_per_s',
                                     diffusion_boost=0, diffusion_scale=1, sig_scale=1, c_scale=1,
@@ -281,9 +345,18 @@ def Create_SEAPODYM_Diffusion_Field(H, length_classes, timestep=30*24*60*60, sig
     #Return as a new Parcels field object
     return Field('K', K, H.grid.lon, H.grid.lat, time=H.grid.time[tsteps], time_origin=H.grid.time_origin, interp_method='nearest', allow_time_extrapolation=True)
 
+## TODO : Add the calculation of the Taxis field for cohorts that evolve over time.
+# => Take into account different sizes and speeds.
+def Create_SEAPODYM_Taxis_Fields(
+    dHdx: Field, dHdy: Field, length_classes: List[int],
+    start_age=4, taxis_scale=1, units='m_per_s',
+    vmax_a=2.225841100458143, vmax_b=0.8348850216641774,
+    time_period=None, timestep=30*24*60*60) -> Tuple[Field,Field] :
 
-def Create_SEAPODYM_Taxis_Fields(dHdx, dHdy, length_classes, start_age=4, taxis_scale=1, units='m_per_s',
-                                 vmax_a=2.225841100458143, vmax_b=0.8348850216641774, time_period=None, timestep=30*24*60*60):
+    """
+    Calculation of the Taxi field from the gradient.
+    """
+
     if time_period is not None:
         # Now we must convert the absolute time to time that is relative to the grid
         start_time = dHdx.grid.time_origin.reltime(time_period[0])
@@ -308,22 +381,29 @@ def Create_SEAPODYM_Taxis_Fields(dHdx, dHdy, length_classes, start_age=4, taxis_
         if age - (age_class*timestep) >= (timestep):
             age_class += 1
         l = GetLengthFromAge(age_class, length_classes)
-        if units is 'nm_per_timestep':
+        if units == 'nm_per_timestep':
             for x in range(dHdx.grid.lon.size):
                 for y in range(dHdx.grid.lat.size):
-                    Tx[t, y, x] = V_max(l, vmax_a, vmax_b)*((timestep)/1852) * xData[t, y, x] * taxis_scale * (1000*1.852*60 * math.cos(dHdx.lat[y]*math.pi/180)) * 1/timestep
-                    Ty[t, y, x] = V_max(l, vmax_a, vmax_b)*((timestep)/1852) * yData[t, y, x] * taxis_scale * (1000*1.852*60) * 1/timestep
+                    Tx[t, y, x] = (V_max(l, vmax_a, vmax_b)*((timestep)/1852)
+                                   * xData[t, y, x] * taxis_scale * (1000*1.852*60
+                                   * math.cos(dHdx.lat[y]*math.pi/180)) * 1/timestep)
+                    Ty[t, y, x] = (V_max(l, vmax_a, vmax_b)*((timestep)/1852)
+                                   * yData[t, y, x] * taxis_scale * (1000*1.852*60)
+                                   * 1/timestep)
         else:
             for x in range(dHdx.grid.lon.size):
                 for y in range(dHdx.grid.lat.size):
-                    Tx[t, y, x] = V_max(l, vmax_a, vmax_b) * xData[t, y, x] * taxis_scale * (250*1.852*15 * math.cos(dHdx.lat[y]*math.pi/180))# / ((1 / 1000. / 1.852 / 60.) / math.cos(dHdx.lat[y]*math.pi/180))
-                    Ty[t, y, x] = V_max(l, vmax_a, vmax_b) * yData[t, y, x] * taxis_scale * (250*1.852*15)#/ (1 / 1000. / 1.852 / 60.)
+                    Tx[t, y, x] = (V_max(l, vmax_a, vmax_b) * xData[t, y, x] * taxis_scale
+                                   * (250*1.852*15 * math.cos(dHdx.lat[y]*math.pi/180)))
+                    Ty[t, y, x] = (V_max(l, vmax_a, vmax_b) * yData[t, y, x]
+                                   * taxis_scale * (250*1.852*15))
 
-    return [Field('Tx', Tx, dHdx.grid.lon, dHdx.grid.lat, time=dHdx.grid.time[tsteps], \
-                 time_origin=dHdx.grid.time_origin, interp_method=dHdx.interp_method, allow_time_extrapolation=dHdx.allow_time_extrapolation),
-            Field('Ty', Ty, dHdx.grid.lon, dHdx.grid.lat, time=dHdx.grid.time[tsteps], \
-                 time_origin=dHdx.grid.time_origin, interp_method=dHdx.interp_method, allow_time_extrapolation=dHdx.allow_time_extrapolation)]
-
+    return (Field('Tx', Tx, dHdx.grid.lon, dHdx.grid.lat, time=dHdx.grid.time[tsteps],
+                  time_origin=dHdx.grid.time_origin, interp_method=dHdx.interp_method,
+                  allow_time_extrapolation=dHdx.allow_time_extrapolation),
+            Field('Ty', Ty, dHdx.grid.lon, dHdx.grid.lat, time=dHdx.grid.time[tsteps],
+                  time_origin=dHdx.grid.time_origin, interp_method=dHdx.interp_method,
+                  allow_time_extrapolation=dHdx.allow_time_extrapolation))
 
 def readSEAPODYM_parfile(file):
     variables = ['sigma_species', 'c_diff_fish', 'MSS_species', 'MSS_size_slope',  # movement params
@@ -339,9 +419,9 @@ def readSEAPODYM_parfile(file):
         print(str(parfile.getElementsByTagName('mask_fishery_sp')[0].getElementsByTagName('skj')[0].firstChild.nodeValue))
         F_toUse = [int(n) for n in str(parfile.getElementsByTagName('mask_fishery_sp')[0].getElementsByTagName('skj')[0].firstChild.nodeValue).split()]
         print(F_toUse)
-        print([int(F) for F in np.where([F is not 1 for F in F_toUse])[0]])
+        print([int(F) for F in np.where([F != 1 for F in F_toUse])[0]])
         SEAPODYM_Params['Fisheries'] = str(F_names[0].firstChild.nodeValue).split()
-        for F in [int(F) for F in np.where([F is not 1 for F in F_toUse])[0]]:
+        for F in [int(F) for F in np.where([F != 1 for F in F_toUse])[0]]:
             SEAPODYM_Params['Fisheries'].pop(F)
         #SEAPODYM_Params['Fisheries'].pop([int(F) for F in np.where([F is not 1 for F in F_toUse])[0]])
         SEAPODYM_Params['Q'] = {}
@@ -363,111 +443,117 @@ def readSEAPODYM_parfile(file):
     print(SEAPODYM_Params)
     return SEAPODYM_Params
 
-### A wrapper function designed to generate all the required parcels fields
-# objects for a suite of seapodym forcings and parameters
-def Create_SEAPODYM_Grid(forcing_files, startD=None, startD_dims=None,
-                         forcing_vars={'U': 'u', 'V': 'v', 'H': 'habitat'},
-                         forcing_dims={'lon': 'lon', 'lat': 'lon', 'time': 'time'}, K_timestep=30*24*60*60,
-                         diffusion_file=None, field_units='m_per_s',
-                         diffusion_dims={'lon': 'longitude', 'lat': 'latitude', 'time': 'time', 'data': 'skipjack_diffusion_rate'},
-                         scaleH=None, start_age=4, output_density=False, diffusion_scale=1, sig_scale=1, c_scale=1,
-                         parameter_file=None, verbose=False):
-    if startD_dims is None:
-        startD_dims = forcing_dims
-    if verbose:
-        print("Creating Grid\nLoading files:")
-        for f in forcing_files.values():
-            print(f)
+## NOTE : I had to comment this function because py.path import is missing.
+# Can be uncommented if needed.
 
-    grid = FieldSet.from_netcdf(filenames=forcing_files, variables=forcing_vars, dimensions=forcing_dims,
-                            vmin=-200, vmax=1e34, interp_method='nearest', allow_time_extrapolation=True)
-    print(forcing_files['U'])
-    Depthdata = Field.from_netcdf('u', dimensions={'lon': 'longitude', 'lat': 'latitude', 'time': 'time', 'depth': 'depth'},
-                                     filenames=forcing_files['U'], allow_time_extrapolation=True)
-    Depthdata.name = 'bathy'
-    grid.add_field(Depthdata)
+# def Create_SEAPODYM_Grid(forcing_files, startD=None, startD_dims=None,
+#                          forcing_vars={'U': 'u', 'V': 'v', 'H': 'habitat'},
+#                          forcing_dims={'lon': 'lon', 'lat': 'lon', 'time': 'time'}, K_timestep=30*24*60*60,
+#                          diffusion_file=None, field_units='m_per_s',
+#                          diffusion_dims={'lon': 'longitude', 'lat': 'latitude', 'time': 'time', 'data': 'skipjack_diffusion_rate'},
+#                          scaleH=None, start_age=4, output_density=False, diffusion_scale=1, sig_scale=1, c_scale=1,
+#                          parameter_file=None, verbose=False):
 
+#     """
+#     A wrapper function designed to generate all the required parcels fields
+#     objects for a suite of seapodym forcings and parameters
+#     """
 
-    if startD is not None:
-        grid.add_field(Field.from_netcdf('Start', dimensions=startD_dims,
-                                         filenames=path.local(startD), vmax=1000,
-                                         interp_method='nearest', allow_time_extrapolation=True))
+#     if startD_dims is None:
+#         startD_dims = forcing_dims
+#     if verbose:
+#         print("Creating Grid\nLoading files:")
+#         for f in forcing_files.values():
+#             print(f)
 
-    if output_density:
-        # Add a density field that will hold particle densities
-        grid.add_field(Field('Density', np.full([grid.U.lon.size, grid.U.lat.size, grid.U.time.size],-1, dtype=np.float64),
-                       grid.U.lon, grid.U.lat, depth=grid.U.depth, time=grid.U.time, transpose=True))
-
-    LandMask = Create_Landmask(grid)
-    grid.add_field(LandMask)
-    grid.U.data[grid.U.data > 1e5] = 0
-    grid.V.data[grid.V.data > 1e5] = 0
-    grid.H.data[grid.H.data > 1e5] = 0
-    # Scale the H field between zero and one if required
-    if scaleH is not None:
-        grid.H.data /= np.max(grid.H.data)
-        grid.H.data[np.where(grid.H.data < 0)] = 0
-        grid.H.data *= scaleH
-
-    # SEAPODYM Specific fields
-
-    # Offline calculate the 'diffusion' grid as a function of habitat
-    if verbose:
-        print("Creating Diffusion Field")
-    if diffusion_file is None:
-        K = Create_SEAPODYM_Diffusion_Field(grid.H, timestep=K_timestep, start_age=start_age,
-                                            diffusion_scale=diffusion_scale, units=field_units,
-                                            sig_scale=sig_scale, c_scale=c_scale, verbose=verbose)
-    else:
-        if verbose:
-            print("Loading from file: %s" % diffusion_file)
-        K = Field.from_netcdf('K', diffusion_dims, [diffusion_file], interp_method='nearest', vmax=1000000)
-        if diffusion_units == 'nm2_per_mon':
-            K.data *= 1.30427305
-
-    grid.add_field(K)
-
-    if verbose:
-        print("Calculating H Gradient Fields")
-    dHdx, dHdy = getGradient(grid.H, grid.LandMask)
-    grid.add_field(dHdx)
-    grid.add_field(dHdy)
-    #gradients = grid.H.gradient()
-    #for field in gradients:
-    #    grid.add_field(field)
-
-    if verbose:
-        print("Calculating Taxis Fields")
-    T_Fields = Create_SEAPODYM_Taxis_Fields(grid.dH_dx, grid.dH_dy, start_age=start_age, units=field_units)
-    for field in T_Fields:
-        grid.add_field(field)
-
-    if verbose:
-        print("Creating combined Taxis and Advection field")
-    grid.add_field(Field('TU', grid.U.data+grid.Tx.data, grid.U.lon, grid.U.lat, time=grid.U.time, vmin=-200, vmax=1e34,
-                         interp_method='nearest', allow_time_extrapolation=True))# units=unit_converters('spherical')[0]))
-    grid.add_field(Field('TV', grid.V.data+grid.Ty.data, grid.U.lon, grid.U.lat, time=grid.U.time, vmin=-200, vmax=1e34,
-                         interp_method='nearest', allow_time_extrapolation=True))#, units=unit_converters('spherical')[1]))
+#     grid = FieldSet.from_netcdf(filenames=forcing_files, variables=forcing_vars, dimensions=forcing_dims,
+#                             vmin=-200, vmax=1e34, interp_method='nearest', allow_time_extrapolation=True)
+#     print(forcing_files['U'])
+#     Depthdata = Field.from_netcdf('u', dimensions={'lon': 'longitude', 'lat': 'latitude', 'time': 'time', 'depth': 'depth'},
+#                                      filenames=forcing_files['U'], allow_time_extrapolation=True)
+#     Depthdata.name = 'bathy'
+#     grid.add_field(Depthdata)
 
 
-    if verbose:
-        print("Calculating K Gradient Fields")
-    #K_gradients = grid.K.gradient()
-    #for field in K_gradients:
-    #    grid.add_field(field)
-    dKdx, dKdy = getGradient(grid.K, grid.LandMask, False)
-    grid.add_field(dKdx)
-    grid.add_field(dKdy)
-    grid.K.interp_method = grid.dK_dx.interp_method = grid.dK_dy.interp_method = grid.H.interp_method = \
-                           grid.dH_dx.interp_method = grid.dH_dy.interp_method = grid.U.interp_method = grid.V.interp_method = 'nearest'
+#     if startD is not None:
+#         grid.add_field(Field.from_netcdf('Start', dimensions=startD_dims,
+#                                          filenames=path.local(startD), vmax=1000,
+#                                          interp_method='nearest', allow_time_extrapolation=True))
 
-    #grid.K.allow_time_extrapolation = grid.dK_dx.allow_time_extrapolation = grid.dK_dy.allow_time_extrapolation = \
-    #                                  grid.H.allow_time_extrapolation = grid.dH_dx.allow_time_extrapolation = \
-    #                                  grid.dH_dy.allow_time_extrapolation = grid.U.allow_time_extrapolation = \
-    #                                  grid.V.allow_time_extrapolation = True
+#     if output_density:
+#         # Add a density field that will hold particle densities
+#         grid.add_field(Field('Density', np.full([grid.U.lon.size, grid.U.lat.size, grid.U.time.size],-1, dtype=np.float64),
+#                        grid.U.lon, grid.U.lat, depth=grid.U.depth, time=grid.U.time, transpose=True))
 
-    return grid
+#     LandMask = Create_Landmask(grid)
+#     grid.add_field(LandMask)
+#     grid.U.data[grid.U.data > 1e5] = 0
+#     grid.V.data[grid.V.data > 1e5] = 0
+#     grid.H.data[grid.H.data > 1e5] = 0
+#     # Scale the H field between zero and one if required
+#     if scaleH is not None:
+#         grid.H.data /= np.max(grid.H.data)
+#         grid.H.data[np.where(grid.H.data < 0)] = 0
+#         grid.H.data *= scaleH
 
+#     # SEAPODYM Specific fields
+
+#     # Offline calculate the 'diffusion' grid as a function of habitat
+#     if verbose:
+#         print("Creating Diffusion Field")
+#     if diffusion_file is None:
+#         K = Create_SEAPODYM_Diffusion_Field(grid.H, timestep=K_timestep, start_age=start_age,
+#                                             diffusion_scale=diffusion_scale, units=field_units,
+#                                             sig_scale=sig_scale, c_scale=c_scale, verbose=verbose)
+#     else:
+#         if verbose:
+#             print("Loading from file: %s" % diffusion_file)
+#         K = Field.from_netcdf('K', diffusion_dims, [diffusion_file], interp_method='nearest', vmax=1000000)
+#         if diffusion_units == 'nm2_per_mon':
+#             K.data *= 1.30427305
+
+#     grid.add_field(K)
+
+#     if verbose:
+#         print("Calculating H Gradient Fields")
+#     dHdx, dHdy = getGradient(grid.H, grid.LandMask)
+#     grid.add_field(dHdx)
+#     grid.add_field(dHdy)
+#     #gradients = grid.H.gradient()
+#     #for field in gradients:
+#     #    grid.add_field(field)
+
+#     if verbose:
+#         print("Calculating Taxis Fields")
+#     T_Fields = Create_SEAPODYM_Taxis_Fields(grid.dH_dx, grid.dH_dy, start_age=start_age, units=field_units)
+#     for field in T_Fields:
+#         grid.add_field(field)
+
+#     if verbose:
+#         print("Creating combined Taxis and Advection field")
+#     grid.add_field(Field('TU', grid.U.data+grid.Tx.data, grid.U.lon, grid.U.lat, time=grid.U.time, vmin=-200, vmax=1e34,
+#                          interp_method='nearest', allow_time_extrapolation=True))# units=unit_converters('spherical')[0]))
+#     grid.add_field(Field('TV', grid.V.data+grid.Ty.data, grid.U.lon, grid.U.lat, time=grid.U.time, vmin=-200, vmax=1e34,
+#                          interp_method='nearest', allow_time_extrapolation=True))#, units=unit_converters('spherical')[1]))
+
+
+#     if verbose:
+#         print("Calculating K Gradient Fields")
+#     #K_gradients = grid.K.gradient()
+#     #for field in K_gradients:
+#     #    grid.add_field(field)
+#     dKdx, dKdy = getGradient(grid.K, grid.LandMask, False)
+#     grid.add_field(dKdx)
+#     grid.add_field(dKdy)
+#     grid.K.interp_method = grid.dK_dx.interp_method = grid.dK_dy.interp_method = grid.H.interp_method = \
+#                            grid.dH_dx.interp_method = grid.dH_dy.interp_method = grid.U.interp_method = grid.V.interp_method = 'nearest'
+
+#     #grid.K.allow_time_extrapolation = grid.dK_dx.allow_time_extrapolation = grid.dK_dy.allow_time_extrapolation = \
+#     #                                  grid.H.allow_time_extrapolation = grid.dH_dx.allow_time_extrapolation = \
+#     #                                  grid.dH_dy.allow_time_extrapolation = grid.U.allow_time_extrapolation = \
+#     #                                  grid.V.allow_time_extrapolation = True
+
+#     return grid
 
 def Field_from_DYM(filename, name=None, xlim=None, ylim=None, fromyear=None, frommonth=0, toyear=None, tomonth=0):
 
@@ -508,7 +594,7 @@ def Field_from_DYM(filename, name=None, xlim=None, ylim=None, fromyear=None, fro
         'double' :'d',
         'char'   :'s'}
 
-        DymInputSize = 4
+        x1 = x2 = 0
 
         def __init__(self, fileName):
             self.file = open(fileName, 'rb')
@@ -516,7 +602,7 @@ def Field_from_DYM(filename, name=None, xlim=None, ylim=None, fromyear=None, fro
         def read(self, typeName):
             typeFormat = DymReader.typeNames[typeName.lower()]
             scale = 1
-            if(typeFormat is 's'):
+            if(typeFormat == 's'):
                 scale = self.DymInputSize
             typeSize = struct.calcsize(typeFormat) * scale
             value = self.file.read(typeSize)
@@ -524,7 +610,7 @@ def Field_from_DYM(filename, name=None, xlim=None, ylim=None, fromyear=None, fro
             #print(decoded)
             decoded = [x for x in decoded]
 
-            if(typeFormat is 's'):
+            if(typeFormat == 's'):
                 decoded = ''.join(decoded)
                 return decoded
             return decoded[0]
@@ -672,8 +758,9 @@ def Field_from_DYM(filename, name=None, xlim=None, ylim=None, fromyear=None, fro
 
     return Field(name, data, lon=x[0,:], lat=y[:,0][::-1], time=times_in_s, time_origin=origin)
 
-#Another Ikamoana class definition
 def Create_TaggedFish_Class(type=JITParticle):
+    """Another Ikamoana class definition"""
+
     class TaggedFish(type):
         monthly_age = Variable("monthly_age", dtype=np.int32)
         age = Variable('age', to_write=False)
@@ -708,9 +795,9 @@ def Create_TaggedFish_Class(type=JITParticle):
 
     return TaggedFish
 
-### A function that was just defined to create some minimum information without
-# an Ikamoana or Seapodym parameter file
 def getSEAPODYMarguments(run="SEAPODYM_2003"):
+    """A function that was just defined to create some minimum information
+    without an Ikamoana or Seapodym parameter file"""
     args = {}
     if run == "SEAPODYM_2003":
         args.update({'ForcingFiles': {'U': 'SEAPODYM_Forcing_Data/Latest/PHYSICAL/2003Run/2003run_PHYS_month*.nc',

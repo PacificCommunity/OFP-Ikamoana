@@ -4,7 +4,7 @@ the data that the feedinghabitat module will use to calculate the
 feeding habitat.
 """
 
-from typing import List
+from typing import List, Union
 import xarray as xr
 import numpy as np
 import warnings
@@ -126,56 +126,123 @@ class HabitatDataStructure :
         self.species_dictionary['cohorts_starting_age'] = np.array(start_age)
         self.species_dictionary['cohorts_final_age'] = np.array(end_age)
 
-    def summary(self) :
+    def _summaryToString(self) -> str :
+        summary_str = (
+            "# ------------------------------ #\n"
+            + "# Summary of this data structure #\n"
+            + "# ------------------------------ #\n\n"
+            + "Root directory is :\n\t"
+            + self.root_directory + "\n"
+            + 'Output directory is :\n\t'
+            + self.output_directory
+            + "\n\n# -------------------------------SPECIES----------------------------- #\n\n"
+            + "The short name of the species is %s."%(self.species_dictionary["sp_name"]) + "\n"
+            + "There is(are) %d\tlife stages considered in the model which are : "%(
+                self.species_dictionary['nb_life_stages'])
+            + self.species_dictionary['life_stage'].__str__() + "\n"
+        )
 
-        #separator = "\n\n# ------------------------------------------------------------------- #\n\n"
-
-        print("# ------------------------------ #")
-        print("# Summary of this data structure #")
-        print("# ------------------------------ #", end='\n\n')
-
-        print('Root directory is :\n\t'+self.root_directory, end='\n')
-        print('Output directory is :\n\t'+self.output_directory, end='')
-
-        print("\n\n\n# -------------------------------SPECIES----------------------------- #\n\n\n",end='')
-
-        print('The short name of the species is %s.'%(self.species_dictionary["sp_name"]),end='\n')
-        print('There is(are) %d\tlife stages considered in the model which are : '%(
-            self.species_dictionary['nb_life_stages']),end='')
-        print(self.species_dictionary['life_stage'],end='\n')
         for name, number in zip(self.species_dictionary['life_stage'], self.species_dictionary['nb_cohort_life_stage']) :
-            print("\t- There is(are) %d\tcohort(s) in life stage %s."%(number, name))
-        np.set_printoptions(suppress=True)
-        print('\nFinal age (in day) of each cohort is :\n', self.species_dictionary['cohorts_final_age'])
-        print('\nMean length for each cohort is :\n', self.species_dictionary['cohorts_mean_length'])
-        print('\nMean weight for each cohort is :\n', self.species_dictionary['cohorts_mean_weight'], end='')
-
-        print("\n\n\n# -----------------------------PARAMETERS---------------------------- #\n\n\n",end='')
-
-        print('The parameters used are the following :')
-        for name, value in self.parameters_dictionary.items() :
-            print("\t- ",name,"   \t:", value)
-        print("Reminder : \n\t- Forage \t-> eF\n\t- Temperature\t-> sigma, T* and bT\n\t- Oxygen \t-> gamma and O*",end='')
-
-        print("\n\n# ------------------------------FIELDS------------------------------- #\n\n")
-
-        print('WARNING : Fields must start on the same date !\n')
-
-        print('Fields are grouped by coordinates :')
-
-        for group in groupArrayByCoords(self.variables_dictionary) :
-            print('\n#\t#\t#\t#\t#')
-            print('Group :', group)
-            print('Their coordinates are :\n',self.variables_dictionary[group[0]].coords)
+            summary_str += "\t- There is(are) %d\tcohort(s) in life stage %s."%(number, name) + "\n"
         
-        print('\n#\t#\t#\t#\t#\n')
-        print('Day Length is calculated using the main coordinates which are based on temperature (L1) field.')
+        np.set_printoptions(suppress=True)
+
+        summary_str += (
+            "\nFinal age (in day) of each cohort is :\n"
+            + self.species_dictionary['cohorts_final_age'].__str__() + "\n"
+            + "\nMean length for each cohort is :\n"
+            + self.species_dictionary['cohorts_mean_length'].__str__() + "\n"
+            + '\nMean weight for each cohort is :\n'
+            + self.species_dictionary['cohorts_mean_weight'].__str__() + "\n"
+            + "\n\n# -----------------------------PARAMETERS---------------------------- #\n\n"
+            + "The parameters used are the following :\n"
+        )
+        
+        for name, value in self.parameters_dictionary.items() :
+            summary_str += "\t- " + name.__str__() + "   \t:" + value.__str__() + "\n"
+        
+        summary_str += (
+            "\nReminder : \n\t- Forage \t-> eF\n\t- Temperature\t-> sigma, T* and bT\n\t- Oxygen \t-> gamma and O*"
+            + "\n\n# ------------------------------FIELDS------------------------------- #\n\n"
+            + 'WARNING : Fields must start on the same date !\n\n'
+            + 'Fields are grouped by coordinates :\n'
+        )
+        
+        for group in groupArrayByCoords(self.variables_dictionary) :
+            summary_str += (
+                '\n#\t#\t#\t#\t#\n'
+                + '\nGroup :' + group.__str__() + "\n"
+                + 'Their coordinates are :\n'
+                + self.variables_dictionary[group[0]].coords.__str__() + "\n"
+            )
+        
+        summary_str += (
+            '\n#\t#\t#\t#\t#\n\n'
+            + 'Day Length is calculated using the main coordinates which are based on temperature (L1) field.\n'
+        )
 
         if self.partial_oxygen_time_axis :
-            print('\n#\t#\t#\t#\t#\n')
-            print('Oxygen is a climatologic field. It meen that only 1 year is modelized in the DataArray.')
-
-        print('\n#\t#\t#\t#\t#\n')
-        print('TIPS : The user can use equalCoords() or compareDims() functions to compare Coordinates.',end='')
+            summary_str +=(
+                '\n#\t#\t#\t#\t#\n\n'
+                + 'Oxygen is a climatologic field. It meen that only 1 year is modelized in the DataArray.\n'
+            )
         
-        print("\n\n\n# ------------------------------------------------------------------- #\n\n")
+        summary_str += (
+            '\n#\t#\t#\t#\t#\n\n'
+            + 'TIPS : The user can use equalCoords() or compareDims() functions to compare Coordinates.'
+            + "\n\n# ------------------------------------------------------------------- #"
+        )
+
+        return summary_str
+
+    def findCohortByLength(self, length: Union[float, List[float]], verbose: bool = False) -> List[int] :
+        """Find the cohort number with the closest length."""
+        
+        length_list = self.species_dictionary['cohorts_mean_length']
+        length = np.ravel(length)
+        cohort_number_list = []
+
+        for l in length :
+            index = np.absolute(length_list-l).argmin()
+            if verbose :
+                print("The cohort with the length closest to %f is cohort number %d whose length is %f"%(l, index, length_list[index]))
+            cohort_number_list.append(index)
+
+        return  cohort_number_list
+    
+    def findCohortByWeight(self, weight: Union[float, List[float]], verbose: bool = False) -> List[int] :
+        """Find the cohort number with the closest weight."""
+        
+        weight_list = self.species_dictionary['cohorts_mean_weight']
+        weight = np.ravel(weight)
+        cohort_number_list = []
+
+        for w in weight :
+            index = np.absolute(weight_list-w).argmin()
+            if verbose :
+                print("The cohort with the weight closest to %f is cohort number %d whose weight is %f"%(w, index, weight_list[index]))
+            cohort_number_list.append(index)
+        
+        return cohort_number_list
+
+    def findLengthByCohort(self, cohort: Union[float, List[float]], verbose: bool = False) -> List[int] :
+        """Find cohort length according to cohort number."""
+        
+        cohort_length_list = self.species_dictionary['cohorts_mean_length']
+        cohort = np.ravel(cohort)
+
+        return  cohort_length_list[cohort]
+    
+    def findWeightByCohort(self, cohort: Union[float, List[float]], verbose: bool = False) -> List[int] :
+        """Find cohort weight according to cohort number."""
+
+        cohort_weight_list = self.species_dictionary['cohorts_mean_weight']
+        cohort = np.ravel(cohort)
+
+        return  cohort_weight_list[cohort]
+
+    def __str__(self) -> str:
+        return self._summaryToString()
+    
+    def __repr__(self) -> str:
+        return self._summaryToString()
