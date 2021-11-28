@@ -21,22 +21,35 @@
 
     <taxis>
         <taxis_scale>1</taxis_scale>
-        <!-- These parameters should be found in FeedingHabitat config file -->
-        <vmax_a>2.225841100458143</vmax_a>
-        <vmax_b>0.8348850216641774</vmax_b>
-        <!-- ============================================================== -->
         <shallow_sea_to_ocean>False</shallow_sea_to_ocean>
         <landmask_from_habitat>True</landmask_from_habitat>
+
+        <!-- TODO : These parameters should be found in FeedingHabitat config file -->
+        <!-- <Nom> : <vmax_a>2.225841100458143</vmax_a> -->
+        <!-- <Nom> : <vmax_b>0.8348850216641774</vmax_b> -->
+        <!-- ============================================================== -->
     </taxis>
 
     <diffusion>
-        <sigma>0.1769952864978924</sigma>
         <diffusion_boost>0</diffusion_boost>
         <diffusion_scale>1</diffusion_scale>
-        <sig_scale>1</sig_scale>
+
+        <!-- TODO : These parameters should be found in FeedingHabitat config file -->
+        <!-- <Nom> : <sigma>0.1769952864978924</sigma> -->
+        <!-- <Nom> : <c>0.662573993401526</c> -->
+        <!-- ============================================================== -->
+
         <c_scale>1</c_scale>
-        <c>0.662573993401526</c>
+        <sig_scale>1</sig_scale>
+
+        <!-- HARD CODED ? -->
         <P>3</P>
     </diffusion>
+
+    <!-- TODO : strfile_u et strfile_v dans SEAPODYM XML config file -->
+    <current>
+        <filepath></filepath>
+    </current>
+    <!-- ============================================================== -->
     
 </fields>
