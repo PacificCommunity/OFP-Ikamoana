@@ -16,7 +16,7 @@ def convertToField(field : Union[xr.DataArray, xr.Dataset], name=None) :
         field = field.to_dataset(name=name if name is not None else field.name)
 
     return parcels.FieldSet.from_xarray_dataset(
-        (field.reindex(lat=list(reversed(field.lat)))
+        ((field.reindex(lat=field.lat[::-1]))
          if field.lat[0] > field.lat[-1] else field),
         variables=dict([(i,i) for i in field.keys()]),
         dimensions=dict([(i,i) for i in field.dims.keys()]))
@@ -161,9 +161,9 @@ class IkamoanaFields :
 
         flip_lat = field.lat[0] > field.lat[-1]
         if flip_lat :
-            field = field.reindex(lat=np.flip(field.lat))
+            field = field.reindex(lat=field.lat[::-1])
         if landmask.lat[0] > landmask.lat[-1] :
-            landmask = landmask.reindex(lat=np.flip(landmask.lat))
+            landmask = landmask.reindex(lat=landmask.lat[::-1])
 
         def getCellEdgeSizes(field) :
             """Copy of the Field.calc_cell_edge_sizes() function in Parcels.
@@ -224,7 +224,7 @@ class IkamoanaFields :
                 dVdlon[t,lat,0] = (data[t,lat,1] - data[t,lat,0]) / dlon[lat,-1]
                 dVdlon[t,lat,-1] = (data[t,lat,-1] - data[t,lat,-2]) / dlon[lat,-1]
 
-        if flip_lat : field = field = field.reindex(lat=np.flip(field.lat))
+        if flip_lat : field = field = field.reindex(lat=field.lat[::-1])
 
         return (xr.DataArray(
                     name = "Gradient_longitude_"+(field.name if name is None else name),
