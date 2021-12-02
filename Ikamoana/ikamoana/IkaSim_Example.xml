@@ -1,0 +1,26 @@
+<?xml version="1.0"?>
+
+<run_name>
+  IkaSim_Example
+</run_name>
+
+<forcing_dir>
+  C:/Users/joes/Dropbox/SPC_2020/OFP-Ikamoana/Ikamoana/data/feeding_habitat_data/po_2x30_historical_interim/
+</forcing_dir>
+
+<seapodym_parameters>
+  skj_po_interim_2deg_configuration_file.xml
+</seapodym_parameters>
+
+<random_seed>
+  None
+</random_seed>
+
+<cohort_info length='30' ageing_cohort='1'/>
+
+<time start='2008-08-15' sim_time='90'/>
+
+<domain>
+  <lon>120 290</lon>
+  <lat>-40 50</lat>
+</domain>
