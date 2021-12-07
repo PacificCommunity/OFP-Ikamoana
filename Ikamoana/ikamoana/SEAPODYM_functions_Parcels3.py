@@ -300,7 +300,7 @@ def Create_SEAPODYM_F_Field(Effort, length_classes, name='F', start_age=4, verbo
 def Create_SEAPODYM_Diffusion_Field(H, length_classes, timestep=30*24*60*60, sigma=0.1769952864978924, c=0.662573993401526, P=3,
                                     start_age=4, Vmax_slope=1, units='m_per_s',
                                     diffusion_boost=0, diffusion_scale=1, sig_scale=1, c_scale=1,
-                                    verbose=True, time_period=None):
+                                    verbose=False, time_period=None):
     #This is simply calculating the required indices of the forcing for this sim
     if time_period is not None:
         # we must convert the absolute time to
@@ -316,8 +316,8 @@ def Create_SEAPODYM_Diffusion_Field(H, length_classes, timestep=30*24*60*60, sig
         start = 0
         end = len(H.grid.time)
     tsteps = range(start,end)
-
-    print("Creating diffusion field of %s timesteps" % len(tsteps))
+    if verbose :
+        print("Creating diffusion field of %s timesteps" % len(tsteps))
     Hdata = H.data[tsteps, :, :] #Get the raw habitat data array from the field object
     K = np.zeros(np.shape(Hdata), dtype=np.float32)
     age_class = start_age
@@ -333,7 +333,8 @@ def Create_SEAPODYM_Diffusion_Field(H, length_classes, timestep=30*24*60*60, sig
             Dmax = (np.power(GetLengthFromAge(age_class, length_classes)*((timestep)/1852), 2) / 4 ) * timestep/(timestep) #vmax = L for diffusion
         else:
             Dmax = (np.power(GetLengthFromAge(age_class, length_classes), 2) / 4) * timestep
-        print("Sigma = %s, Dmax = %s" % (sigma, Dmax))
+        if verbose :
+            print("Sigma = %s, Dmax = %s" % (sigma, Dmax))
         sig_D = sigma * Dmax
         #Now loop through every cell of our K array calculate value
         for x in range(H.grid.lon.size):

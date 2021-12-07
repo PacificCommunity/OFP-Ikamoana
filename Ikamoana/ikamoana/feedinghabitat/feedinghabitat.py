@@ -11,13 +11,49 @@ Feeding Habitat, for each cohort specified in argument, returned as a DataSet.
 
 """
 
-from typing import List, Union
+from types import LambdaType
+from typing import List, Union, Tuple
 from . import feedinghabitatconfigreader as fhcr
 from . import habitatdatastructure as hds
 from math import sin, cos, pi, sqrt
 import xarray as xr
 import numpy as np
 
+def posClosestCoord(coords: Union[list,np.ndarray,xr.DataArray], value: Union[str,np.datetime64,int,float]) -> int :
+    """
+    Return the position of the closest value in a specific coordinate.
+
+    Value :
+    -------
+        Time :
+            String -> 'YYYY-MM-DD'
+            (or)
+            Datetime64
+    """
+    coords = np.array(coords)
+    if isinstance(value, str):
+        return np.argmin(np.abs(np.Datetime64(value, 'ns') - coords))
+    else :
+        return np.argmin(np.abs(value - coords))
+
+def closestCoord(coords: Union[list,np.ndarray,xr.DataArray], value: Union[str,np.datetime64,int,float]) -> Union[np.datetime64, float] :
+    """
+    Return the closest value in a specific coordinate.
+
+    Value :
+    -------
+        Time :
+            String -> 'YYYY-MM-DD'
+            (or)
+            Datetime64
+    """
+    return coords[posClosestCoord(coords, value)].data
+
+def coordsAccess(coords: xr.Coordinate) -> Tuple[LambdaType,LambdaType,LambdaType]:
+    """Return accessor to closest value in time, lat and lon coordinates."""
+    return (lambda time : posClosestCoord(coords['time'], time),
+            lambda lat : posClosestCoord(coords['lat'], lat),
+            lambda lon : posClosestCoord(coords['lon'], lon))
 
 class FeedingHabitat :
     

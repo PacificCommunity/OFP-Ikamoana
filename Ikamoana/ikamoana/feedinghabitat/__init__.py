@@ -46,3 +46,4 @@ Computing Feeding Habitat for cohort [cohorts_number-1].
 """
 
 from .feedinghabitat import FeedingHabitat
+from .feedinghabitat import closestCoord, posClosestCoord, coordsAccess
