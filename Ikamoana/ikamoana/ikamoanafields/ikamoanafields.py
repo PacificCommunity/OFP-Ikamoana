@@ -1,5 +1,6 @@
-from datetime import time
-from typing import Tuple, Union, List
+import warnings
+import xml.etree.ElementTree as ET
+from typing import List, Tuple, Union
 
 import numpy as np
 import parcels
@@ -83,7 +84,58 @@ class IkamoanaFields :
         if (feeding_habitat is None) or isinstance(feeding_habitat,xr.DataArray) :
             self.feeding_habitat = feeding_habitat
         else :
-            raise TypeError("feeding_habitat must be a Xarray.DataArray or None. Actual type is : %s"%(str(type(feeding_habitat))))
+            raise TypeError("feeding_habitat must be a Xarray.DataArray or None."
+                            "Actual type is : %s"%(str(type(feeding_habitat))))
+
+    def readFisheriesXML(self, xml_config_file: str,
+                         species_name: str = None) -> dict :
+        
+        tree = ET.parse(xml_config_file)
+        root = tree.getroot()
+        if species_name == None : species_name = root.find("sp_name").text
+        
+        nb_fishery = int(root.find('nb_fishery').attrib['value'])
+        list_fishery_name = root.find('list_fishery_name').text.split()
+        
+        # fisheries name
+        if len(list_fishery_name) != nb_fishery :
+            raise ValueError("nb_fishery is %d but list_fishery_name"%(nb_fishery)
+                             + "contains %d elements."%(len(list_fishery_name)))
+        
+        f_param = {}
+        for f in list_fishery_name :
+            tmp_dict = {
+                "function_type":int(root.find("s_sp_fishery").find(f).find(
+                    "function_type").attrib["value"]),
+                "q":float(root.find("q_sp_fishery").find(f).attrib[species_name]),
+                "variable":float(root.find(
+                    "s_sp_fishery").find(f).attrib[species_name]),
+                "length_threshold":float(root.find('s_sp_fishery').find(f).find(
+                    "length_threshold").attrib[species_name])}
+            if tmp_dict['function_type'] == 3 :
+                tmp_dict['right_asymptote'] = float(
+                    root.find("s_sp_fishery").find(f).find(
+                        "right_asymptote").attrib[species_name])
+            f_param[f] = tmp_dict
+            
+        return f_param
+        
+        
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     def vMax(self, length : float) -> float :
         """Return the maximum velocity of a fish with a given length."""
@@ -328,7 +380,7 @@ class IkamoanaFields :
                 Dmax = (t_length*(timestep/1852))**2 / 4
             else:
                 Dmax = (t_length**2 / 4) * timestep
-            sig_D = self.ikamoana_fields_structure.sigma * Dmax
+            sig_D = self.ikamoana_fields_structure.sigma_K * Dmax
 
             ## VECTORIZED
             K[t,:,:] = (
@@ -348,10 +400,65 @@ class IkamoanaFields :
                             dims=("time","lat","lon"),
                             attrs=habitat.attrs)
 
-# ------------------------- WRAPPER ------------------------- #
+# NOTE : What about right_asymptote if all function_type are equal to 2 ?
+# NOTE : Mortality for evolving and not evolving ?
+    def fishingMortality(self, effort_ds: xr.Dataset,
+                         fisheries_parameters: dict) -> xr.DataArray :
+        
+        if len(effort_ds) != len(fisheries_parameters.keys()) :
+            raise ValueError("effort_ds (%d) and fisheries_parameters (%d) "
+                             "must have same length."%(len(effort_ds),
+                                                       len(fisheries_parameters.keys())))
+        
+        # TYPE I - Not Supported
+        def selectivityLimitOne(length, sigma):
+            warnings.warn("Selectivity Function not supported! q set to 0")
+            #return length / (sigma+length)
+            return 0
+        
+        # TYPE II
+        def selectivitySigmoid(length, sigma, mu) :
+            return (1 + np.exp(-sigma*(length-mu)))**(-1)
+        
+        # TYPE III
+        def selectivityAsymmetricGaussian(length, mu, r_asymp, sigma_sq) :
+            if length > mu:
+                return np.exp(-((length-mu)**2/sigma_sq)) * (1-r_asymp) + r_asymp
+            else:
+                return np.exp(-((length-mu)**2/sigma_sq)) 
+        
+        # Functions Generator
+        def selectivity(function_type, sigma, mu, r_asymp=None) :
+            if function_type == 3 :
+                return lambda length : selectivityAsymmetricGaussian(
+                    length, mu=mu, r_asymp=r_asymp, sigma_sq=sigma**2
+                )
+            elif function_type == 2 :
+                return lambda length : selectivitySigmoid(
+                    length, sigma=sigma, mu=mu
+                )
+            else :
+                return lambda length : selectivityLimitOne(
+                    length, sigma=sigma
+                )
 
-## TODO : Prise en compte des limites dans la structure de données ?
-# Manuel ou automatique ?
+        iter_effort = zip(effort_ds, right_asymptote, function_type)
+        for f_name, f_r_asymp, f_function_t in iter_effort :
+            data = effort_ds[f_name].data
+            selectivity_fun = selectivity(
+                function_type=f_function_t,
+                sigma=self.ikamoana_fields_structure.sigma_F,
+                mu=self.ikamoana_fields_structure.mu, r_asymp=f_r_asymp)
+            
+            ## TODO : Compute Fishing Mortality for each time step
+            # -> Function + Age
+            # F_Data[t,:,:] += F_scaler*E_scaler*Effort.data[idx,:,:] * q * Selectivity
+            
+            
+            
+        return effort_ds
+
+# ------------------------- WRAPPER ------------------------- #
     def computeTaxis(
             self,
             cohort: int = None,

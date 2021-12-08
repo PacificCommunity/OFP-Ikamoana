@@ -1,12 +1,16 @@
-from typing import List, Tuple
+from typing import List, Tuple, Union
 import pandas as pd
 import xarray as xr
 import numpy as np
 
-def readFile(filepath: str, header_position: int = None, columns_name: List[str] = None) -> pd.DataFrame :
+# TODO ; Take into account fisheries with severals "gear".
+
+def readFile(filepath: str, header_position: int = None,
+             columns_name: List[str] = None) -> pd.DataFrame :
     return pd.read_table(filepath, header=header_position, names=columns_name)
 
-def separateFisheries(fisheries : pd.DataFrame, fisheries_label: str = "f") -> dict :
+def separateFisheries(fisheries : pd.DataFrame,
+                      fisheries_label: str = "f") -> dict :
     f_dict = {}
     for f_name in fisheries[fisheries_label].unique() :
         f_dict[f_name] = fisheries.loc[fisheries[fisheries_label] == f_name]
@@ -155,6 +159,67 @@ def fisheriesToDataSet(
     return (xr.Dataset(fisheries_effort_da_dict, attrs={"Type":effort_label}),
             xr.Dataset(fisheries_catch_da_dict, attrs={"Type":catch_label}))
 
+def _completeCoords(data_array: xr.DataArray, deltaT: int = None,
+                    space_reso: Union[float,int] = None) -> xr.DataArray :
+    
+    ## WARNING : space_reso and deltaT in effort file is independant from the space_reso in SEAPODYM configuration file.
+    
+    ## WARNING : deltaT == 30 in SEAPODYM mean that we use a monthly time resolution.
+    
+    time_coords = data_array.time.data
+    lat_coords = data_array.lat.data
+    lon_coords = data_array.lon.data
+    data_set = data_array.to_dataset()
+    
+    ## TIME : Normalizing time format before reindexing
+    if deltaT is not None :
+        if deltaT == 30 : # MONTHLY
+            time_coords = np.array(time_coords, dtype='datetime64[M]')
+            linear_time_coords = np.arange(time_coords[0],time_coords[-1])
+        else :
+            time_coords = np.array(time_coords, dtype='datetime64[D]')
+            linear_time_coords = np.arange(time_coords[0],time_coords[-1],step=deltaT)
+        linear_time_coords = np.concatenate((linear_time_coords,[time_coords[-1]]))
+        data_set['new_time'] = ('time',time_coords)
+        data_set = data_set.reset_index('time',drop=True)
+        data_set = data_set.set_index({'time':'new_time'})
+    else :
+        linear_time_coords = time_coords
+    
+    ## LATITUDE
+    if space_reso is not None :
+        linear_lat_coords = np.arange(lat_coords[0],lat_coords[-1],step=space_reso)
+        linear_lat_coords = np.concatenate((linear_lat_coords, [lat_coords[-1]]))
+        linear_lon_coords = np.arange(lon_coords[0],lon_coords[-1],step=space_reso)
+        linear_lon_coords = np.concatenate((linear_lon_coords, [lon_coords[-1]]))
+    else :
+        linear_lat_coords = lat_coords
+        linear_lon_coords = lon_coords
+                
+    return data_set[data_array.name].reindex(time=linear_time_coords,lat=linear_lat_coords, lon=linear_lon_coords)
+
+def normalizeCoords(data_set: xr.Dataset, deltaT: Union[int,List[int]],
+                    space_reso: Union[Union[float,int],List[Union[float,int]]] = None
+                    ) -> xr.Dataset :
+    
+    deltaT = np.array(deltaT).ravel()
+    if deltaT.size == 1 : deltaT = deltaT.repeat(len(data_set))
+    elif deltaT.size != len(data_set) :
+        raise ValueError("deltaT must be int or list of size len(data_set)")
+    
+    space_reso = np.array(space_reso).ravel()
+    if space_reso.size == 1 : space_reso = space_reso.repeat(len(data_set))
+    elif space_reso.size != len(data_set) :
+        raise ValueError("space_reso must be int/float or list of size len(data_set)")
+    
+    f_effort_dict = {}
+    for pos, f_name in enumerate(data_set) :
+        f_effort_dict[f_name] = _completeCoords(data_set[f_name],
+                                                deltaT[pos],
+                                                space_reso[pos])
+    
+    return xr.Dataset(f_effort_dict)
+
 def sumDataSet(fisheries: xr.Dataset) -> xr.DataArray :
     
     f_name_list = list(fisheries)
@@ -164,4 +229,3 @@ def sumDataSet(fisheries: xr.Dataset) -> xr.DataArray :
         sum = sum + np.nan_to_num(fisheries[f])
     
     return xr.DataArray(data=sum, coords=fisheries.coords,attrs={"Type":"Sum of "+fisheries.attrs["Type"]})
-        

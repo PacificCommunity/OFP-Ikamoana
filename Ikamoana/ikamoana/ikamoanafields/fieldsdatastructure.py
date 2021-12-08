@@ -24,10 +24,15 @@ class FieldSDataStructure :
         self.landmask_from_habitat = True
 
         ## DIFFUSION ####################################
-        self.sigma=0.1769952864978924
+        self.sigma_K=0.1769952864978924
         self.diffusion_boost=0
         self.diffusion_scale=1
         self.sig_scale=1
         self.c_scale=1
         self.c=0.662573993401526
         self.P=3
+        
+        ## FISHING MORTALITY ############################
+        self.sigma_F = 8.614813906820441
+        self.mu = 52.56103941719986
+        self.q=0.001032652877899101

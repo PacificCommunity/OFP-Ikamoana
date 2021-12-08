@@ -135,6 +135,8 @@ class HabitatDataStructure :
             + self.root_directory + "\n"
             + 'Output directory is :\n\t'
             + self.output_directory
+            + "\nTime resolution is (in days) : %d"%(self.parameters_dictionary["deltaT"]) + "\n"
+            + "Space resolution is (in degrees) : %f"%(self.parameters_dictionary["space_reso"]) + "\n"
             + "\n\n# -------------------------------SPECIES----------------------------- #\n\n"
             + "The short name of the species is %s."%(self.species_dictionary["sp_name"]) + "\n"
             + "There is(are) %d\tlife stages considered in the model which are : "%(
