@@ -152,11 +152,11 @@ class DymFileHeader(dym.DymFileHeader):
 
     def updateMinMaxValues(self, minVal, maxVal):
 
-        fo = open(self.fileName_, 'rb+');
-        fo.seek(2*4);
-        fo.write(np.float32(minVal));
-        fo.write(np.float32(maxVal));
-        fo.close();
+        fo = open(self.fileName_, 'rb+')
+        fo.seek(2*4)
+        fo.write(np.float32(minVal))
+        fo.write(np.float32(maxVal))
+        fo.close()
 
         return
 
@@ -164,15 +164,15 @@ class DymFileHeader(dym.DymFileHeader):
 
         try:
             newshape=np.shape(newmask)
-            self.readHeader();
+            self.readHeader()
             oldshape = (self.nLon_,self.nLat_)
             if newshape != oldshape:
                 raise IndexError
-            fo = open(filename, 'rb+');
-            skip = (9+2*self.nLon_*self.nLat_+self.nLev_)*4;
-            fo.seek(skip);
-            fo.write(np.int32(newmask));
-            fo.close();
+            fo = open(filename, 'rb+')
+            skip = (9+2*self.nLon_*self.nLat_+self.nLev_)*4
+            fo.seek(skip)
+            fo.write(np.int32(newmask))
+            fo.close()
         except IndexError:
             logging.error("in UpdateMask: input mask size mismatch")
             logging.error("old shape : %d %d" %(oldshape))
@@ -183,22 +183,22 @@ class DymFileHeader(dym.DymFileHeader):
 
     def updateLevelValues (self, levelValues):
         try:
-            self.readHeader();
+            self.readHeader()
             oldnlev = self.nLev_
             newnlev = len(levelValues)
             if oldnlev != newnlev:
                 raise IndexError
-            firstdate = levelValues[0];
-            lastdate = levelValues[-1];
-            skip1 = 7*4;
-            skip2 = (9+2*self.nLon_*self.nLat_)*4;
-            fo = open(self.fileName_, 'rb+');
-            fo.seek(skip1);
-            fo.write(np.float32(firstdate));
-            fo.write(np.float32(lastdate));
-            fo.seek(skip2);
-            fo.write(np.float32(levelValues));
-            fo.close();
+            firstdate = levelValues[0]
+            lastdate = levelValues[-1]
+            skip1 = 7*4
+            skip2 = (9+2*self.nLon_*self.nLat_)*4
+            fo = open(self.fileName_, 'rb+')
+            fo.seek(skip1)
+            fo.write(np.float32(firstdate))
+            fo.write(np.float32(lastdate))
+            fo.seek(skip2)
+            fo.write(np.float32(levelValues))
+            fo.close()
         except IndexError:
             logging.error("new levels values size mismatch")
             raise RuntimeError
@@ -297,19 +297,19 @@ class DymFile(dym.DymFile):
 
         self.dataFile_ = self.fileName_ 
  
-        self.header_   = DymFileHeader(self.dataFile_)
+        self.header_ = DymFileHeader(self.dataFile_)
 
         if os.path.isfile(self.dataFile_):
             self.readHeader()
 
     def readHeader(self):
-        self.header_.readHeader();
+        self.header_.readHeader()
 
     def headerSize(self):
         return self.header_.headerSize()
 
     def writeHeader(self):
-        self.header_.writeHeader();
+        self.header_.writeHeader()
 
     def getTimeStep(self):
 

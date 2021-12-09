@@ -28,7 +28,6 @@ def getFileFormat(filename):
     unknown = "UNKNOWN"
     fo = open(filename, "rb")
     IdFormat = fo.read(4).decode('utf-8')
-    
     fo.close()
     
     if IdFormat in ['DYM2','DYM3']:
