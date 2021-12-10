@@ -119,23 +119,6 @@ class IkamoanaFields :
             f_param[f] = tmp_dict
             
         return f_param
-        
-        
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
     def vMax(self, length : float) -> float :
         """Return the maximum velocity of a fish with a given length."""
@@ -144,7 +127,9 @@ class IkamoanaFields :
              * np.power(length, self.ikamoana_fields_structure.vmax_b))
 
     def landmask(self, habitat_field : xr.DataArray = None,
-                 shallow_sea_to_ocean=False, lim=1e-45) -> xr.DataArray :
+                 shallow_sea_to_ocean=False, lim=1e-45,
+                 lat_min: int = None,lat_max: int = None,
+                 lon_min: int = None,lon_max: int = None) -> xr.DataArray :
         """Return the landmask of a given habitat or FeedingHabitat.global_mask.
         Mask values :
             2 -> is Shallow
@@ -156,22 +141,29 @@ class IkamoanaFields :
             Landmask in Original (with Parcels Fields) is flipped on latitude axis.
         """
 
+        if lat_max is not None : lat_max += 1
+        if lon_max is not None : lon_max += 1
+
         if habitat_field is None :
             mask_L1 = np.invert(
-                self.feeding_habitat_structure.data_structure.global_mask['mask_L1'])[0,:,:]
+                self.feeding_habitat_structure.data_structure.global_mask[
+                    'mask_L1'])[0, lat_min:lat_max, lon_min:lon_max]
             mask_L3 = np.invert(
-                self.feeding_habitat_structure.data_structure.global_mask['mask_L3'])[0,:,:]
+                self.feeding_habitat_structure.data_structure.global_mask[
+                    'mask_L3'])[0, lat_min:lat_max, lon_min:lon_max]
             
             landmask = np.zeros(mask_L1.shape, dtype=np.int8)
             if not shallow_sea_to_ocean : landmask[mask_L3] = 2
             landmask[mask_L1] = 1
 
             coords = self.feeding_habitat_structure.data_structure.coords
+            coords = {'lat':coords['lat'][lat_min:lat_max],
+                      'lon':coords['lon'][lon_min:lon_max]},
 
         else :
             habitat_f = habitat_field[0,:,:]
-            ## TODO : Should I use temperature_L3 rather than forage_lmeso ?
-            lmeso_f = self.feeding_habitat_structure.data_structure.variables_dictionary['forage_lmeso'][0,:,:]
+            lmeso_f = self.feeding_habitat_structure.data_structure.variables_dictionary[
+                'forage_lmeso'][0, lat_min:lat_max, lon_min:lon_max]
 
             if habitat_f.shape != lmeso_f.shape :
                 raise ValueError("Habitat and forage_lmeso must have the same dimension.")
@@ -181,7 +173,8 @@ class IkamoanaFields :
                 landmask[(np.abs(lmeso_f) <= lim) | np.isnan(lmeso_f)] = 2
             landmask[(np.abs(habitat_f) <= lim) | np.isnan(habitat_f)] = 1
 
-            coords = habitat_field.coords
+            coords = {'lat':habitat_field.coords['lat'],
+                      'lon':habitat_field.coords['lon']}
 
         ## TODO : Ask why lon is between 1 and ny-1
         # Answer -> in-coming
@@ -190,8 +183,7 @@ class IkamoanaFields :
         return xr.DataArray(
                 data=landmask,
                 name='landmask',
-                coords={'lat':coords['lat'],
-                        'lon':coords['lon']},
+                coords=coords,
                 dims=('lat', 'lon')
             )
 
@@ -400,7 +392,7 @@ class IkamoanaFields :
                             dims=("time","lat","lon"),
                             attrs=habitat.attrs)
 
-# NOTE : What about right_asymptote if all function_type are equal to 2 ?
+# NOTE OBSOLETE : What about right_asymptote if all function_type are equal to 2 ?
 # NOTE : Mortality for evolving and not evolving ?
     def fishingMortality(self, effort_ds: xr.Dataset,
                          fisheries_parameters: dict) -> xr.DataArray :
@@ -442,13 +434,13 @@ class IkamoanaFields :
                     length, sigma=sigma
                 )
 
-        iter_effort = zip(effort_ds, right_asymptote, function_type)
-        for f_name, f_r_asymp, f_function_t in iter_effort :
-            data = effort_ds[f_name].data
-            selectivity_fun = selectivity(
-                function_type=f_function_t,
-                sigma=self.ikamoana_fields_structure.sigma_F,
-                mu=self.ikamoana_fields_structure.mu, r_asymp=f_r_asymp)
+        # iter_effort = zip(effort_ds, right_asymptote, function_type)
+        # for f_name, f_r_asymp, f_function_t in iter_effort :
+        #     data = effort_ds[f_name].data
+        #     selectivity_fun = selectivity(
+        #         function_type=f_function_t,
+        #         sigma=self.ikamoana_fields_structure.sigma_F,
+        #         mu=self.ikamoana_fields_structure.mu, r_asymp=f_r_asymp)
             
             ## TODO : Compute Fishing Mortality for each time step
             # -> Function + Age
@@ -472,21 +464,30 @@ class IkamoanaFields :
         ---------
             FeedingHabitat.computeFeedingHabitat
         """
-
+        (time_start,time_end,lat_min,lat_max,lon_min,lon_max) = (
+            self.feeding_habitat_structure.controlArguments(
+                time_start, time_end, lat_min, lat_max, lon_min, lon_max))
+        
         if (self.feeding_habitat is None) or (not use_already_computed_habitat) :
             if cohort is None :
                 raise ValueError("cohort argument must be specified. Actual is %s."%(str(cohort)))
             feeding_habitat = self.feeding_habitat_structure.computeFeedingHabitat(
                 cohort,time_start,time_end,lat_min,lat_max,lon_min,lon_max,verbose)
             fh_name = list(feeding_habitat.var()).pop()
+            fh_attrs = feeding_habitat.attrs
             feeding_habitat = feeding_habitat[fh_name]
+            feeding_habitat.attrs.update(fh_attrs)
         else :
             feeding_habitat = self.feeding_habitat
 
-        landmask = self.landmask(
-            habitat_field=(feeding_habitat
-                if self.ikamoana_fields_structure.landmask_from_habitat else None),
-            shallow_sea_to_ocean=self.ikamoana_fields_structure.shallow_sea_to_ocean)
+        hf_cond, ssto_cond = (self.ikamoana_fields_structure.landmask_from_habitat,
+                              self.ikamoana_fields_structure.shallow_sea_to_ocean)
+        param = dict(
+            habitat_field=feeding_habitat if hf_cond else None,
+            shallow_sea_to_ocean=ssto_cond,
+            lat_min=lat_min, lat_max=lat_max, lon_min=lon_min, lon_max=lon_max)
+
+        landmask = self.landmask(**param)
 
         grad_lon, grad_lat = self.gradient(feeding_habitat, landmask)
 
@@ -505,17 +506,21 @@ class IkamoanaFields :
         ---------
             FeedingHabitat.computeEvolvingFeedingHabitat
         """
-        # TODO : Use verbose ?
+
         if (self.feeding_habitat is None) or (not use_already_computed_habitat) :
             feeding_habitat = self.feeding_habitat_structure.computeEvolvingFeedingHabitat(
                 cohort_start,cohort_end,time_start,time_end,lat_min,lat_max,lon_min,lon_max,verbose)
         else :
             feeding_habitat = self.feeding_habitat
-            
-        landmask = self.landmask(
-            habitat_field=(feeding_habitat
-                if self.ikamoana_fields_structure.landmask_from_habitat else None),
-            shallow_sea_to_ocean=self.ikamoana_fields_structure.shallow_sea_to_ocean)
+        
+        hf_cond, ssto_cond = (self.ikamoana_fields_structure.landmask_from_habitat,
+                              self.ikamoana_fields_structure.shallow_sea_to_ocean)
+        param = dict(
+            habitat_field=feeding_habitat if hf_cond else None,
+            shallow_sea_to_ocean=ssto_cond,
+            lat_min=lat_min, lat_max=lat_max, lon_min=lon_min, lon_max=lon_max)
+
+        landmask = self.landmask(**param)
         
         grad_lon, grad_lat = self.gradient(feeding_habitat, landmask)
         

@@ -1,7 +1,9 @@
 from typing import List, Tuple, Union
+ 
+import numpy as np
 import pandas as pd
 import xarray as xr
-import numpy as np
+from sklearn import linear_model
 
 # TODO ; Take into account fisheries with severals "gear".
 
@@ -117,7 +119,7 @@ def groupByFisheries(
         f_gb = fishery.groupby(by=[fishery_label,year_label,month_label,
                                    day_label,latitude_label,longitude_label])
         f_gb = f_gb.aggregate({gear_label:np.unique, resolution_label:np.unique,
-                               effort_label:sum, catch_label:sum})
+                               effort_label:np.sum, catch_label:np.sum})
         fisheries[f_name] = f_gb if multi_index else f_gb.reset_index()
     
     return fisheries
@@ -137,8 +139,9 @@ def fisheriesToDataSet(
             fishery.rename(
                 columns={year_label:"year",month_label:"month",day_label:"day"}
                 )[["year","month","day"]])
-        update_dict = {gear_label:fishery[gear_label].unique(),
-                       resolution_label:fishery[resolution_label].unique()}
+        update_dict = {
+            gear_label:fishery[gear_label].explode().unique(),
+            resolution_label:fishery[resolution_label].explode().unique()}
         
         fishery_to_convert = pd.DataFrame({"time":fishery_time,
                                            "lat":fishery[latitude_label],
@@ -229,3 +232,45 @@ def sumDataSet(fisheries: xr.Dataset) -> xr.DataArray :
         sum = sum + np.nan_to_num(fisheries[f])
     
     return xr.DataArray(data=sum, coords=fisheries.coords,attrs={"Type":"Sum of "+fisheries.attrs["Type"]})
+
+
+## CLEANING DATA #######################################################
+
+## TODO : Write this function ?
+def removeEmptyEntries():
+    pass
+
+## TODO : Write this function ?
+def plotByGear():
+    pass
+
+def predictEffort(fishery: pd.DataFrame, conserve_no_catch: bool = False,
+                  conserve_empty: bool = False, gear_to_choose: str = 'K',
+                  catch_label: str = 'C', gear_label: str = 'gr',
+                  effort_label: str = 'E') -> pd.DataFrame :
+    
+    model = fishery[(fishery[gear_label]==gear_to_choose)
+                    & (fishery[effort_label]!=0) & (fishery[catch_label]!=0)]
+    
+    effort_to_predict = pd.DataFrame(fishery[~fishery.index.isin(model.index)])
+    
+    no_catch_but_effort = effort_to_predict[(effort_to_predict[effort_label]!=0)
+                               & (effort_to_predict[catch_label]==0)]
+
+    nothing = effort_to_predict[(effort_to_predict[effort_label]==0)
+                               & (effort_to_predict[catch_label]==0)]
+    
+    effort_to_predict = effort_to_predict[(effort_to_predict[catch_label]!=0)]
+    
+    regr = linear_model.LinearRegression()
+    fun = regr.fit(np.array(model[catch_label])[:,np.newaxis],
+                   np.array(model[effort_label]))
+    effort_to_predict.drop(effort_label, axis=1)
+    effort_to_predict[effort_label] = fun.predict(
+        np.array(effort_to_predict[catch_label])[:,np.newaxis])
+    
+    df_to_return = [model, effort_to_predict]
+    if conserve_no_catch : df_to_return.append(no_catch_but_effort)
+    if conserve_empty :df_to_return.append(nothing)
+    
+    return pd.concat(df_to_return)

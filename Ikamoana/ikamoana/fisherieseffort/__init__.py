@@ -1,1 +1,1 @@
-from . import fisheriesEffort
+from . import fisherieseffort
