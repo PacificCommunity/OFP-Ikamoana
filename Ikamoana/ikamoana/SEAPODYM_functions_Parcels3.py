@@ -273,6 +273,7 @@ def Create_SEAPODYM_F_Field(Effort, length_classes, name='F', start_age=4, verbo
     for t in range(len(tsteps)):
         age = int(start_age + t)
         l = GetLengthFromAge(age, length_classes)*100 #back to cm for selectivity
+    # NOTE : Calcul de la sélectivité
         if selectivity_func == 3.0:
             if l > mu:
                 Selectivity = (1-r_asymp)*np.exp(-(pow(l-mu,2)/(sigma_sq)))+r_asymp
@@ -285,6 +286,7 @@ def Create_SEAPODYM_F_Field(Effort, length_classes, name='F', start_age=4, verbo
             Selectivity = 0
 
         idx = np.argmin(abs((Effort.grid.time[Esteps] - start_time) - (t*timestep)))
+    # NOTE : Application de la capture
         F_Data[t,:,:] += F_scaler*E_scaler*Effort.data[idx,:,:] * q * Selectivity
         if verbose:
             date = datetime.fromtimestamp(start_time + t*timestep).strftime('%Y-%m-%d %H:%M:%S')
