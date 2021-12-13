@@ -306,6 +306,15 @@ def _readXmlConfigParameters(root) :
 
     parameters_dictionary["o_star"] = float(
         root.find('b_oxy_habitat').attrib[sp_name])
+    
+    parameters_dictionary["deltaT"] = float(
+        root.find('deltaT').attrib["value"])
+    
+    ## NOTE :
+    # - "space_reso" : Resolution in degrees
+    # - "deltaX/Y" : Resolution in nautic miles
+    parameters_dictionary["space_reso"] = float(
+        root.find('space_reso').attrib["value"])
 
     return parameters_dictionary, species_dictionary
 

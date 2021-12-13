@@ -9,7 +9,7 @@
 
 <!--=================================MAIN DIRECTORY========================================-->
 <!-- Working Directory -->
-<strdir value="/home/uash/JupyterWorkspace/Library/Ikamoana/data/feeding_habitat_data/po_2x30_historical_interim/"/>
+<strdir value="/home/ash/Documents/GitHub_Repositories/OFP-Ikamoana/Ikamoana/data/feeding_habitat_data/po_2x30_historical_interim/"/>
 
 <!-- Output Directory -->
 <strdir_output value="output/"/>
@@ -22,13 +22,13 @@
 <!-- Mask File Name -->
 <strfile_mask value="po_interim_2deg_mask_short_noIO.txt"/>
 
-
-
 <!--=======================================================================================-->
 <!--===================================== VARIABLES =======================================-->
 <!--=======================================================================================-->
 
 <nb_layer value="3"/>
+<space_reso value="2"/>
+<deltaT value="30"/>
 
 <!--====================================TEMPERATURE========================================-->
 <!-- Temperature Files Names -->

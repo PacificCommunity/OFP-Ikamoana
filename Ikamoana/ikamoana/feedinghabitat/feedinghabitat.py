@@ -98,6 +98,47 @@ class FeedingHabitat :
 
 ###############################################################################
 
+    def controlArguments(self, time_start: int, time_end: int, lat_min: int,
+                         lat_max: int, lon_min: int, lon_max: int
+                         ) -> Tuple[int,int,int,int,int,int] :
+
+        coords = self.data_structure.coords
+
+        if (lat_min is not None) :
+            if ((lat_min < 0) or (lat_min >= coords['lat'].data.size)) :
+                raise ValueError("lat_min out of bounds. Min is %d and Max is %d"%(
+                    0, coords['lat'].data.size - 1))
+        if (lat_max is not None) :
+            if ((lat_max < 0) or (lat_max >= coords['lat'].data.size)) :
+                raise ValueError("lat_max out of bounds. Min is %d and Max is %d"%(
+                    0, coords['lat'].data.size - 1))
+        if (lat_min is not None) and (lat_max is not None) and (lat_min > lat_max) :
+            lat_min, lat_max = lat_max, lat_min
+
+        if (lon_min is not None) :
+            if ((lon_min < 0) or (lon_min >= coords['lon'].data.size)) :
+                raise ValueError("lon_min out of bounds. Min is %d and Max is %d"%(
+                    0, coords['lon'].data.size - 1))
+        if (lon_max is not None) :
+            if ((lon_max < 0) or (lon_max >= coords['lon'].data.size)) :
+                raise ValueError("lon_max out of bounds. Min is %d and Max is %d"%(
+                    0, coords['lon'].data.size - 1))
+        if (lon_min is not None) and (lon_max is not None) and (lon_min > lon_max) :
+            lon_min, lon_max = lon_max, lon_min
+
+        if (time_start is not None) :
+            if ((time_start < 0) or (time_start >= coords['time'].data.size)) :
+                raise ValueError("time_start out of bounds. Min is %d and Max is %d"%(
+                    0, coords['time'].data.size - 1))
+        if (time_end is not None) :
+            if ((time_end < 0) or (time_end >= coords['time'].data.size)) :
+                raise ValueError("time_end out of bounds. Min is %d and Max is %d"%(
+                    0, coords['time'].data.size - 1))
+        if (time_start is not None) and (time_end is not None) and (time_start > time_end) :
+            time_start, time_end = time_end, time_start
+
+        return time_start,time_end, lat_min, lat_max, lon_min, lon_max
+
     def _scaling(self, data) :
         """
         The normalization function used by SEAPODYM. Set all values in
@@ -340,7 +381,7 @@ class FeedingHabitat :
                               time_start: int = None, time_end: int = None,
                               lat_min: int = None, lat_max: int = None,
                               lon_min: int = None, lon_max: int = None,
-                              verbose: bool = False) -> xr.Dataset :
+                              verbose: bool = False, control_arg: bool = True) -> xr.Dataset :
         """
         The main function of the FeedingHabitat class. It will compute the
         feeding habitat of each cohort specify in the `cohorts` argument.
@@ -379,56 +420,17 @@ class FeedingHabitat :
 
         """
 
-        if isinstance(cohorts, (int, np.integer)) :
-            cohorts = [cohorts]
 
-        def controlArguments(data_structure: hds.HabitatDataStructure,
-                             cohorts, time_start, time_end, lat_min,
-                             lat_max, lon_min, lon_max) :
+        cohorts = np.array(cohorts).ravel()
+        if True in ((cohorts<0) | (cohorts>=self.data_structure.cohorts_number)) :
+            raise ValueError("cohort out of bounds. Min is 0 and Max is %d"%(
+                    self.data_structure.cohorts_number-1))
 
-            for elmt in cohorts :
-                if elmt < 0 or elmt >= data_structure.cohorts_number :
-                    raise ValueError("cohort out of bounds. Min is 0 and Max is %d"%(
-                        self.data_structure.cohorts_number-1))
+        if control_arg :
+            (time_start,time_end,lat_min,lat_max,lon_min,lon_max) = (
+                self.controlArguments(
+                    time_start, time_end, lat_min, lat_max, lon_min, lon_max))
 
-            coords = data_structure.coords
-
-            if (lat_min is not None) :
-                if ((lat_min < 0) or (lat_min >= coords['lat'].data.size)) :
-                    raise ValueError("lat_min out of bounds. Min is %d and Max is %d"%(
-                        0, coords['lat'].data.size - 1))
-            if (lat_max is not None) :
-                if ((lat_max < 0) or (lat_max >= coords['lat'].data.size)) :
-                    raise ValueError("lat_max out of bounds. Min is %d and Max is %d"%(
-                        0, coords['lat'].data.size - 1))
-            if (lat_min is not None) and (lat_max is not None) and (lat_min > lat_max) :
-                raise ValueError("lat_min must be <= to lat_max.")
-
-            if (lon_min is not None) :
-                if ((lon_min < 0) or (lon_min >= coords['lon'].data.size)) :
-                    raise ValueError("lon_min out of bounds. Min is %d and Max is %d"%(
-                        0, coords['lon'].data.size - 1))
-            if (lon_max is not None) :
-                if ((lon_max < 0) or (lon_max >= coords['lon'].data.size)) :
-                    raise ValueError("lon_max out of bounds. Min is %d and Max is %d"%(
-                        0, coords['lon'].data.size - 1))
-            if (lon_min is not None) and (lon_max is not None) and (lon_min > lon_max) :
-                raise ValueError("lon_min must be <= to lon_max.")
-
-            if (time_start is not None) :
-                if ((time_start < 0) or (time_start >= coords['time'].data.size)) :
-                    raise ValueError("time_start out of bounds. Min is %d and Max is %d"%(
-                        0, coords['time'].data.size - 1))
-            if (time_end is not None) :
-                if ((time_end < 0) or (time_end >= coords['time'].data.size)) :
-                    raise ValueError("time_end out of bounds. Min is %d and Max is %d"%(
-                        0, coords['time'].data.size - 1))
-            if (time_start is not None) and (time_end is not None) and (time_start > time_end) :
-                raise ValueError("time_start must be <= to time_end.")
-
-        controlArguments(
-            self.data_structure, cohorts, time_start, time_end, lat_min,
-            lat_max, lon_min, lon_max)
 
         fh_oxygen = self._oxygen(
             time_start, time_end, lat_min, lat_max, lon_min, lon_max)
@@ -543,58 +545,38 @@ class FeedingHabitat :
             over time.
         """
 
-        def controlArguments(
-            data_structure: hds.HabitatDataStructure,
-            cohort_start: int = None, cohort_end: int = None,
-            time_start: int = None, time_end: int = None) :
+        (time_start,time_end,lat_min,lat_max,lon_min,lon_max) = (
+            self.controlArguments(
+                time_start, time_end, lat_min, lat_max, lon_min, lon_max))
 
-            cohorts_number = data_structure.cohorts_number
+        if time_start is None : time_start = 0
+        if time_end is None : time_end = self.data_structure.coords['time'].size - 1
+        time_array = np.arange(time_start, time_end+1)
 
-            if cohort_start is None :
-                cohort_start = 0
-            if cohort_end is None :
-                if time_end is not None:
-                    cohort_end = cohort_start + time_end - time_start
-                else:
-                    cohort_end = cohorts_number - 1
-            if (cohort_start < 0) or (cohort_start >= cohorts_number) :
-                raise ValueError("cohort_start out of bounds. Min is %d and Max is %d"%(
-                    0, cohorts_number - 1))
-            if (cohort_end < 0) or (cohort_end >= cohorts_number) :
-                raise ValueError("cohort_end out of bounds. Min is %d and Max is %d"%(
-                    0, cohorts_number - 1))
-            if cohort_start > cohort_end :
-                raise ValueError("cohort_start must be <= to cohort_end.")
-            cohort_array = np.arange(cohort_start, cohort_end+1)
+        cohorts_number = self.data_structure.cohorts_number
 
-            coords = data_structure.coords
+        if cohort_start is None : cohort_start = 0
+        if cohort_end is None :
+            if time_end is not None:
+                #This might cause a bug if simulation time is longer than final cohort
+                cohort_end = cohort_start + time_end - time_start
+            else:
+                cohort_end = cohorts_number - 1
+        if (cohort_start < 0) or (cohort_start >= cohorts_number) :
+            raise ValueError("cohort_start out of bounds. Min is %d and Max is %d"%(
+                0, cohorts_number - 1))
+        if (cohort_end < 0) or (cohort_end >= cohorts_number) :
+            raise ValueError("cohort_end out of bounds. Min is %d and Max is %d"%(
+                0, cohorts_number - 1))
+        if cohort_start > cohort_end :
+            cohort_start, cohort_end = cohort_end, cohort_start
+        cohort_array = np.arange(cohort_start, cohort_end+1)
 
-            if time_start is None :
-                time_start = 0
-            if time_end is None :
-                time_end = coords['time'].size - 1
-            if ((time_start < 0) or (time_start >= coords['time'].data.size)) :
-                raise ValueError("time_start out of bounds. Min is %d and Max is %d"%(
-                    0, coords['time'].data.size - 1))
-            if ((time_end < 0) or (time_end >= coords['time'].data.size)) :
-                raise ValueError("time_end out of bounds. Min is %d and Max is %d"%(
-                    0, coords['time'].data.size - 1))
-            if time_start > time_end :
-                raise ValueError("time_start must be <= to time_end.")
+        if cohort_array[-1] < cohorts_number-1 :
+            max_size = min(cohort_array.size, time_array.size)
+            cohort_array = cohort_array[:max_size]
+            time_array = time_array[:max_size]
 
-            time_array = np.arange(time_start, time_end+1)
-
-            if cohort_array[-1] < cohorts_number-1 :
-                max_size = min(cohort_array.size, time_array.size)
-                cohort_array = cohort_array[:max_size]
-                time_array = time_array[:max_size]
-
-
-            return cohort_array, time_array
-
-        cohort_array, time_array = controlArguments(
-            self.data_structure,
-            cohort_start, cohort_end, time_start, time_end)
 
         cohort_axis = []
         final_array = []
@@ -606,7 +588,8 @@ class FeedingHabitat :
                     cohorts=cohort_array[i],
                     time_start=time_array[i], time_end=time_array[-1],
                     lat_min=lat_min, lat_max=lat_max,
-                    lon_min=lon_min, lon_max=lon_max).to_array().data[0,:,:,:])
+                    lon_min=lon_min, lon_max=lon_max,
+                    control_arg=False).to_array().data[0,:,:,:])
 
             # Others
             else :
@@ -615,16 +598,20 @@ class FeedingHabitat :
                     cohorts=cohort_array[i],
                     time_start=time_array[i], time_end=time_array[i],
                     lat_min=lat_min, lat_max=lat_max,
-                    lon_min=lon_min, lon_max=lon_max).to_array().data[0,:,:,:])
+                    lon_min=lon_min, lon_max=lon_max,
+                    control_arg=False).to_array().data[0,:,:,:])
 
         return xr.DataArray(
             data=np.concatenate(final_array),
             name='Feeding_Habitat_Cohort_%d_to_%d'%(cohort_array[0], cohort_array[-1]),
             dims=('time','lat','lon'),
             coords=dict(
-                time=self.data_structure.coords['time'].data[time_array[0]:time_array[-1]+1],
-                lat=self.data_structure.coords['lat'].data[lat_min:lat_max+1],
-                lon=self.data_structure.coords['lon'].data[lon_min:lon_max+1],
+                time=self.data_structure.coords['time'].data[
+                    time_array[0]:time_array[-1]+1],
+                lat=self.data_structure.coords['lat'].data[
+                    lat_min:lat_max if lat_max is None else lat_max+1],
+                lon=self.data_structure.coords['lon'].data[
+                    lon_min:lon_max if lon_max is None else lon_max+1],
                 cohorts=("time", cohort_axis)),
             attrs=dict(
                 description="Feeding habitat of a species that evolves over time.",
