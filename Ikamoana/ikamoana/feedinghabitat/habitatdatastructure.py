@@ -210,6 +210,21 @@ class HabitatDataStructure :
 
         return date_index_list
 
+    def findCoordIndexByValue(self, val: Union[float, List[float]], coord='lon', verbose: bool = False) -> List[int] :
+        """Find the time dimension index with the closest date."""
+
+        val_list = self.coords[coord]
+        val = np.ravel(val)
+        val_index_list = []
+
+        for v in val:
+            index = np.absolute(val_list-v).argmin()
+            if verbose :
+                print("The %s coordinate closest to %s is index %d, which is %s"%(coord, v, index, val_list[index].data))
+            val_index_list.append(index)
+
+        return val_index_list
+
     def findCohortByLength(self, length: Union[float, List[float]], verbose: bool = False) -> List[int] :
         """Find the cohort number with the closest length."""
 

@@ -56,12 +56,12 @@ def coordsAccess(coords: xr.Coordinate) -> Tuple[LambdaType,LambdaType,LambdaTyp
             lambda lon : posClosestCoord(coords['lon'], lon))
 
 class FeedingHabitat :
-    
+
     def __init__(self,
                  xml_filepath: str,
                  float_32: bool = True) :
         """
-        Initialize the FeedingHabitat instance according to the XML 
+        Initialize the FeedingHabitat instance according to the XML
         configuration file passed in argument.
 
         Parameters
@@ -80,7 +80,7 @@ class FeedingHabitat :
             Specify if the data in NetCDF files are in float 32 (True) or float
             64 (False).
             The default is True.
-        
+
         Returns
         -------
         FeedingHabitat
@@ -92,7 +92,7 @@ class FeedingHabitat :
 
     def __str__(self) -> str:
         return self.data_structure.__str__()
-    
+
     def __repr__(self) -> str:
         return self.data_structure.__repr__()
 
@@ -120,12 +120,12 @@ class FeedingHabitat :
         a = 0.07
         e = 1.0 / cos(phi)
         b = a * sqrt(e*e - 1.0)
-    
+
         # coordinate center
         # shift is to have all y>=0
         x0 = 1.0-0.00101482322788
         y0 = 1.0
-    
+
         # equation for hyperbola
         sinsq = sin(phi) * sin(phi)
         cossq = 1.0-sinsq
@@ -134,7 +134,7 @@ class FeedingHabitat :
         A = sinsq*rasq - cossq*rbsq
         B = -2.0 * (data-x0) * cos(phi) * sin(phi) * (rasq+rbsq)
         C = 1.0 - (data-x0) * (data-x0) * (sinsq*rbsq - cossq*rasq)
-    
+
         return (y0+(B+np.sqrt(B*B-4.0*A*C))/(2*A))
 
     def _selSubDataArray(self,
@@ -159,7 +159,7 @@ class FeedingHabitat :
                     lon_min: int = None, lon_max: int = None) -> np.ndarray :
         """Select a part of the Mask (Numpy array) passed in argument
         according to time, latitude and longitude"""
-            
+
         tmp = self.data_structure.global_mask[mask]
 
         return tmp[:,
@@ -169,21 +169,21 @@ class FeedingHabitat :
     def _sigmaStar(self, sigma_0, sigma_K) :
         """Return sigmaStar (the termal tolerance intervals, i.e. standard
         deviation) for each cohorts."""
-        
+
         cohorts_mean_weight = self.data_structure.species_dictionary[
             'cohorts_mean_weight']
         max_weight = np.max(cohorts_mean_weight)
 
         return sigma_0 + ((sigma_K - sigma_0)
                           * (cohorts_mean_weight / max_weight))
-    
+
     def _tStar(self, T_star_1, T_star_K, bT) :
         """Return T_star (optimal temperature, i.e. mean) for each cohorts"""
-        
+
         cohorts_mean_length = self.data_structure.species_dictionary[
             'cohorts_mean_length']
         max_length = np.max(cohorts_mean_length)
-        
+
         return T_star_1 - ((T_star_1 - T_star_K)
                            * ((cohorts_mean_length / max_length)**bT))
 
@@ -192,7 +192,7 @@ class FeedingHabitat :
                      time_start: int = None, time_end: int = None,
                      lat_min: int = None, lat_max: int = None,
                      lon_min: int = None, lon_max: int = None) -> np.ndarray :
-        
+
         sigma_star = self._sigmaStar(
             self.data_structure.parameters_dictionary['sigma_0'],
             self.data_structure.parameters_dictionary['sigma_K'])
@@ -200,7 +200,7 @@ class FeedingHabitat :
             self.data_structure.parameters_dictionary['T_star_1'],
             self.data_structure.parameters_dictionary['T_star_K'],
             self.data_structure.parameters_dictionary['bT'])
-        
+
         sigma_star = sigma_star[cohort]
         T_star = T_star[cohort]
 
@@ -210,7 +210,7 @@ class FeedingHabitat :
 
         for layer_name, mask_name in iterate :
             variable = self._selSubDataArray(self.data_structure.variables_dictionary[layer_name],time_start,time_end,lat_min,lat_max,lon_min,lon_max)
-            
+
             mask = self._selSubMask(mask_name, lat_min, lat_max, lon_min, lon_max)
 
             layer_buffer.append(
@@ -252,17 +252,17 @@ class FeedingHabitat :
             else :
                 variable = self._selSubDataArray(
                     variable,time_start,time_end,lat_min,lat_max,lon_min,lon_max)
-            
+
             mask = self._selSubMask(mask_name, lat_min, lat_max, lon_min, lon_max)
-            
+
             layer_buffer.append(
                 np.where(
                     mask,
                     1.0 / (1.0 + (np.power(gamma,(variable - o_star)))),
                     0.0)
                 )
-        
-        return np.array(layer_buffer) 
+
+        return np.array(layer_buffer)
 
     def _forage(self,
                 time_start: int = None, time_end: int = None,
@@ -308,7 +308,7 @@ class FeedingHabitat :
 
         mask_L1 = self._selSubMask('mask_L1', lat_min, lat_max, lon_min, lon_max)
         mask_L2 = self._selSubMask('mask_L2', lat_min, lat_max, lon_min, lon_max)
-        mask_L3 = self._selSubMask('mask_L3', lat_min, lat_max, lon_min, lon_max)  
+        mask_L3 = self._selSubMask('mask_L3', lat_min, lat_max, lon_min, lon_max)
 
         # Compute Layers ######################################################
         layer_1 = np.add(
@@ -392,7 +392,7 @@ class FeedingHabitat :
                         self.data_structure.cohorts_number-1))
 
             coords = data_structure.coords
-            
+
             if (lat_min is not None) :
                 if ((lat_min < 0) or (lat_min >= coords['lat'].data.size)) :
                     raise ValueError("lat_min out of bounds. Min is %d and Max is %d"%(
@@ -424,12 +424,12 @@ class FeedingHabitat :
                     raise ValueError("time_end out of bounds. Min is %d and Max is %d"%(
                         0, coords['time'].data.size - 1))
             if (time_start is not None) and (time_end is not None) and (time_start > time_end) :
-                raise ValueError("time_start must be <= to time_end.")     
+                raise ValueError("time_start must be <= to time_end.")
 
         controlArguments(
             self.data_structure, cohorts, time_start, time_end, lat_min,
             lat_max, lon_min, lon_max)
-        
+
         fh_oxygen = self._oxygen(
             time_start, time_end, lat_min, lat_max, lon_min, lon_max)
 
@@ -472,7 +472,7 @@ class FeedingHabitat :
                 attrs={
                     'Cohort number':cohort_number,
                     'Age start (days)' : self.data_structure.species_dictionary[
-                        'cohorts_starting_age'][cohort_number], 
+                        'cohorts_starting_age'][cohort_number],
                     'Age end (days)' : self.data_structure.species_dictionary[
                         'cohorts_final_age'][cohort_number],
                     'Length (cm)' : self.data_structure.species_dictionary[
@@ -504,7 +504,7 @@ class FeedingHabitat :
         """
         The feeding habitat evolves over time. Each time step corresponds to
         a cohort at a specific age.
-        
+
         Parameters
         ----------
         cohort_start : int, optional
@@ -553,7 +553,10 @@ class FeedingHabitat :
             if cohort_start is None :
                 cohort_start = 0
             if cohort_end is None :
-                cohort_end = cohorts_number - 1
+                if time_end is not None:
+                    cohort_end = cohort_start + time_end - time_start
+                else:
+                    cohort_end = cohorts_number - 1
             if (cohort_start < 0) or (cohort_start >= cohorts_number) :
                 raise ValueError("cohort_start out of bounds. Min is %d and Max is %d"%(
                     0, cohorts_number - 1))
@@ -561,7 +564,7 @@ class FeedingHabitat :
                 raise ValueError("cohort_end out of bounds. Min is %d and Max is %d"%(
                     0, cohorts_number - 1))
             if cohort_start > cohort_end :
-                raise ValueError("cohort_start must be <= to cohort_end.")  
+                raise ValueError("cohort_start must be <= to cohort_end.")
             cohort_array = np.arange(cohort_start, cohort_end+1)
 
             coords = data_structure.coords
@@ -578,7 +581,7 @@ class FeedingHabitat :
                     0, coords['time'].data.size - 1))
             if time_start > time_end :
                 raise ValueError("time_start must be <= to time_end.")
-            
+
             time_array = np.arange(time_start, time_end+1)
 
             if cohort_array[-1] < cohorts_number-1 :
@@ -620,8 +623,8 @@ class FeedingHabitat :
             dims=('time','lat','lon'),
             coords=dict(
                 time=self.data_structure.coords['time'].data[time_array[0]:time_array[-1]+1],
-                lat=self.data_structure.coords['lat'].data[lat_min:lat_max],
-                lon=self.data_structure.coords['lon'].data[lon_min:lon_max],
+                lat=self.data_structure.coords['lat'].data[lat_min:lat_max+1],
+                lon=self.data_structure.coords['lon'].data[lon_min:lon_max+1],
                 cohorts=("time", cohort_axis)),
             attrs=dict(
                 description="Feeding habitat of a species that evolves over time.",
@@ -637,43 +640,43 @@ class FeedingHabitat :
         Correct the T_epi temperature by the vertical gradieng magnitude.
         Improves fit in EPO and shallow-thermocline zones.
         Was tested only for SKJ.
-        
+
         Notes
         -----
         Since the estimate of sigma with SST is always lower due to larger
         extension of warm watermasses in the surface, we will add 1.0 to sigma_0.
-        
+
         Reference
         ---------
         Original is from SEAPODYM, Senina et al. (2020)
             Adapted to python : J. Lehodey (2021)
-        
+
         Returns
         -------
         None.
         """
-        
+
         print("Warning : This function (correctEpiTempWithZeu) was only tested"
               + " for Skipjack.\n It will also add +1 to sigma_min. Cf. function"
               + " documentation for more details.")
-        
+
         dTdz = np.divide(2.0 * (self.data_structure.variables_dictionary['sst']
                          - self.data_structure.variables_dictionary['temperature_L1']),
                          #(1000.0 * self.variables_dictionary['zeu']),
                          self.data_structure.variables_dictionary['zeu'],
                          out=np.zeros_like(self.data_structure.variables_dictionary['zeu']),
                          where=self.data_structure.variables_dictionary['zeu']!=0.0)
-        
+
         dTdz = np.where(dTdz < 0.0, 0.0, dTdz)
         dTdz = np.where(dTdz > 0.2, 0.2, dTdz)
-        
+
         self.data_structure.variables_dictionary['temperature_L1'] = (
             self.data_structure.variables_dictionary['temperature_L1']
             + 4.0 * dTdz * (self.data_structure.variables_dictionary['sst']
                             - self.data_structure.variables_dictionary['temperature_L1'])
             )
-        
-        # Since the estimate of sigma with sst is always lower 
+
+        # Since the estimate of sigma with sst is always lower
 		# due to larger extension of warm watermasses in the surface
 		# will add 1.0 here while passing to integrated T
         self.data_structure.parameters_dictionary['sigma_0'] += 1.0
