@@ -7,8 +7,9 @@ import parcels
 import xarray as xr
 from parcels.tools.converters import Geographic, GeographicPolar
 
-from ..feedinghabitat import FeedingHabitat
+from ..feedinghabitat import FeedingHabitat, feedinghabitatconfigreader as fhcf
 from .ikamoanafieldsconfigreader import readIkamoanaFieldsXML
+from .. import dymfiles as df
 
 
 def convertToField(field : Union[xr.DataArray, xr.Dataset], name=None) :
@@ -284,6 +285,14 @@ class IkamoanaFields :
                     dims=('time','lat','lon'),
                     attrs=field.attrs))
 
+    def current_forcing(self):
+        U = fhcf.seapodymFieldConstructor(self.feeding_habitat_structure.data_structure.root_directory+
+                               self.ikamoana_fields_structure.u_file,  dym_varname='u_L1')
+        V = fhcf.seapodymFieldConstructor(self.feeding_habitat_structure.data_structure.root_directory+
+                               self.ikamoana_fields_structure.v_file,  dym_varname='v_L1')
+        return U, V
+
+
     def taxis(self, dHdlon: xr.DataArray, dHdlat: xr.DataArray,
               name: str = None) -> Tuple[xr.DataArray,xr.DataArray] :
         """
@@ -472,14 +481,14 @@ class IkamoanaFields :
         if (self.feeding_habitat is None) or (not use_already_computed_habitat) :
             if cohort is None :
                 raise ValueError("cohort argument must be specified. Actual is %s."%(str(cohort)))
-            feeding_habitat = self.feeding_habitat_structure.computeFeedingHabitat(
+            self.feeding_habitat = self.feeding_habitat_structure.computeFeedingHabitat(
                 cohort,time_start,time_end,lat_min,lat_max,lon_min,lon_max,verbose)
-            fh_name = list(feeding_habitat.var()).pop()
-            fh_attrs = feeding_habitat.attrs
-            feeding_habitat = feeding_habitat[fh_name]
-            feeding_habitat.attrs.update(fh_attrs)
-        else :
-            feeding_habitat = self.feeding_habitat
+            fh_name = list(self.feeding_habitat.var()).pop()
+            fh_attrs = self.feeding_habitat.attrs
+            self.feeding_habitat = feeding_habitat[fh_name]
+            self.feeding_habitat.attrs.update(fh_attrs)
+
+        feeding_habitat = self.feeding_habitat
 
         hf_cond, ssto_cond = (self.ikamoana_fields_structure.landmask_from_habitat,
                               self.ikamoana_fields_structure.shallow_sea_to_ocean)
@@ -509,10 +518,10 @@ class IkamoanaFields :
         """
 
         if (self.feeding_habitat is None) or (not use_already_computed_habitat) :
-            feeding_habitat = self.feeding_habitat_structure.computeEvolvingFeedingHabitat(
+            self.feeding_habitat = self.feeding_habitat_structure.computeEvolvingFeedingHabitat(
                 cohort_start,cohort_end,time_start,time_end,lat_min,lat_max,lon_min,lon_max,verbose)
-        else :
-            feeding_habitat = self.feeding_habitat
+
+        feeding_habitat = self.feeding_habitat
 
         hf_cond, ssto_cond = (self.ikamoana_fields_structure.landmask_from_habitat,
                               self.ikamoana_fields_structure.shallow_sea_to_ocean)
