@@ -1,11 +1,10 @@
 from typing import List, Tuple, Union
- 
+
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import xarray as xr
 from sklearn import linear_model
-
-# TODO ; Take into account fisheries with severals "gear".
 
 def readFile(filepath: str, header_position: int = None,
              columns_name: List[str] = None) -> pd.DataFrame :
@@ -221,7 +220,9 @@ def normalizeCoords(data_set: xr.Dataset, deltaT: Union[int,List[int]],
                                                 deltaT[pos],
                                                 space_reso[pos])
     
-    return xr.Dataset(f_effort_dict)
+    return xr.Dataset(f_effort_dict, attrs=data_set.attrs)
+
+## TOOL ################################################################
 
 def sumDataSet(fisheries: xr.Dataset) -> xr.DataArray :
     
@@ -233,21 +234,97 @@ def sumDataSet(fisheries: xr.Dataset) -> xr.DataArray :
     
     return xr.DataArray(data=sum, coords=fisheries.coords,attrs={"Type":"Sum of "+fisheries.attrs["Type"]})
 
+def toTextFile(fisheries: Union[dict, pd.DataFrame],
+               filepath: str = './ouput.txt', fishery_label: str = "f",
+               resolution_label: str = "res", gear_label: str = "gr",
+               year_label: str = "yr", month_label: str = "mm",
+               day_label: str = "dd", latitude_label: str = "lat",
+               longitude_label: str = "lon", effort_label: str = "E", catch_label: str = "C") :
+
+    if ((not isinstance(fisheries, dict))
+        or (not isinstance(fisheries, pd.DataFrame))) :
+        raise ValueError(
+            ("Argument fisheries must be a dict or a pandas DataFrame. Actual "
+             "type is {}").format(type(fisheries)))
+
+    if isinstance(fisheries, dict) :
+        fisheries = pd.concat(fisheries.values())
+    
+    fisheries = fisheries.sort_values([fishery_label, year_label, month_label,
+                                       day_label, latitude_label, longitude_label])
+    fisheries = fisheries[fishery_label, year_label, month_label, day_label,
+                          gear_label, latitude_label, longitude_label,
+                          effort_label, catch_label]
+    fisheries.to_csv(filepath, sep='\t', index= False)
+        
 
 ## CLEANING DATA #######################################################
 
-## TODO : Write this function ?
-def removeEmptyEntries():
-    pass
+def removeEmptyEntries(fishery: pd.DataFrame, fisheries_label: str = 'f',
+                       effort_label: str = 'E', catch_label: str = 'C',
+                       verbose: bool = False) -> pd.DataFrame :
+    if verbose :
+        print("Removed %d empty entries."%(
+            len(fishery[(fishery[catch_label]==0)
+                        & (fishery[effort_label]==0)])))
+        print('Number of empty entries per fishery :\n',
+              fishery[(fishery[catch_label]==0) & (fishery[effort_label]==0)][
+                  [fisheries_label, catch_label]].groupby(
+                      [fisheries_label]).count().rename(
+                          columns={catch_label:'empty'}).T,end="\n\n")
 
-## TODO : Write this function ?
-def plotByGear():
-    pass
+    return fishery[(fishery[catch_label]!=0) | (fishery[effort_label]!=0)]
+
+def removeNoCatchEntries(fishery: pd.DataFrame,fisheries_label: str = 'f',
+                         catch_label: str = 'C', verbose: bool = False
+                         ) -> pd.DataFrame :
+    if verbose :
+        print("Removed %d entries without catch."%(
+            len(fishery[fishery[catch_label]==0])))
+        print('Number of entries without catch per fishery :\n',
+              fishery[fishery[catch_label]==0][
+                  [fisheries_label,catch_label]].groupby(
+                      [fisheries_label]).count().rename(
+                          columns={catch_label:'no catch'}).T)
+        
+    return fishery[fishery[catch_label]!=0]
+
+def plotByGear(fishery: pd.DataFrame, choose_gear: List = None,
+               gear_label: str = 'gr', effort_label: str = 'E',
+               catch_label: str = 'C', figsize=(10,10), label_fontsize=15,
+               legend_fontsize=15, title=None, title_fontsize=24) :
+    """
+    Warnings
+    --------
+    Don't use `groupByFisheries()` before using this function.
+    """
+    plt.subplots(1,1,figsize=figsize)
+    if choose_gear is None: gr = fishery[gear_label].explode().unique()
+    else : gr = np.array(choose_gear).ravel()
+        
+    #color = ['b','g','r','c','m','y','k']
+    color = ['blue','orange','green','red','purple','brown','pink','gray','olive','cyan']
+
+    for g, c in zip(gr,color) :
+        plt.plot(fishery[fishery[gear_label]==g][catch_label],
+                 fishery[fishery[gear_label]==g][effort_label],
+                 marker='o', markersize=2, color=c,linestyle="None")
+
+    plt.legend(gr, fontsize=legend_fontsize)
+    plt.xlabel("Catch", fontsize=label_fontsize)
+    plt.ylabel("Effort", fontsize=label_fontsize)
+    plt.title(title, fontsize=title_fontsize)
+    plt.grid(True)
+    plt.show()
 
 def predictEffort(fishery: pd.DataFrame, conserve_no_catch: bool = False,
                   conserve_empty: bool = False, gear_to_choose: str = 'K',
                   catch_label: str = 'C', gear_label: str = 'gr',
                   effort_label: str = 'E') -> pd.DataFrame :
+    """
+    Predict effort (where effort is null but catch is not) using linear
+    regression.
+    """
     
     model = fishery[(fishery[gear_label]==gear_to_choose)
                     & (fishery[effort_label]!=0) & (fishery[catch_label]!=0)]
@@ -260,17 +337,60 @@ def predictEffort(fishery: pd.DataFrame, conserve_no_catch: bool = False,
     nothing = effort_to_predict[(effort_to_predict[effort_label]==0)
                                & (effort_to_predict[catch_label]==0)]
     
-    effort_to_predict = effort_to_predict[(effort_to_predict[catch_label]!=0)]
-    
-    regr = linear_model.LinearRegression()
-    fun = regr.fit(np.array(model[catch_label])[:,np.newaxis],
-                   np.array(model[effort_label]))
-    effort_to_predict.drop(effort_label, axis=1)
-    effort_to_predict[effort_label] = fun.predict(
-        np.array(effort_to_predict[catch_label])[:,np.newaxis])
-    
+    if effort_to_predict.size != 0 :
+        effort_to_predict = effort_to_predict[(effort_to_predict[catch_label]!=0)]
+        
+        regr = linear_model.LinearRegression()
+        fun = regr.fit(np.array(model[catch_label])[:,np.newaxis],
+                    np.array(model[effort_label]))
+        
+        effort_to_predict.drop(effort_label, axis=1)
+        effort_to_predict[effort_label] = fun.predict(
+            np.array(effort_to_predict[catch_label])[:,np.newaxis])
+        
     df_to_return = [model, effort_to_predict]
     if conserve_no_catch : df_to_return.append(no_catch_but_effort)
     if conserve_empty :df_to_return.append(nothing)
     
     return pd.concat(df_to_return)
+
+def predictEffortAllFisheries(
+    fishery: dict, conserve_no_catch: bool = True,
+    conserve_empty: bool = True, gear_to_choose: dict = {9:'K'},
+    catch_label: str = 'C', gear_label: str = 'gr',
+    effort_label: str = 'E') -> dict :
+    
+    dict_update = {}
+    for key, value in fishery.items() :
+        if key in gear_to_choose : gear = gear_to_choose[key]
+        else :
+            gear_list, index = np.unique(value[gear_label],
+                                         return_counts=True)
+            gear = gear_list[np.argmax(index)]
+
+        new_value = predictEffort(value,conserve_no_catch,conserve_empty,gear,
+                                  catch_label,gear_label,effort_label)
+        dict_update[key] = new_value
+    
+    fishery.update(dict_update)
+    
+    return fishery
+
+## WRAPPER #############################################################
+
+def effortByFishery(filepath: str, time_reso: int, space_reso: float,
+                    header_position: int = None, columns_name: List[str] = None,
+                    removeNoCatch: bool = False, predict_effort: bool =False,
+                    verbose: bool = False) -> dict :
+    
+    fisheries_effort = readFile(filepath, header_position, columns_name)
+    fisheries_effort = removeEmptyEntries(fisheries_effort,verbose)
+    if removeNoCatch :
+        fisheries_effort = removeNoCatchEntries(fisheries_effort,verbose)
+    fisheries_effort = separateFisheries(fisheries_effort)
+    if predict_effort :
+        fisheries_effort = predictEffortAllFisheries(fisheries_effort)
+    fisheries_effort = rescaleFisheries(fisheries_effort)
+    fisheries_effort = groupByFisheries(fisheries_effort)
+    fisheries_effort, _ = fisheriesToDataSet(fisheries_effort)
+    return normalizeCoords(fisheries_effort, time_reso, space_reso)

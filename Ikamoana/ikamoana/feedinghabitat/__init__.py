@@ -1,12 +1,13 @@
 """
 Summary
 -------
-This package is implementing the FeedingHabitat class which can simulate the
-feeding habitat the same way as the SEAPODYM model (2020-08).
-The FeedingHabitat class start by initalizing the HabitatDataStructure class
-using the FeedingHabitatConfigReader module. Then, it performes computation
-of the Feeding Habitat, for each cohort specified in argument, returned as
-a DataSet.
+This class can simulate the feeding habitat in the same manner as
+the SEAPODYM model (2020-08). The FeedingHabitat class first
+initializes the HabitatDataStructure class using the
+FeedingHabitatConfigReader module. Then, it performs the feeding
+habitat calculation for each cohort specified as an argument,
+returned as a DataSet. It can also calculate the habitat for a
+cohort that changes over time (moving from one cohort to another).
 
 Examples
 --------
@@ -43,7 +44,20 @@ Computing Feeding Habitat for cohort 2.
 [...]
 Computing Feeding Habitat for cohort [cohorts_number-1].
 
+Third example : Calculate the habitat for a cohort that evolves over time.
+
+>>> fh = ikamoana.feedinghabitat.FeedingHabitat(
+...     xml_filepath="./path/to/file.xml")
+>>> result = fh.computeEvolvingFeedingHabitat(
+...     cohort_start=0, cohort_end=25)
+<xarray.DataArray 'Feeding_Habitat_Cohort_0_to_25' (time: 26,
+    lat: ..., lon: ...)>
+array(...)
+Coordinates:
+    (...)
+[...Many informations to print...]
+
 """
 
 from .feedinghabitat import FeedingHabitat
-from .feedinghabitat import closestCoord, posClosestCoord, coordsAccess
+from .feedinghabitat import closestCoord, indexClosestCoord, coordsAccess
