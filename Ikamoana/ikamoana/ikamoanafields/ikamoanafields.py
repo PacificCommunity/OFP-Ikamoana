@@ -7,7 +7,7 @@ import parcels
 import xarray as xr
 from parcels.tools.converters import Geographic, GeographicPolar
 
-from ..feedinghabitat import FeedingHabitat, feedinghabitatconfigreader as fhcf
+from ..feedinghabitat import FeedingHabitat, coordsAccess, feedinghabitatconfigreader as fhcf
 from .ikamoanafieldsconfigreader import readIkamoanaFieldsXML
 from .. import dymfiles as df
 
@@ -290,6 +290,21 @@ class IkamoanaFields :
                                self.ikamoana_fields_structure.u_file,  dym_varname='u_L1')
         V = fhcf.seapodymFieldConstructor(self.feeding_habitat_structure.data_structure.root_directory+
                                self.ikamoana_fields_structure.v_file,  dym_varname='v_L1')
+
+        if self.feeding_habitat is not None:
+            timefun, latfun, lonfun  = coordsAccess(U)
+            minlon_idx = lonfun(min(self.feeding_habitat.coords['lon'].data))
+            maxlon_idx = lonfun(max(self.feeding_habitat.coords['lon'].data))
+            minlat_idx = latfun(max(self.feeding_habitat.coords['lat'].data))
+            maxlat_idx = latfun(min(self.feeding_habitat.coords['lat'].data))
+            mintime_idx = timefun(min(self.feeding_habitat.coords['time'].data))
+            maxtime_idx =timefun(max(self.feeding_habitat.coords['time'].data))
+            U = sliceField(U, mintime_idx, maxtime_idx,
+                            minlat_idx, maxlat_idx,
+                            minlon_idx, maxlon_idx)
+            V = sliceField(V, mintime_idx, maxtime_idx,
+                            minlat_idx, maxlat_idx,
+                            minlon_idx, maxlon_idx)
         return U, V
 
 
