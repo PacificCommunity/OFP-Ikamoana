@@ -1,26 +1,20 @@
 <?xml version="1.0"?>
+<ika_params>
+  <run_name>IkaSim_Example</run_name>
+  <forcing_dir>C:/Users/joes/Dropbox/SPC_2020/OFP-Ikamoana/Ikamoana/data/feeding_habitat_data/po_2x30_historical_interim/</forcing_dir>
 
-<run_name>
-  IkaSim_Example
-</run_name>
+  <seapodym_parameters>skj_po_interim_2deg_configuration_file.xml</seapodym_parameters>
 
-<forcing_dir>
-  C:/Users/joes/Dropbox/SPC_2020/OFP-Ikamoana/Ikamoana/data/feeding_habitat_data/po_2x30_historical_interim/
-</forcing_dir>
+  <kernels>CalcLonLatScalers IkAdvectionRK4 TaxisRK4 RandomWalkNonUniformDiffusion IkaDymMove</kernels>
 
-<seapodym_parameters>
-  skj_po_interim_2deg_configuration_file.xml
-</seapodym_parameters>
+  <random_seed>None</random_seed>
 
-<random_seed>
-  None
-</random_seed>
+  <cohort_info length='30' ageing='1'/>
 
-<cohort_info length='30' ageing_cohort='1'/>
+  <time start='2008-08-17' sim_time='90' dt='86400' output_dt='86400'/>
 
-<time start='2008-08-15' sim_time='90'/>
-
-<domain>
-  <lon>120 290</lon>
-  <lat>-40 50</lat>
-</domain>
+  <domain>
+    <lon>120 290</lon>
+    <lat>-40 50</lat>
+  </domain>
+</ika_params>
