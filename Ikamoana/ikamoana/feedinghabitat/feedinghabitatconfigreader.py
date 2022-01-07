@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 
 """
-Summary
--------
 This module is used by the feedingHabitat module to setup all variables
 and parameters. It use a XML configuration file that link to all the
 netCDF or DYM files used to compute de feeding habitat.
@@ -16,9 +14,8 @@ See Also
 --------
 - feedingHabitat.FeedingHabitat : class used to compute feeding habitat
 
-Reference
----------
-[1] E. Maier-Reimer (GBC 1993) - Day length
+.. E. Maier-Reimer (GBC 1993)
+    Day length calculation.
 
 """
 

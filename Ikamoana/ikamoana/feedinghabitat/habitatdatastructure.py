@@ -1,6 +1,4 @@
 """
-Summary
--------
 This module is used to declare the data structure that will store all
 the data that the feedinghabitat module will use to calculate the
 feeding habitat.

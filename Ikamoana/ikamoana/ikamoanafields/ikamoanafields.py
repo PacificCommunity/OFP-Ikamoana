@@ -142,13 +142,13 @@ class IkamoanaFields :
                  lon_min: int = None,lon_max: int = None) -> xr.DataArray :
         """Return the landmask of a given habitat or FeedingHabitat.global_mask.
         Mask values :
-            2 -> is Shallow
-            1 -> is Land or No_Data
-            0 -> deep ocean with habitat data
+        2 -> is Shallow
+        1 -> is Land or No_Data
+        0 -> deep ocean with habitat data
 
-        Note:
-        -----
-            Landmask in Original (with Parcels Fields) is flipped on latitude axis.
+        Note
+        ----
+        Landmask in Original (with Parcels Fields) is flipped on latitude axis.
         """
         def controlArguments(habitat_field, lat_min, lat_max, lon_min, lon_max) :
             if habitat_field is not None:
@@ -520,7 +520,8 @@ class IkamoanaFields :
         
         return self.taxis(grad_lon, grad_lat,
                           name=feeding_habitat.name if name is None else name)
-        
+    
+    # TODO : Finish the description
     def computeTaxis(
             self, cohort: int = None,
             time_start: int = None, time_end: int = None,
@@ -529,9 +530,11 @@ class IkamoanaFields :
             name: str = None, use_already_computed_habitat: bool = False,
             verbose: bool = False) -> Tuple[xr.DataArray,xr.DataArray] :
         """Description
-        See Also:
-        ---------
-            FeedingHabitat.computeFeedingHabitat
+        
+        See Also
+        --------
+        FeedingHabitat.computeFeedingHabitat : computeTaxis is based on
+            the feeding habitat.
         """
         
         (time_start,time_end,lat_min,lat_max,lon_min,lon_max) = (
@@ -556,6 +559,7 @@ class IkamoanaFields :
         return self._commonWrapperTaxis(feeding_habitat_da, name, lat_min,
                                         lat_max, lon_min, lon_max)
 
+    # TODO : Finish the description
     def computeEvolvingTaxis(
             self, cohort_start: int = None, cohort_end: int = None,
             time_start: int = None, time_end: int = None,
@@ -564,9 +568,11 @@ class IkamoanaFields :
             name: str = None, use_already_computed_habitat: bool = False,
             verbose: bool = False) -> Tuple[xr.DataArray,xr.DataArray] :
         """Description
-        See Also:
-        ---------
-            FeedingHabitat.computeEvolvingFeedingHabitat
+        
+        See Also
+        --------
+        FeedingHabitat.computeFeedingHabitat : computeEvolvingTaxis is
+            based on the evolving feeding habitat.
         """
 
         (time_start,time_end,lat_min,lat_max,lon_min,lon_max) = (

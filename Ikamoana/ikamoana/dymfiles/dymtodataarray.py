@@ -1,8 +1,4 @@
-"""
-Summary
--------
-This module generate xarray.DataArray from DYM files.
-"""
+"""This module generate xarray.DataArray from DYM files."""
 
 from .core import utilities, dym2
 import xarray as xr

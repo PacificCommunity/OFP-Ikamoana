@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 
 """
-Summary
--------
 This module is implementing the FeedingHabitat class which can simulate the
 feeding habitat the same way as the SEAPODYM model (2020-08).
 This class start by initalizing the HabitatDataStructure class using the
@@ -96,8 +94,6 @@ def coordsAccess(coords: xr.Coordinate) -> Tuple[LambdaType,LambdaType,LambdaTyp
 
 class FeedingHabitat :
     """
-    Summary
-    -------
     This class can simulate the feeding habitat in the same manner as
     the SEAPODYM model (2020-08). The FeedingHabitat class first
     initializes the HabitatDataStructure class using the
@@ -744,10 +740,9 @@ class FeedingHabitat :
         larger extension of warm watermasses in the surface, we will add
         1.0 to sigma_0.
         
-        Reference
-        ---------
-        Original is from SEAPODYM, Senina et al. (2020)
-            Adapted to python : J. Lehodey (2021)
+        .. SEAPODYM C++ Documentation :
+            Original is from SEAPODYM, Senina et al. (2020). Adapted to
+            python by J. Lehodey (2021).
         """
         
         print("Warning : This function (correctEpiTempWithZeu) was only tested"

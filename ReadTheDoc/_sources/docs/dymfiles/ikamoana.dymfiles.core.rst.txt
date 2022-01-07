@@ -1,0 +1,50 @@
+dymfiles.core
+=============
+
+ikamoana.dymfiles.core.dates module
+-----------------------------------
+
+.. automodule:: ikamoana.dymfiles.core.dates
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+ikamoana.dymfiles.core.dym module
+---------------------------------
+
+.. automodule:: ikamoana.dymfiles.core.dym
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+ikamoana.dymfiles.core.dym2 module
+----------------------------------
+
+.. automodule:: ikamoana.dymfiles.core.dym2
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+ikamoana.dymfiles.core.interpolation module
+-------------------------------------------
+
+.. automodule:: ikamoana.dymfiles.core.interpolation
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+ikamoana.dymfiles.core.netcdf module
+------------------------------------
+
+.. automodule:: ikamoana.dymfiles.core.netcdf
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+ikamoana.dymfiles.core.utilities module
+---------------------------------------
+
+.. automodule:: ikamoana.dymfiles.core.utilities
+   :members:
+   :undoc-members:
+   :show-inheritance:
