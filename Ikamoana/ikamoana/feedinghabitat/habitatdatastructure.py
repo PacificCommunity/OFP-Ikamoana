@@ -39,16 +39,16 @@ def equalCoords(data_array_1: xr.DataArray,
         )
         warnings.warn(message_equalCoords)
         return False
-    
+
     lat_comparison = data_array_1.lat.data == data_array_2.lat.data
     lat_condition = not (False in lat_comparison)
-    
+
     lon_comparison = data_array_1.lon.data == data_array_2.lon.data
     lon_condition  = not (False in lon_comparison)
-    
+
     time_comparison = data_array_1.time.data == data_array_2.time.data
     time_condition = not (False in time_comparison)
-    
+
     if verbose :
         if not lat_condition :
             print("Latitude coordinates are different : %d errors for %d values."%(
@@ -59,7 +59,7 @@ def equalCoords(data_array_1: xr.DataArray,
         if not time_condition :
             print("Time coordinates are different : %d errors for %d values."%(
                 time_comparison.size - np.sum(time_comparison), time_comparison.size))
-    
+
     return lat_condition and lon_condition and time_condition
 
 def groupArrayByCoords(variables_dictionary: dict) -> List[List[str]] :
@@ -107,9 +107,9 @@ def compareDims(data_array_1: xr.DataArray, data_array_2: xr.DataArray,
     """
     dim1 = data_array_1.coords[dim].data
     dim2 = data_array_2.coords[dim].data
-    
+
     dim_comparison = dim1 == dim2
-    
+
     if head is None :
         head = dim_comparison.size
     ite = 0
@@ -154,14 +154,14 @@ class HabitatDataStructure :
         parameters_dictionary contains :
             - 'eF_list', 'sigma_0', 'sigma_K', 'T_star_1', 'T_star_K',
             - 'bT', 'gamma', 'o_star', 'deltaT', 'space_reso'}
-        
+
         species_dictionary contains :
             - 'sp_name', 'nb_life_stages', 'life_stage',
             - 'nb_cohort_life_stage', 'cohorts_mean_length',
             - 'cohorts_mean_weight', 'cohorts_sp_unit',
             - 'cohorts_starting_age', 'cohorts_final_age'}
         """
-        
+
         self.root_directory           = kargs['root_directory']
         self.output_directory         = kargs['output_directory']
         self.layers_number            = kargs['layers_number']
@@ -261,7 +261,7 @@ class HabitatDataStructure :
                 "Oxygen is a climatologic field. It meen that only 1 year is"
                 "modelized in the DataArray.\n"
             )
-        
+
         summary_str += (
             "\n#\t#\t#\t#\t#\n\n"
             "TIPS : The user can use equalCoords() or compareDims() functions"
@@ -270,6 +270,36 @@ class HabitatDataStructure :
         )
 
         return summary_str
+
+    def findIndexByDatetime(self, date: Union[np.datetime64, List[np.datetime64]], verbose: bool = False) -> List[int] :
+        """Find the time dimension index with the closest date."""
+
+        date_list = self.coords['time']
+        date = np.ravel(date)
+        date_index_list = []
+
+        for d in date:
+            index = np.absolute(date_list-d).argmin()
+            if verbose :
+                print("The time coordinate closest to %s is index %d, which is %s"%(d, index, date_list[index].data))
+            date_index_list.append(index)
+
+        return date_index_list
+
+    def findCoordIndexByValue(self, val: Union[float, List[float]], coord='lon', verbose: bool = False) -> List[int] :
+        """Find the time dimension index with the closest date."""
+
+        val_list = self.coords[coord]
+        val = np.ravel(val)
+        val_index_list = []
+
+        for v in val:
+            index = np.absolute(val_list-v).argmin()
+            if verbose :
+                print("The %s coordinate closest to %s is index %d, which is %s"%(coord, v, index, val_list[index].data))
+            val_index_list.append(index)
+
+        return val_index_list
 
     def findCohortByLength(self, length: Union[float, List[float]], verbose: bool = False) -> List[int] :
         """
@@ -287,7 +317,7 @@ class HabitatDataStructure :
         List[int]
             List of age.
         """
-        
+
         length_list = self.species_dictionary['cohorts_mean_length']
         length = np.ravel(length)
         cohort_number_list = []
@@ -299,7 +329,7 @@ class HabitatDataStructure :
             cohort_number_list.append(index)
 
         return  cohort_number_list
-    
+
     def findCohortByWeight(self, weight: Union[float, List[float]], verbose: bool = False) -> List[int] :
         """
         Find the cohort number with the closest weight.
@@ -326,7 +356,7 @@ class HabitatDataStructure :
             if verbose :
                 print("The cohort with the weight closest to %f is cohort number %d whose weight is %f"%(w, index, weight_list[index]))
             cohort_number_list.append(index)
-        
+
         return cohort_number_list
 
     def findLengthByCohort(self, cohort: Union[float, List[float]], verbose: bool = False) -> List[int] :
@@ -350,7 +380,7 @@ class HabitatDataStructure :
         cohort = np.ravel(cohort)
 
         return  cohort_length_list[cohort]
-    
+
     def findWeightByCohort(self, cohort: Union[float, List[float]], verbose: bool = False) -> List[int] :
         """Find cohort weight according to cohort number.
         
@@ -375,7 +405,7 @@ class HabitatDataStructure :
 
     def __str__(self) -> str:
         return self._summaryToString()
-    
+
     def __repr__(self) -> str:
         return self._summaryToString()
     
@@ -404,4 +434,3 @@ class HabitatDataStructure :
         
         self.variables_dictionary.update(variable_update)
         self.coords = self.variables_dictionary['temperature_L1'].coords
-            

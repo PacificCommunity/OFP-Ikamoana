@@ -7,8 +7,9 @@ import parcels
 import xarray as xr
 from parcels.tools.converters import Geographic, GeographicPolar
 
-from ..feedinghabitat import FeedingHabitat
+from ..feedinghabitat import FeedingHabitat, coordsAccess, feedinghabitatconfigreader as fhcf
 from .ikamoanafieldsconfigreader import readIkamoanaFieldsXML
+from .. import dymfiles as df
 from ..fisherieseffort import fisherieseffort
 
 
@@ -16,7 +17,6 @@ def convertToField(field : Union[xr.DataArray, xr.Dataset], name=None) :
     """
     Converts a DataSet/DataArray to a `parcels.FieldSet`.
     """
-    
     
     if isinstance(field, xr.DataArray) :
         field = field.to_dataset(name=name if name is not None else field.name)
@@ -31,7 +31,6 @@ def sliceField(field : Union[xr.DataArray, xr.Dataset],
                time_start: int = None, time_end: int = None,
                lat_min: int = None, lat_max: int = None,
                lon_min: int = None, lon_max: int = None) -> Union[xr.DataArray, xr.Dataset] :
-    
     """
     This function is equivalent to `xarray.DataArray.loc[]`. Moreover,
     sliceField will not automaticaly find the nearest value while
@@ -88,13 +87,14 @@ class IkamoanaFields :
 # ------------------------- CORE FUNCTIONS ------------------------- #
 
     def __init__(self,
-                 xml_fields : str,
+                 #xml_fields : str,
                  xml_feeding_habitat : str,
                  feeding_habitat : xr.DataArray = None):
         """Create a IkamoanaFields class. Can compute Taxis, Current and Diffusion
         fields."""
 
-        self.ikamoana_fields_structure = readIkamoanaFieldsXML(xml_fields)
+        #self.ikamoana_fields_structure = readIkamoanaFieldsXML(xml_fields)
+        self.ikamoana_fields_structure = readIkamoanaFieldsXML(None)
         self.feeding_habitat_structure = FeedingHabitat(xml_feeding_habitat)
         if (feeding_habitat is None) or isinstance(feeding_habitat,xr.DataArray) :
             self.feeding_habitat = feeding_habitat
@@ -104,19 +104,19 @@ class IkamoanaFields :
 
     def readFisheriesXML(self, xml_config_file: str,
                          species_name: str = None) -> dict :
-        
+
         tree = ET.parse(xml_config_file)
         root = tree.getroot()
         if species_name == None : species_name = root.find("sp_name").text
-        
+
         nb_fishery = int(root.find('nb_fishery').attrib['value'])
         list_fishery_name = root.find('list_fishery_name').text.split()
-        
+
         # fisheries name
         if len(list_fishery_name) != nb_fishery :
             raise ValueError("nb_fishery is %d but list_fishery_name"%(nb_fishery)
                              + "contains %d elements."%(len(list_fishery_name)))
-        
+
         f_param = {}
         for f in list_fishery_name :
             tmp_dict = {
@@ -132,7 +132,7 @@ class IkamoanaFields :
                     root.find("s_sp_fishery").find(f).find(
                         "right_asymptote").attrib[species_name])
             f_param[f] = tmp_dict
-            
+
         return f_param
 
     def vMax(self, length : float) -> float :
@@ -187,7 +187,7 @@ class IkamoanaFields :
             mask_L3 = np.invert(
                 self.feeding_habitat_structure.data_structure.global_mask[
                     'mask_L3'])[0, lat_min:lat_max, lon_min:lon_max]
-            
+
             landmask = np.zeros(mask_L1.shape, dtype=np.int8)
             if not shallow_sea_to_ocean :
                 landmask[mask_L3] = 2
@@ -248,7 +248,7 @@ class IkamoanaFields :
         def getCellEdgeSizes(field) :
             """Copy of the Field.calc_cell_edge_sizes() function in Parcels.
             Avoid the convertion of DataArray into Field."""
-        
+
             field_grid = parcels.grid.RectilinearZGrid(
                 field.lon.data, field.lat.data,
                 depth=None, time=None, time_origin=None,
@@ -268,7 +268,7 @@ class IkamoanaFields :
             return field_grid.cell_edge_sizes['x'], field_grid.cell_edge_sizes['y']
 
         dlon, dlat = getCellEdgeSizes(field)
-        
+
         nlat = field.lat.size
         nlon = field.lon.size
 
@@ -319,8 +319,31 @@ class IkamoanaFields :
                     dims=('time','lat','lon'),
                     attrs=field.attrs))
 
+    def current_forcing(self):
+        U = fhcf.seapodymFieldConstructor(self.feeding_habitat_structure.data_structure.root_directory+
+                               self.ikamoana_fields_structure.u_file,  dym_varname='u_L1')
+        V = fhcf.seapodymFieldConstructor(self.feeding_habitat_structure.data_structure.root_directory+
+                               self.ikamoana_fields_structure.v_file,  dym_varname='v_L1')
+
+        if self.feeding_habitat is not None:
+            timefun, latfun, lonfun  = coordsAccess(U)
+            minlon_idx = lonfun(min(self.feeding_habitat.coords['lon'].data))
+            maxlon_idx = lonfun(max(self.feeding_habitat.coords['lon'].data))
+            minlat_idx = latfun(max(self.feeding_habitat.coords['lat'].data))
+            maxlat_idx = latfun(min(self.feeding_habitat.coords['lat'].data))
+            mintime_idx = timefun(min(self.feeding_habitat.coords['time'].data))
+            maxtime_idx =timefun(max(self.feeding_habitat.coords['time'].data))
+            U = sliceField(U, mintime_idx, maxtime_idx,
+                            minlat_idx, maxlat_idx,
+                            minlon_idx, maxlon_idx)
+            V = sliceField(V, mintime_idx, maxtime_idx,
+                            minlat_idx, maxlat_idx,
+                            minlon_idx, maxlon_idx)
+        return U, V
+
+
     def taxis(self, dHdlon: xr.DataArray, dHdlat: xr.DataArray,
-              name: str = None) -> Tuple[xr.DataArray,xr.DataArray] : 
+              name: str = None) -> Tuple[xr.DataArray,xr.DataArray] :
         """
         Calculation of the Taxis field from the gradient.
         """
@@ -420,7 +443,7 @@ class IkamoanaFields :
                 * self.ikamoana_fields_structure.diffusion_scale
                 + self.ikamoana_fields_structure.diffusion_boost
             )
-             
+
 
         return xr.DataArray(data=K,
                             name="K_" + (habitat.name if name is None else name),
@@ -431,29 +454,29 @@ class IkamoanaFields :
     def fishingMortality(self, effort_ds: xr.Dataset, fisheries_parameters: dict,
                          start_age: int = 0, convertion_tab: dict = None,
                          evolving: bool = True) -> xr.DataArray :
-        
+      
         if len(effort_ds) != len(fisheries_parameters.keys()) :
             raise ValueError("effort_ds (%d) and fisheries_parameters (%d) "
                              "must have same length."%(len(effort_ds),
                                                        len(fisheries_parameters.keys())))
-        
+
         # TYPE I - Not Supported
         def selectivityLimitOne(length, sigma):
             warnings.warn("Selectivity Function not supported! q set to 0")
             #return length / (sigma+length)
             return 0
-        
+
         # TYPE II
         def selectivitySigmoid(length, sigma, mu) :
             return (1 + np.exp(-sigma*(length-mu)))**(-1)
-        
+
         # TYPE III
         def selectivityAsymmetricGaussian(length, mu, r_asymp, sigma_sq) :
             if length > mu:
                 return np.exp(-((length-mu)**2/sigma_sq)) * (1-r_asymp) + r_asymp
             else:
-                return np.exp(-((length-mu)**2/sigma_sq)) 
-        
+                return np.exp(-((length-mu)**2/sigma_sq))
+
         # Functions Generator
         def selectivity(function_type, sigma, mu, r_asymp=None) :
             if function_type == 3 :
@@ -468,7 +491,7 @@ class IkamoanaFields :
                 return lambda length : selectivityLimitOne(
                     length, sigma=sigma
                 )
-
+              
         ## NOTE : Original code
         # E_scaler = (1.0/30.0)*7.0
         # F_scaler = 30.0 / 7.0 / 7.0
@@ -590,7 +613,7 @@ class IkamoanaFields :
         (time_start,time_end,lat_min,lat_max,lon_min,lon_max) = (
             self.feeding_habitat_structure.controlArguments(
                 time_start, time_end, lat_min, lat_max, lon_min, lon_max))
-        
+
         if (self.feeding_habitat is None) or (not use_already_computed_habitat) :
             if cohort is None :
                 raise ValueError("cohort argument must be specified. "
@@ -662,7 +685,7 @@ class IkamoanaFields :
             The first one is the Taxis_longitude and the second is the
             Taxis_latitude DataArray.
         """
-
+        
         (time_start,time_end,lat_min,lat_max,lon_min,lon_max) = (
             self.feeding_habitat_structure.controlArguments(
                 time_start, time_end, lat_min, lat_max, lon_min, lon_max))
@@ -678,6 +701,5 @@ class IkamoanaFields :
         
         return self._commonWrapperTaxis(feeding_habitat, name, lat_min,
                                         lat_max, lon_min, lon_max)
-        
-        
-        
+      
+      
