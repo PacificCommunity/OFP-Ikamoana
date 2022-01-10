@@ -34,7 +34,6 @@ def seapodymFieldConstructor(filepath: str,
                              dym_attributs : str = None) -> xr.DataArray :
     """Return a Seapodym field as a DataArray using NetCDF or Dym method according
     to the file extension : 'nc', 'cdf' or 'dym'. """
-
     #NetCDF
     if filepath.lower().endswith(('.nc', '.cdf')) :
         return xr.open_dataarray(filepath)
@@ -80,7 +79,7 @@ def _loadMask(variables_dictionary, from_text=None, expend_time=True) :
     Returns
     -------
     global_mask : dict.
-        The dictionary contains "mask_L1", "mask_L2", "mask_L3" which are 
+        The dictionary contains "mask_L1", "mask_L2", "mask_L3" which are
         numpy arrays.
 
     """
@@ -239,8 +238,10 @@ def _readXmlConfigFilepaths(root, root_directory, layers_number) :
 
     forage_filepaths = []
     forage_directory  = root.find('strdir_forage').attrib['value']
+    #We will assume if the temp files are in dym format, so are the forage
+    forage_filetype = ".dym" if temperature_filepaths[0].lower().endswith('.dym') else ".nc"
     for forage in ordered_forage :
-        forage_filepaths.append(root_directory+forage_directory+'Fbiom_'+forage+".nc")
+        forage_filepaths.append(root_directory+forage_directory+'Fbiom_'+forage+forage_filetype)
 
     # SST #####################################################################
     if root.find('strfile_sst') is None :
@@ -333,11 +334,11 @@ def _loadVariablesFromFilepaths(root, temperature_filepaths, oxygen_filepaths,
     variables_dictionary["oxygen_L1"] = xr.apply_ufunc(
         np.nan_to_num,
         seapodymFieldConstructor(oxygen_filepaths[0], "oxygen_L1"))
-    
+
     variables_dictionary["oxygen_L2"] = xr.apply_ufunc(
         np.nan_to_num,
         seapodymFieldConstructor(oxygen_filepaths[1], "oxygen_L2"))
-        
+
     variables_dictionary["oxygen_L3"] = xr.apply_ufunc(
         np.nan_to_num,
         seapodymFieldConstructor(oxygen_filepaths[2], "oxygen_L3"))
