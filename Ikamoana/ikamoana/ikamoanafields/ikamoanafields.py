@@ -1,6 +1,6 @@
 import warnings
 import xml.etree.ElementTree as ET
-from typing import List, Tuple, Union
+from typing import Tuple, Union
 
 import numpy as np
 import parcels
@@ -13,7 +13,11 @@ from ..fisherieseffort import fisherieseffort
 
 
 def convertToField(field : Union[xr.DataArray, xr.Dataset], name=None) :
-
+    """
+    Converts a DataSet/DataArray to a `parcels.FieldSet`.
+    """
+    
+    
     if isinstance(field, xr.DataArray) :
         field = field.to_dataset(name=name if name is not None else field.name)
 
@@ -27,6 +31,12 @@ def sliceField(field : Union[xr.DataArray, xr.Dataset],
                time_start: int = None, time_end: int = None,
                lat_min: int = None, lat_max: int = None,
                lon_min: int = None, lon_max: int = None) -> Union[xr.DataArray, xr.Dataset] :
+    
+    """
+    This function is equivalent to `xarray.DataArray.loc[]`. Moreover,
+    sliceField will not automaticaly find the nearest value while
+    `xarray.DataArray.loc[]` will.
+    """
     
     coords = field.coords
 
@@ -358,7 +368,7 @@ class IkamoanaFields :
                              coords = dHdlon.coords,
                              dims=('time','lat','lon'),
                              attrs=dHdlon.attrs),
-                xr.DataArray(name = "Taxis_longitude_"+(dHdlat.name if name is None else name),
+                xr.DataArray(name = "Taxis_latitude_"+(dHdlat.name if name is None else name),
                              data = Tlat,
                              coords = dHdlat.coords,
                              dims=('time','lat','lon'),
@@ -528,13 +538,53 @@ class IkamoanaFields :
             lat_min: int = None, lat_max: int = None,
             lon_min: int = None, lon_max: int = None,
             name: str = None, use_already_computed_habitat: bool = False,
-            verbose: bool = False) -> Tuple[xr.DataArray,xr.DataArray] :
-        """Description
-        
+            verbose: bool = False
+            ) -> Tuple[xr.DataArray,xr.DataArray] :
+        """
+        Calculates the taxis field of a given habitat. If the feeding
+        habitat is not already calculated, it also calculates the
+        feeding habitat using the FeedingHabitat class.
+
+        Parameters
+        ----------
+        cohort : int, optional
+            The cohort whose habitat is to be calculated.
+        time_start : int, optional
+            [description]
+        time_end : int, optional
+            [description]
+        lat_min : int, optional
+            [description]
+        lat_max : int, optional
+            [description]
+        lon_min : int, optional
+            [description]
+        lon_max : int, optional
+            [description]
+        name : str, optional
+            Will name the DataArray with.
+        use_already_computed_habitat : bool, optional
+            If True, the feeding habitat will be calculated anyway.
+            Otherwise, if `self.feeding_habitat` is not None, self
+            habitat will be used for taxis calculation.
+        verbose : bool, optional
+
         See Also
         --------
         FeedingHabitat.computeFeedingHabitat : computeTaxis is based on
             the feeding habitat.
+
+        Returns
+        -------
+        Tuple[xr.DataArray,xr.DataArray]
+            The first one is the Taxis_longitude and the second is the
+            Taxis_latitude DataArray.
+
+        Raises
+        ------
+        ValueError
+            An error is raised if the feeding_habitat must be calculated
+            but the `cohort` argument is None.
         """
         
         (time_start,time_end,lat_min,lat_max,lon_min,lon_max) = (
@@ -566,13 +616,51 @@ class IkamoanaFields :
             lat_min: int = None, lat_max: int = None,
             lon_min: int = None, lon_max: int = None,
             name: str = None, use_already_computed_habitat: bool = False,
-            verbose: bool = False) -> Tuple[xr.DataArray,xr.DataArray] :
-        """Description
-        
+            verbose: bool = False
+            ) -> Tuple[xr.DataArray,xr.DataArray] :
+        """
+        Calculates the taxis field of a given evolving habitat. If the
+        evolving feeding habitat is not already calculated, it also
+        calculates the feeding habitat using the FeedingHabitat class.
+
+        Parameters
+        ----------
+        cohort_start : int, optional
+            The age of the first cohort for which we will calculate the
+            habitat. If None, it corresponds to the youngest cohort (0).
+        cohort_end : int, optional
+            The age of the last cohort for which we will calculate the
+            habitat. If None, it corresponds to the oldest cohort.
+        time_start : int, optional
+            [description]
+        time_end : int, optional
+            [description]
+        lat_min : int, optional
+            [description]
+        lat_max : int, optional
+            [description]
+        lon_min : int, optional
+            [description]
+        lon_max : int, optional
+            [description]
+        name : str, optional
+            Will name the DataArray with.
+        use_already_computed_habitat : bool, optional
+            If True, the feeding habitat will be calculated anyway.
+            Otherwise, if `self.feeding_habitat` is not None, self
+            habitat will be used for taxis calculation.
+        verbose : bool, optional
+
         See Also
         --------
         FeedingHabitat.computeFeedingHabitat : computeEvolvingTaxis is
             based on the evolving feeding habitat.
+
+        Returns
+        -------
+        Tuple[xr.DataArray,xr.DataArray]
+            The first one is the Taxis_longitude and the second is the
+            Taxis_latitude DataArray.
         """
 
         (time_start,time_end,lat_min,lat_max,lon_min,lon_max) = (
@@ -590,3 +678,6 @@ class IkamoanaFields :
         
         return self._commonWrapperTaxis(feeding_habitat, name, lat_min,
                                         lat_max, lon_min, lon_max)
+        
+        
+        
