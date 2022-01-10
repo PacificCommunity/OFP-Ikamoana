@@ -133,9 +133,7 @@ class NcFile(object):
         return 0
 
     def getDimensions(self):
-        """
-        Get dimensions in NetCDF fileName_
-        """
+        """Get dimensions in NetCDF `fileName_`"""
 
         fid = nc.Dataset(self.fileName_)
 

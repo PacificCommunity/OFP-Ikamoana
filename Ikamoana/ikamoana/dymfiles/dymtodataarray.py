@@ -1,13 +1,31 @@
-__author__ = "J. Lehodey"
-__date__ = "2021-10-15"
+"""This module generate xarray.DataArray from DYM files."""
 
 from .core import utilities, dym2
 import xarray as xr
 import numpy as np
 
-def dym2ToDataArray(infile, varname, attributs=None):
+def dym2ToDataArray(infilepath: str, varname: str,
+                    attributs: dict = None) -> xr.DataArray:
+    """
+    Generate a `xarray.DataArray` from the DYM file which the filepath
+    is `infile`.
 
-    inDym  = dym2.DymFile(infile)
+    Parameters
+    ----------
+    infilepath : str
+        The path to the DYM file.
+    varname : str
+        The name of the generated DataArray.
+    attributs : dict, optional
+        Attributs to add to the generated DataArray, by default None.
+
+    Returns
+    -------
+    xarray.DataArray
+        The DataArray generated from the DYM file.
+    """
+    
+    inDym  = dym2.DymFile(infilepath)
 
     veclon = inDym.header_.xLon_[:,0]
     veclat = inDym.header_.yLat_[0,:]

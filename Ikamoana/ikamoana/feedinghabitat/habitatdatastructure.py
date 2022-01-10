@@ -12,7 +12,24 @@ import warnings
 def equalCoords(data_array_1: xr.DataArray,
                 data_array_2: xr.DataArray,
                 verbose: bool = False) -> bool :
-    """Compare two DataArray coordinates"""
+    """
+    Compare two DataArray coordinates (`xarray.DataArray.coords`).
+
+    Parameters
+    ----------
+    data_array_1 : xarray.DataArray
+        First DataArray to compare to.
+    data_array_2 : xarray.DataArray
+        Second DataArray to compare to.
+    verbose : bool, optional
+        Show the number of differences between the coordinates,
+        by default False.
+
+    Returns
+    -------
+    bool
+        True if the coordinates are the same, False otherwise.
+    """
 
     if data_array_1.shape != data_array_2.shape :
         message_equalCoords = (
@@ -46,6 +63,23 @@ def equalCoords(data_array_1: xr.DataArray,
     return lat_condition and lon_condition and time_condition
 
 def groupArrayByCoords(variables_dictionary: dict) -> List[List[str]] :
+    """
+    Groupe variables with the same coordinates in a list using the 
+    equalCoords function.
+
+    Parameters
+    ----------
+    variables_dictionary : dict
+        Dictionnary containing list of `xarray.DataArray`.
+
+    Returns
+    -------
+    List[List[str]]
+        List containing lists of variable names. Each list of names
+        corresponds to a group of `xarray.DataArray` with the same
+        coordinates.
+    """
+    
     list_compare = []
     for _, item in variables_dictionary.items() :
         list_tmp = []
@@ -55,13 +89,22 @@ def groupArrayByCoords(variables_dictionary: dict) -> List[List[str]] :
         list_compare.append(tuple(list_tmp))
     return list(set(list_compare))
 
-def compareDims(data_array_1: xr.DataArray,
-                data_array_2: xr.DataArray,
-                dim: str,
-                head: int = None):
-    """Compare to DataArray coordinates along the 'dim' specified
-    by user"""
+def compareDims(data_array_1: xr.DataArray, data_array_2: xr.DataArray,
+                dim: str, head: int = None) -> None :
+    """
+    Compare two DataArray coordinates along the 'dim' specified by user.
 
+    Parameters
+    ----------
+    data_array_1 : xarray.DataArray
+        [description]
+    data_array_2 : xarray.DataArray
+        [description]
+    dim : str
+        The dimension in `xarray.DataArray.coords` to compare to.
+    head : int, optional
+        [description], by default None
+    """
     dim1 = data_array_1.coords[dim].data
     dim2 = data_array_2.coords[dim].data
 
@@ -84,25 +127,39 @@ class HabitatDataStructure :
         Initialize the data structure according to the XML file used in
         the FeedingHabitat Class.
 
+        Parameters
+        ----------
+        kargs : dict
+            Contains all the data needed to compute the FeedingHabitat.
+            - root_directory
+            - output_directory
+            - layers_number
+            - cohorts_number
+            - partial_oxygen_time_axis
+            - global_mask
+            - coords
+            - variables_dictionary
+            - parameters_dictionary
+            - species_dictionary
+
         Notes
         -----
         variables_dictionary contains :
-            {"forage_epi", "forage_meso", "forage_mumeso",
-             "forage_lmeso", "forage_mlmeso", "forage_hmlmeso" ,
-             "temperature_L1", "temperature_L2", "temperature_L3",
-             "oxygen_L1", "oxygen_L2", "oxygen_L3",
-             "days_length",
-             "zeu", "sst" }
-
+            - 'oxygen_L1', 'oxygen_L2', 'oxygen_L3',
+            - 'temperature_L1','temperature_L2', 'temperature_L3', 
+            - 'forage_epi', 'forage_umeso', 'forage_mumeso', 
+            - 'forage_lmeso', 'forage_mlmeso', 'forage_hmlmeso', 
+            - 'sst', 'zeu', 'days_length'}
+        
         parameters_dictionary contains :
-            {"eF_list",
-             "sigma_0", "sigma_K", "T_star_1", "T_star_K", "bT",
-             "gamma", "o_star" }
+            - 'eF_list', 'sigma_0', 'sigma_K', 'T_star_1', 'T_star_K',
+            - 'bT', 'gamma', 'o_star', 'deltaT', 'space_reso'}
 
         species_dictionary contains :
-            {'sp_name', 'nb_life_stages', 'life_stage',
-             'nb_cohort_life_stage',
-             'cohorts_mean_length', 'cohorts_mean_weight'}
+            - 'sp_name', 'nb_life_stages', 'life_stage',
+            - 'nb_cohort_life_stage', 'cohorts_mean_length',
+            - 'cohorts_mean_weight', 'cohorts_sp_unit',
+            - 'cohorts_starting_age', 'cohorts_final_age'}
         """
 
         self.root_directory           = kargs['root_directory']
@@ -127,72 +184,89 @@ class HabitatDataStructure :
         self.species_dictionary['cohorts_final_age'] = np.array(end_age)
 
     def _summaryToString(self) -> str :
+        """
+        Summerize the data in this structure.
+        
+        See Also :
+        ----------
+            - __str__()
+            - __repr__()
+        """
         summary_str = (
             "# ------------------------------ #\n"
-            + "# Summary of this data structure #\n"
-            + "# ------------------------------ #\n\n"
-            + "Root directory is :\n\t"
-            + self.root_directory + "\n"
-            + 'Output directory is :\n\t'
-            + self.output_directory
-            + "\nTime resolution is (in days) : %d"%(self.parameters_dictionary["deltaT"]) + "\n"
-            + "Space resolution is (in degrees) : %f"%(self.parameters_dictionary["space_reso"]) + "\n"
-            + "\n\n# -------------------------------SPECIES----------------------------- #\n\n"
-            + "The short name of the species is %s."%(self.species_dictionary["sp_name"]) + "\n"
-            + "There is(are) %d\tlife stages considered in the model which are : "%(
-                self.species_dictionary['nb_life_stages'])
-            + self.species_dictionary['life_stage'].__str__() + "\n"
-        )
+            "# Summary of this data structure #\n"
+            "# ------------------------------ #\n\n"
+            "Root directory is :\n"
+            "\t{}\n"
+            "Output directory is :\n"
+            "\t{}\n"
+            "Time resolution is (in days) : {}\n"
+            "Space resolution is (in degrees) : {}\n"
+            "\n\n# -------------------------------SPECIES----------------------------- #\n\n"
+            "The short name of the species is {}.\n"
+            "There is(are) {} life stage(s) considered in the model which is(are) : {}\n"
+            ).format(
+                self.root_directory,
+                self.output_directory,
+                self.parameters_dictionary["deltaT"],
+                self.parameters_dictionary["space_reso"],
+                self.species_dictionary["sp_name"],
+                self.species_dictionary['nb_life_stages'],
+                self.species_dictionary['life_stage'])
 
-        for name, number in zip(self.species_dictionary['life_stage'], self.species_dictionary['nb_cohort_life_stage']) :
-            summary_str += "\t- There is(are) %d\tcohort(s) in life stage %s."%(number, name) + "\n"
-
+        for name, number in zip(self.species_dictionary['life_stage'],
+                                self.species_dictionary['nb_cohort_life_stage']) :
+            summary_str += ("\t- There is(are) {}\tcohort(s) in life stage {}.\n"
+                            ).format(number, name)
+        
         np.set_printoptions(suppress=True)
 
         summary_str += (
-            "\nFinal age (in day) of each cohort is :\n"
-            + self.species_dictionary['cohorts_final_age'].__str__() + "\n"
-            + "\nMean length for each cohort is :\n"
-            + self.species_dictionary['cohorts_mean_length'].__str__() + "\n"
-            + '\nMean weight for each cohort is :\n'
-            + self.species_dictionary['cohorts_mean_weight'].__str__() + "\n"
-            + "\n\n# -----------------------------PARAMETERS---------------------------- #\n\n"
-            + "The parameters used are the following :\n"
-        )
-
+            "\nFinal age (in day) of each cohort is :\n{}\n"
+            "\nMean length for each cohort is :\n{}\n"
+            "\nMean weight for each cohort is :\n{}\n"
+            "\n\n# -----------------------------PARAMETERS---------------------------- #\n\n"
+            "The parameters used are the following :\n"
+        ).format(self.species_dictionary['cohorts_final_age'],
+                 self.species_dictionary['cohorts_mean_length'],
+                 self.species_dictionary['cohorts_mean_weight'])
+        
         for name, value in self.parameters_dictionary.items() :
-            summary_str += "\t- " + name.__str__() + "   \t:" + value.__str__() + "\n"
-
+            summary_str += "\t- {0:<12}:  {1}\n".format(name,str(value))
+        
         summary_str += (
-            "\nReminder : \n\t- Forage \t-> eF\n\t- Temperature\t-> sigma, T* and bT\n\t- Oxygen \t-> gamma and O*"
-            + "\n\n# ------------------------------FIELDS------------------------------- #\n\n"
-            + 'WARNING : Fields must start on the same date !\n\n'
-            + 'Fields are grouped by coordinates :\n'
-        )
-
+            "\nReminder : \n\t- Forage \t-> eF\n\t- Temperature\t-> sigma, T* "
+            "and bT\n\t- Oxygen \t-> gamma and O*"
+            "\n\n# ------------------------------FIELDS------------------------------- #\n\n"
+            "WARNING : Fields must start on the same date !\n\n"
+            "Fields are grouped by coordinates :\n"
+        ).expandtabs(8)
+        
         for group in groupArrayByCoords(self.variables_dictionary) :
             summary_str += (
-                '\n#\t#\t#\t#\t#\n'
-                + '\nGroup :' + group.__str__() + "\n"
-                + 'Their coordinates are :\n'
-                + self.variables_dictionary[group[0]].coords.__str__() + "\n"
-            )
-
+                "\n#\t#\t#\t#\t#\n"
+                "\nGroup : {}\n"
+                "Their coordinates are :\n{}\n"
+            ).format(group,self.variables_dictionary[group[0]].coords)
+        
         summary_str += (
-            '\n#\t#\t#\t#\t#\n\n'
-            + 'Day Length is calculated using the main coordinates which are based on temperature (L1) field.\n'
+            "\n#\t#\t#\t#\t#\n\n"
+            "Day Length is calculated using the main coordinates which are"
+            "based on temperature (L1) field.\n"
         )
 
         if self.partial_oxygen_time_axis :
             summary_str +=(
-                '\n#\t#\t#\t#\t#\n\n'
-                + 'Oxygen is a climatologic field. It meen that only 1 year is modelized in the DataArray.\n'
+                "\n#\t#\t#\t#\t#\n\n"
+                "Oxygen is a climatologic field. It meen that only 1 year is"
+                "modelized in the DataArray.\n"
             )
 
         summary_str += (
-            '\n#\t#\t#\t#\t#\n\n'
-            + 'TIPS : The user can use equalCoords() or compareDims() functions to compare Coordinates.'
-            + "\n\n# ------------------------------------------------------------------- #"
+            "\n#\t#\t#\t#\t#\n\n"
+            "TIPS : The user can use equalCoords() or compareDims() functions"
+            "to compare Coordinates."
+            "\n\n# ------------------------------------------------------------------- #"
         )
 
         return summary_str
@@ -228,7 +302,21 @@ class HabitatDataStructure :
         return val_index_list
 
     def findCohortByLength(self, length: Union[float, List[float]], verbose: bool = False) -> List[int] :
-        """Find the cohort number with the closest length."""
+        """
+        Find the cohort number with the closest length.
+
+        Parameters
+        ----------
+        length : Union[float, List[float]]
+            One or more lengths of which you wish to recover the age.
+        verbose : bool, optional
+            Print the age of each length, by default False
+
+        Returns
+        -------
+        List[int]
+            List of age.
+        """
 
         length_list = self.species_dictionary['cohorts_mean_length']
         length = np.ravel(length)
@@ -243,8 +331,22 @@ class HabitatDataStructure :
         return  cohort_number_list
 
     def findCohortByWeight(self, weight: Union[float, List[float]], verbose: bool = False) -> List[int] :
-        """Find the cohort number with the closest weight."""
+        """
+        Find the cohort number with the closest weight.
+        
+        Parameters
+        ----------
+        length : Union[float, List[float]]
+            One or more weights of which you wish to recover the age.
+        verbose : bool, optional
+            Print the age of each weight, by default False
 
+        Returns
+        -------
+        List[int]
+            List of age.
+        """
+        
         weight_list = self.species_dictionary['cohorts_mean_weight']
         weight = np.ravel(weight)
         cohort_number_list = []
@@ -258,15 +360,43 @@ class HabitatDataStructure :
         return cohort_number_list
 
     def findLengthByCohort(self, cohort: Union[float, List[float]], verbose: bool = False) -> List[int] :
-        """Find cohort length according to cohort number."""
+        """
+        Find cohort length according to cohort number
 
+        Parameters
+        ----------
+        cohort : Union[float, List[float]]
+            One or more cohort age of which you wish to recover the length.
+        verbose : bool, optional
+            Print the length of each age, by default False
+
+        Returns
+        -------
+        List[int]
+            List of length
+        """
+        
         cohort_length_list = self.species_dictionary['cohorts_mean_length']
         cohort = np.ravel(cohort)
 
         return  cohort_length_list[cohort]
 
     def findWeightByCohort(self, cohort: Union[float, List[float]], verbose: bool = False) -> List[int] :
-        """Find cohort weight according to cohort number."""
+        """Find cohort weight according to cohort number.
+        
+        
+        Parameters
+        ----------
+        cohort : Union[float, List[float]]
+            One or more cohort age of which you wish to recover the weight.
+        verbose : bool, optional
+            Print the length of each age, by default False
+
+        Returns
+        -------
+        List[int]
+            List of weight
+        """
 
         cohort_weight_list = self.species_dictionary['cohorts_mean_weight']
         cohort = np.ravel(cohort)
@@ -278,3 +408,29 @@ class HabitatDataStructure :
 
     def __repr__(self) -> str:
         return self._summaryToString()
+    
+    def normalizeCoords(self):
+        """
+        Normalize the time axis. Remove the days if the resolution is in
+        months,remove the seconds if the resolution is in days.
+        """
+        time_reso = self.parameters_dictionary["deltaT"]
+        time_coords = self.coords['time'].data
+        
+        if time_reso == 30 : # SEAPODYM MONTHLY correspond to 30 days
+            normalized_time_coords = np.array(time_coords,
+                                              dtype='datetime64[M]')
+        else :
+            normalized_time_coords = np.array(time_coords,
+                                              dtype='datetime64[D]')
+        variable_update = {}
+        for name, da in self.variables_dictionary.items() :
+            da = da.to_dataset(name=name)
+            da['normalized_time'] = ('time', normalized_time_coords)
+            da = da.reset_index('time',drop=True)
+            da = da.set_index({'time':'normalized_time'})
+            da = da[name]
+            variable_update[name] = da
+        
+        self.variables_dictionary.update(variable_update)
+        self.coords = self.variables_dictionary['temperature_L1'].coords

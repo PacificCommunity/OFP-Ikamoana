@@ -1,5 +1,5 @@
 
-from .fieldsdatastructure import FieldSDataStructure
+from .fieldsdatastructure import FieldsDataStructure
 
-def readIkamoanaFieldsXML(xml_filepath : str) -> FieldSDataStructure :
-    return FieldSDataStructure()
+def readIkamoanaFieldsXML(xml_filepath : str) -> FieldsDataStructure :
+    return FieldsDataStructure()
