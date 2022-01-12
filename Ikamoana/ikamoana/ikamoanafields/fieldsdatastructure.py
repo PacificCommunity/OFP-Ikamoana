@@ -1,5 +1,5 @@
 
-class FieldSDataStructure :
+class FieldsDataStructure :
 
 ## NOTE : This is a hardcoded structure. Only for test.
 

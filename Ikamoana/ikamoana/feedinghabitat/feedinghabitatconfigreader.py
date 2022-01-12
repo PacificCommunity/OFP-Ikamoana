@@ -1,20 +1,21 @@
 # -*- coding: utf-8 -*-
 
 """
-Summary
--------
-This module is used by the feedingHabitat module to setup all variables and
-parameters. It use a XML configuration file that link to all the netCDF used
-to compute de feeding habitat.
+This module is used by the feedingHabitat module to setup all variables
+and parameters. It use a XML configuration file that link to all the
+netCDF or DYM files used to compute de feeding habitat.
 It also compute the day length in the area using the PISCES method.
+
+Warnings
+--------
+0.000001 is automatically added on forage layer to copy SEAPODYM behavior.
 
 See Also
 --------
-- feedingHabitat : class used to compute feeding habitat
+- feedingHabitat.FeedingHabitat : class used to compute feeding habitat
 
-Reference
----------
-[1] E. Maier-Reimer (GBC 1993) - Day length
+.. E. Maier-Reimer (GBC 1993)
+    Day length calculation.
 
 """
 
@@ -27,13 +28,31 @@ import numpy as np
 
 from .. import dymfiles as df
 
-# TODO : Supprimer les champs cohort_to_compute et layer_number s'ils ne sont plus utiles
+# TODO : Supprimer le champ layer_number s'il n'est plus utile.
+# WARNING : 0.000001 is added on forage layer to copy SEAPODYM behavior.
 
-def seapodymFieldConstructor(filepath: str,
-                             dym_varname : str = None,
-                             dym_attributs : str = None) -> xr.DataArray :
-    """Return a Seapodym field as a DataArray using NetCDF or Dym method according
-    to the file extension : 'nc', 'cdf' or 'dym'. """
+def seapodymFieldConstructor(filepath: str, dym_varname : str = None,
+                             dym_attributs : dict = None) -> xr.DataArray :
+    """
+    Return a Seapodym field as a DataArray using NetCDF or Dym method
+    according to the file extension : 'nc', 'cdf' or 'dym'.
+
+    Parameters
+    ----------
+    filepath : str
+        The path to the NetCDF or DYM.
+    dym_varname : str, optional
+        If the file is a DYM, dym_varname is the name of the variable
+        represented inside the file. By default None which is replaced
+        by the filepath.
+    dym_attributs : str, optional
+        If the file is a DYM, dym_attributs is , by default None
+
+    Returns
+    -------
+    xr.DataArray
+        [description]
+    """
     #NetCDF
     if filepath.lower().endswith(('.nc', '.cdf')) :
         return xr.open_dataarray(filepath)
@@ -51,30 +70,30 @@ def seapodymFieldConstructor(filepath: str,
 
 def _loadMask(variables_dictionary, from_text=None, expend_time=True) :
     """
-    Load a mask file (i.e. texte file) as a dictionary of numpy array. Each
-    array corresponds to a pelagic layer (i.e. L1, L2 and L3).
+    Load a mask file (i.e. texte file) as a dictionary of numpy array.
+    Each array corresponds to a pelagic layer (i.e. L1, L2 and L3).
 
     Parameters
     ----------
     variables_dictionary : dict
-        Contains all variables used by the FeedingHabitat module. Must contains
-        "temperature_L1".
+        Contains all variables used by the FeedingHabitat module. Must
+        contains "temperature_L1".
     from_text : string, optional
-        Text file used to compute the mask. If from_text is None, the Nan
-        values of the temperature_L(1, 2 and 3) netCDF will be used.
+        Text file used to compute the mask. If from_text is None, the
+        Nan values of the temperature_L(1, 2 and 3) netCDF will be used.
         The default is None.
     expend_time : boolean, optional
         Add a time axis to broadcast mask on variables. Cf. Numpy broadcast.
         The default is True.
 
-    Notes :
-    -------
+    Notes
+    -----
     Mask file must contains 4
     values :
         - 0 = Ground / Land / etc...
         - 1 = L1 / epipelagic
-        - 2 = L2 / mesopelagic superior
-        - 3 = L3 / mesopelagic inferior
+        - 2 = L2 / upper mesopelagic
+        - 3 = L3 / lower mesopelagic
 
     Returns
     -------
@@ -111,9 +130,9 @@ def _loadMask(variables_dictionary, from_text=None, expend_time=True) :
 
 def _dayLengthPISCES(jday, lat) :
     """
-    Compute the day length depending on latitude and the day. New function
-    provided by Laurent Bopp as used in the PISCES model and used by SEAPODYM
-    in 2020.
+    Compute the day length depending on latitude and the day. New
+    function provided by Laurent Bopp as used in the PISCES model and
+    used by SEAPODYM in 2020.
 
     Parameters
     ----------
@@ -176,11 +195,13 @@ def _daysLength(coords, model=None, float_32=True) :
     """
 
     if model is not None :
-        days_of_year = pd.DatetimeIndex(model['time'].data.astype('datetime64[D]')).dayofyear
+        days_of_year = pd.DatetimeIndex(
+            model['time'].data.astype('datetime64[D]')).dayofyear
         latitude = model['lat'].data
         longitude = model['lon'].data
     else :
-        days_of_year = pd.DatetimeIndex(coords['time'].data.astype('datetime64[D]')).dayofyear
+        days_of_year = pd.DatetimeIndex(
+            coords['time'].data.astype('datetime64[D]')).dayofyear
         latitude = coords['lat'].data
         longitude = coords['lon'].data
 
@@ -197,7 +218,8 @@ def _daysLength(coords, model=None, float_32=True) :
                              dtype=(np.float32 if float_32 else np.float64))
 
     return xr.DataArray(data=days_length,dims=["time", "lat", "lon"],
-                        coords=dict(lon=longitude,lat=latitude,time=coords['time']),
+                        coords=dict(lon=longitude,lat=latitude,
+                                    time=coords['time']),
                         attrs=dict(description="Day length.",units="hour"))
 
 def _readXmlConfigFilepaths(root, root_directory, layers_number) :
@@ -241,7 +263,8 @@ def _readXmlConfigFilepaths(root, root_directory, layers_number) :
     #We will assume if the temp files are in dym format, so are the forage
     forage_filetype = ".dym" if temperature_filepaths[0].lower().endswith('.dym') else ".nc"
     for forage in ordered_forage :
-        forage_filepaths.append(root_directory+forage_directory+'Fbiom_'+forage+forage_filetype)
+        forage_filepaths.append(
+            root_directory+forage_directory+'Fbiom_'+forage+".nc")
 
     # SST #####################################################################
     if root.find('strfile_sst') is None :
@@ -282,7 +305,8 @@ def _readXmlConfigParameters(root) :
         root.find('life_stage').find(sp_name).text.split())
 
     species_dictionary['nb_cohort_life_stage'] = [
-        int(x) for x in root.find('nb_cohort_life_stage').find(sp_name).text.split()]
+        int(x) for x in root.find('nb_cohort_life_stage').find(sp_name
+                                                               ).text.split()]
 
     # Habitat parameters ######################################################
     parameters_dictionary["eF_list"] = [
@@ -318,12 +342,11 @@ def _readXmlConfigParameters(root) :
 
     return parameters_dictionary, species_dictionary
 
-# TODO : also load species age
 def _loadVariablesFromFilepaths(root, temperature_filepaths, oxygen_filepaths,
                                 forage_filepaths, sst_filepath, zeu_filepath,
                                 mask_filepath, sp_name, float_32=True) :
-    """Load all Seapodym Fields using the seapodymFieldConstructor method. Their
-    are stored in a dictionary and returned."""
+    """Load all Seapodym Fields using the seapodymFieldConstructor
+    method. Their are stored in a dictionary and returned."""
 
     variables_dictionary = {}
 
@@ -359,7 +382,6 @@ def _loadVariablesFromFilepaths(root, temperature_filepaths, oxygen_filepaths,
 
 
     # FORAGE ##################################################################
-    # WARNING : 0.000001 is added on forage layer to copy SEAPODYM behavior
     # TODO : 0.000001 is added on forage layer to copy SEAPODYM behavior.
     #        Should it be removed ?
     def nan_add(data_array):
@@ -424,47 +446,36 @@ def _loadVariablesFromFilepaths(root, temperature_filepaths, oxygen_filepaths,
 # ----------------------------- MAIN FUNCTION ------------------------------- #
 ###############################################################################
 
-def loadFromXml(xml_filepath: str,
-                float_32: bool = True) -> dict :
+def loadFromXml(xml_filepath: str, days_length_float_32: bool = True) -> dict :
     """
-    This is the main function used by the feedingHabitat module. It is used to
-    read the XML configuration file and load all variables and parameters in
-    the main class and also compute the day length.
-
-    TODO : Complet DocString
+    This is the main function used by the feedingHabitat module. It is
+    used to read the XML configuration file and load all variables and
+    parameters in the main class and also compute the day length.
 
     Parameters
     ----------
     xml_filepath : str
         The filepath to the FeedingHabitat XML configuration file.
-    float_32 : bool, optional
-        DESCRIPTION. The default is True.
+    days_length_float_32 : bool, optional
+        Specify if the day length must be convert from float 64 to
+        float32, by default True.
 
     Returns
     -------
-    root_directory : TYPE
-        DESCRIPTION.
-    output_directory : TYPE
-        DESCRIPTION.
-    layers_number : TYPE
-        DESCRIPTION.
-    cohorts_number : TYPE
-        DESCRIPTION.
-    cohorts_to_compute : TYPE
-        DESCRIPTION.
-    partial_oxygen_time_axis : TYPE
-        DESCRIPTION.
-    global_mask : TYPE
-        DESCRIPTION.
-    coords : TYPE
-        DESCRIPTION.
-    variables_dictionary : TYPE
-        DESCRIPTION.
-    parameters_dictionary : TYPE
-        DESCRIPTION.
-
+    dict
+        A dictionary containing all needed data by the FeedingHabitat
+        constructor. Which are :
+        - root_directory : str
+        - output_directory : str
+        - layers_number : int
+        - cohorts_number : int
+        - partial_oxygen_time_axis : bool
+        - global_mask : dict
+        - coords : xr.DataArray.coords
+        - variables_dictionary : dict
+        - parameters_dictionary : dict
+        - species_dictionary : dict
     """
-    # WARNING : partial_cohorts_computation start with value greater or equal to 0
 
     # INITIALIZATION ##########################################################
     tree = ET.parse(xml_filepath)
@@ -488,7 +499,8 @@ def loadFromXml(xml_filepath: str,
     # Parameters ##############################################################
     parameters_dictionary, species_dictionary = _readXmlConfigParameters(root)
     cohorts_number = sum([int(x) for x in (
-        root.find('nb_cohort_life_stage').find(species_dictionary['sp_name']).text.split(' ')
+        root.find('nb_cohort_life_stage').find(species_dictionary['sp_name']
+                                               ).text.split(' ')
         )])
 
     # Variables ###############################################################
@@ -504,7 +516,7 @@ def loadFromXml(xml_filepath: str,
                                                     zeu_filepath,
                                                     mask_filepath,
                                                     species_dictionary['sp_name'],
-                                                    float_32)
+                                                    days_length_float_32)
 
     species_dictionary['cohorts_mean_length'] = cohorts_mean_length
     species_dictionary['cohorts_mean_weight'] = cohorts_mean_weight
