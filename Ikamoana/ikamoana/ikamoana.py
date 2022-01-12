@@ -9,7 +9,7 @@ class IkaSim :
     def __init__(self,
                  xml_parameterfile: str):
         self.ika_params = self._readParams(xml_filepath=xml_parameterfile)
-        self.forcing_gen = ika.ikamoanafields.IkamoanaFields(xml_feeding_habitat=self.ika_params['forcing_dir']+self.ika_params['SEAPODYM_file'])
+        self.forcing_gen = ika.ikamoanafields.IkamoanaFields(self.ika_params['SEAPODYM_file'])
         if self.ika_params['random_seed'] is None:
             np.random.RandomState()
             self.ika_params['random_seed'] = np.random.get_state()
@@ -21,6 +21,7 @@ class IkaSim :
         start = self.forcing_gen.feeding_habitat_structure.data_structure.findIndexByDatetime(self.ika_params['start_time'])[0]
         end = self.forcing_gen.feeding_habitat_structure.data_structure.findIndexByDatetime(self.ika_params['start_time']+
                                                                              self.ika_params['T'])[0]
+        self.start_age = ages[0]
         lonlims = self.ika_params['spatial_lims']['lonlim']
         lonlims = self.forcing_gen.feeding_habitat_structure.data_structure.findCoordIndexByValue(lonlims,coord='lon')
         lonlims = [int(l) for l in lonlims]
@@ -50,6 +51,14 @@ class IkaSim :
         self.forcing_vars.update({'Tx': 'Tx',
                                   'Ty': 'Ty'})
 
+        self.forcing['landmask'] = self.forcing_gen.landmask(use_SEAPODYM_global_mask=True)
+        self.forcing_vars.update({'landmask': 'landmask'})
+
+        if self.ika_params['start_filestem'] is not None:
+            self.forcing['start'] = self.forcing_gen.start_distribution(
+                                    self.ika_params['start_filestem']+str(self.start_age)+'.dym')
+            self.forcing_vars.update({'start': 'start'})
+
         ### Mortality fields to do
 
         self.forcing['U'], self.forcing['V'] = self.forcing_gen.current_forcing()
@@ -68,6 +77,7 @@ class IkaSim :
         self.forcing_vars.update({'dK_dx': 'dK_dx',
                                   'dK_dy': 'dK_dy'})
 
+
         if to_file:
             for (var, forcing) in self.forcing.items():
                 forcing.to_netcdf(path='%s/%s_%s.nc' % (self.ika_params['forcing_dir'],
@@ -76,7 +86,6 @@ class IkaSim :
         self.forcing_dims = {'lon':'lon',
                              'lat':'lat',
                              'time':'time'}
-        self.start_age = ages[0]
 
 
     def createFieldSet(self,from_disk=False):
@@ -85,18 +94,20 @@ class IkaSim :
                                        self.ika_params['run_name'])
             self.ocean = prcl.FieldSet.from_netcdf(filestem,
                                                    variables=self.forcing_vars,
-                                                   dimensions=self.forcing.coords)
+                                                   dimensions=self.forcing.forcing_dims,
+                                                   deferred_load=False)
         else:
             self.ocean = prcl.FieldSet.from_xarray_dataset(self.forcing,
                                        variables=self.forcing_vars,
-                                       dimensions=self.forcing_dims)
-        print(self.ocean.Tx.grid.time_origin)
+                                       dimensions=self.forcing_dims,
+                                       deferred_load=False)
+
         print(self.ocean.Tx.grid.time_origin.fulltime(self.ocean.Tx.grid.time[0]))
 
     def _setConstant(self, name, val):
         self.ocean.add_constant(name, val)
 
-    def initialiseFishParticles(self,start,n_fish=10,pclass=prcl.JITParticle):
+    def initialiseFishParticles(self,start=None,n_fish=10,pclass=prcl.JITParticle):
         if type(start) is np.ndarray:
             assert start.shape[1] == n_fish, 'Number of fish and provided initial positions not equal!'
             self.fish = prcl.ParticleSet.from_list(fieldset=self.ocean,
@@ -106,8 +117,8 @@ class IkaSim :
                                      pclass=pclass)
         else:
             assert self.ocean.start is not None, 'No starting distribution field in ocean fieldset!'
-            self.fish = prcl.ParticleSet.from_field(fieldset=ocean,
-                                      start=self.ocean.start,
+            self.fish = prcl.ParticleSet.from_field(fieldset=self.ocean,
+                                      start_field=self.ocean.start,
                                       time=self.ika_params['start_time'],
                                       size=n_fish,
                                       pclass=pclass)
@@ -155,12 +166,13 @@ class IkaSim :
         cohort = root.find('cohort_info')
         params['start_length'] = float(cohort.attrib['length'])
         params['ageing_cohort'] = True if int(cohort.attrib['ageing']) is 1 else False
+        params['start_filestem'] = params['forcing_dir']+cohort.attrib['start_filestem'] if 'start_filestem' in cohort.attrib else None
 
         time = root.find('time')
         params['start_time'] = np.datetime64(time.attrib['start'])
         params['T'] = int(time.attrib['sim_time'])
-        params['output_dt'] = int(time.attrib['dt'])
-        params['dt'] = int(time.attrib['output_dt'])
+        params['dt'] = int(time.attrib['dt'])*86400
+        params['output_dt'] = int(time.attrib['output_dt'])*86400
 
         domain = root.find('domain')
         params['spatial_lims'] = {'lonlim': np.float32([domain.find('lon').text.split()[0],

@@ -307,6 +307,22 @@ class IkamoanaFields :
                             minlon_idx, maxlon_idx)
         return U, V
 
+    def start_distribution(self, dist_file):
+        dist = fhcf.seapodymFieldConstructor(dist_file,
+                                              dym_varname='start')
+        #clip dimensions to the same as the feeding habitats, but only the first two time-steps
+        if self.feeding_habitat is not None:
+            timefun, latfun, lonfun  = coordsAccess(dist)
+            minlon_idx = lonfun(min(self.feeding_habitat.coords['lon'].data))
+            maxlon_idx = lonfun(max(self.feeding_habitat.coords['lon'].data))
+            minlat_idx = latfun(max(self.feeding_habitat.coords['lat'].data))
+            maxlat_idx = latfun(min(self.feeding_habitat.coords['lat'].data))
+            mintime_idx = timefun(min(self.feeding_habitat.coords['time'].data))
+            maxtime_idx =timefun(min(self.feeding_habitat.coords['time'].data)+1)
+            dist = sliceField(dist, mintime_idx, maxtime_idx,
+                            minlat_idx, maxlat_idx,
+                            minlon_idx, maxlon_idx)
+        return dist
 
     def taxis(self, dHdlon: xr.DataArray, dHdlat: xr.DataArray,
               name: str = None) -> Tuple[xr.DataArray,xr.DataArray] :
