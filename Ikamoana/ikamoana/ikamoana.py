@@ -51,8 +51,9 @@ class IkaSim :
         self.forcing_vars.update({'Tx': 'Tx',
                                   'Ty': 'Ty'})
 
-        self.forcing['landmask'] = self.forcing_gen.landmask(use_SEAPODYM_global_mask=True)
-        self.forcing_vars.update({'landmask': 'landmask'})
+        self.forcing['landmask'] = self.forcing_gen.landmask(use_SEAPODYM_global_mask=True,
+                                                             time_dim=True)
+        #self.forcing_vars.update({'landmask': 'landmask'})
 
         if self.ika_params['start_filestem'] is not None:
             self.forcing['start'] = self.forcing_gen.start_distribution(
@@ -97,10 +98,18 @@ class IkaSim :
                                                    dimensions=self.forcing.forcing_dims,
                                                    deferred_load=False)
         else:
+            landmask = self.forcing.pop('landmask')
             self.ocean = prcl.FieldSet.from_xarray_dataset(self.forcing,
                                        variables=self.forcing_vars,
                                        dimensions=self.forcing_dims,
                                        deferred_load=False)
+            self.ocean.add_field(prcl.Field.from_netcdf(None, landmask,
+                                                        varname='landmask',
+                                                        dimensions= {'lon':'lon',
+                                                                     'lat':'lat',
+                                                                     'time':'time'},
+                                                        allow_time_extrapolation=True,
+                                                        deferred_load=False))
 
         print(self.ocean.Tx.grid.time_origin.fulltime(self.ocean.Tx.grid.time[0]))
 
