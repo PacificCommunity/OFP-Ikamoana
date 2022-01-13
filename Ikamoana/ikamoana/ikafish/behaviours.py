@@ -36,7 +36,7 @@ def IkaDimMoveWithDiffusionReroll(particle, fieldset, time):
         # Look along a transect of the potential move for land
         newlon = particle.lon + (jump_loop + 1) * (move_x/sections) # one section of the potential movement
         newlat = particle.lat + (jump_loop + 1) * (move_y/sections)
-        onland = fieldset.LandMask[0, particle.depth, newlat, newlon]
+        onland = fieldset.landMask[0, particle.depth, newlat, newlon]
         jump_loop += 1
         if onland == 1:
             Rx = random.uniform(-1., 1.)
