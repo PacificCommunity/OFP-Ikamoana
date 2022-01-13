@@ -1,5 +1,25 @@
 import math
 
+## NOTE : These variables camed from the "ikafish.py" module.
+#
+# Defined in class IkaFish(JITParticle)
+# - Ax / Ay
+# - Dx / Dy
+# - Cx / Cy
+# - Tx / Ty
+#
+# Defined in class IkaTag(IkaFish)
+# - Fmor / Nmor
+# - Dx = Dy = Cx = Cy = Vx = Vy = Ax = Ay = 0.
+#
+# Not defined 
+# - tx / ty
+# - random
+# - Rx_component / Ry_component
+# - f_lon / f_lat
+# - loop_count
+
+
 ################## Moving and cleanup kernels ####################
 
 def IkaDymMove(particle, fieldset, time):

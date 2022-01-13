@@ -271,7 +271,10 @@ class HabitatDataStructure :
 
         return summary_str
 
-    def findIndexByDatetime(self, date: Union[np.datetime64, List[np.datetime64]], verbose: bool = False) -> List[int] :
+    def findIndexByDatetime(
+            self, date: Union[np.datetime64, List[np.datetime64]],
+            verbose: bool = False
+            ) -> List[int] :
         """Find the time dimension index with the closest date."""
 
         date_list = self.coords['time']
@@ -286,8 +289,12 @@ class HabitatDataStructure :
 
         return date_index_list
 
-    def findCoordIndexByValue(self, val: Union[float, List[float]], coord='lon', verbose: bool = False) -> List[int] :
-        """Find the time dimension index with the closest date."""
+    def findCoordIndexByValue(
+            self, val: Union[float, List[float]], coord='lon',
+            verbose: bool = False
+            ) -> List[int] :
+        """Find the closest value(s) (`val`) in a specified coordinate (argument
+        `coord`)."""
 
         val_list = self.coords[coord]
         val = np.ravel(val)
@@ -384,7 +391,6 @@ class HabitatDataStructure :
     def findWeightByCohort(self, cohort: Union[float, List[float]], verbose: bool = False) -> List[int] :
         """Find cohort weight according to cohort number.
         
-        
         Parameters
         ----------
         cohort : Union[float, List[float]]
@@ -410,10 +416,9 @@ class HabitatDataStructure :
         return self._summaryToString()
     
     def normalizeCoords(self):
-        """
-        Normalize the time axis. Remove the days if the resolution is in
-        months,remove the seconds if the resolution is in days.
-        """
+        """Normalize the time axis. Remove the days if the resolution is in
+        months,remove the seconds if the resolution is in days."""
+        
         time_reso = self.parameters_dictionary["deltaT"]
         time_coords = self.coords['time'].data
         
