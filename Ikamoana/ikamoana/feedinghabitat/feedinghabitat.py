@@ -262,8 +262,8 @@ class FeedingHabitat :
         # parameters of hyperbola
         phi = 22.5 * np.pi/180.0
         a = 0.07
-        e = 1.0 / cos(phi)
-        b = a * sqrt(e*e - 1.0)
+        e = 1.0 / np.cos(phi)
+        b = a * np.sqrt(e*e - 1.0)
 
         # coordinate center
         # shift is to have all y>=0

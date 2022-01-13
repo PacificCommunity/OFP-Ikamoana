@@ -390,13 +390,15 @@ def normalizeCoords(
 
 ## TOOL ################################################################
 
-def sumDataSet(fisheries: xr.Dataset) -> xr.DataArray :
+def sumDataSet(fisheries: xr.Dataset, name: str = None) -> xr.DataArray :
     """Sum all DataArray in the Dataset passed in argument.
 
     Parameters
     ----------
     fisheries : xr.Dataset
         Dataset to sum.
+    name : str; optional
+        Name of the output DataArray.
 
     Returns
     -------
@@ -410,7 +412,11 @@ def sumDataSet(fisheries: xr.Dataset) -> xr.DataArray :
     for f in f_name_list[1:] :
         sum = sum + np.nan_to_num(fisheries[f])
     
-    return xr.DataArray(data=sum, coords=fisheries.coords,attrs={"Type":"Sum of "+fisheries.attrs["Type"]})
+    return xr.DataArray(data=sum,
+                        coords=fisheries.coords,
+                        name=name,
+                        attrs={"Type":"Sum of "+fisheries.attrs["Type"],
+                               **fisheries.attrs})
 
 def toTextFile(
         fisheries: Union[dict, pd.DataFrame], filepath: str = './ouput.txt',
@@ -665,10 +671,13 @@ def predictEffortAllFisheries(
 def effortByFishery(
         filepath: str, time_reso: int, space_reso: float, skiprows: int = 0,
         columns_name: List[str] = None, removeNoCatch: bool = False,
-        predict_effort: bool = False, verbose: bool = False
+        remove_fisheries: List[Union[float,int,str]] = None,
+        predict_effort: bool = False, verbose: bool = False,
+        fishery_label: str = "f"
         ) -> xr.Dataset :
     """This wrapper will perform common manipulation which is :
     - readFile
+    - Optional -> remove some fisheries (`remove_fisheries`)
     - removeEmptyEntries
     - Optional -> removeNoCatchEntries
     - separateFisheries
@@ -688,13 +697,13 @@ def effortByFishery(
     space_reso : float
         The space resolution in degrees.
     skiprows : int, optional
-        Line numbers to skip (0-indexed) or number of lines to skip (int)
-        at the start of the file.
-    columns_name : List[str], optional
-        You can specify the names of the columns using a list containing
-        all these names.
+        Line numbers to skip (0-indexed) or number of lines to skip
+        (int) at the start of the file.
     removeNoCatch : bool, optional
         Remove entries where catch is equal to zero.
+    remove_fisheries : List[Union[float,int,str]], optional
+        A list of fisheries name you want to remove from the final
+        DataSet.
     predict_effort : bool, optional
         Predict effort where effort is equal to zero and catch is not.
     verbose : bool, optional
@@ -706,8 +715,12 @@ def effortByFishery(
         argument. Each DataArray corresponds to the effort of this
         fishery according to the temporal and spatial coordinates.
     """
-    
-    fisheries_effort = readFile(filepath, skiprows, columns_name)
+
+    fisheries_effort = readFile(filepath, skiprows)
+    if remove_fisheries is not None :
+        for f in remove_fisheries :
+            fisheries_effort = fisheries_effort.drop(
+                fisheries_effort[fisheries_effort[fishery_label]==f].index)
     fisheries_effort = removeEmptyEntries(fisheries_effort,verbose)
     if removeNoCatch :
         fisheries_effort = removeNoCatchEntries(fisheries_effort,verbose)
