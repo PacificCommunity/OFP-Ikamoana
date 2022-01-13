@@ -150,7 +150,7 @@ class IkamoanaFields :
                  shallow_sea_to_ocean=False, lim=1e-45,
                  lat_min: int = None,lat_max: int = None,
                  lon_min: int = None,lon_max: int = None,
-                 time_dim: bool = False) -> xr.DataArray :
+                 field_output: bool = False) -> xr.DataArray :
         """Return the landmask of a given habitat or FeedingHabitat.global_mask.
         Mask values :
         2 -> is Shallow
@@ -223,10 +223,11 @@ class IkamoanaFields :
         # Answer -> in-coming
         landmask[-1,:] = landmask[0,:] = 0
 
-        if time_dim:
-            landmask = landmask[...,np.newaxis]
-            coords.update({'time': np.ndarray([1])})
-            dimensions = ('lat', 'lon', 'time')
+        if field_output:
+            landmask = landmask[np.newaxis]
+            landmask = np.flip(landmask, axis=1)
+            coords.update({'time': np.zeros(1, dtype=np.float32)})
+            dimensions = ('time', 'lat', 'lon')
 
         return xr.DataArray(data=landmask, name='landmask',
                             coords=coords, dims=dimensions)

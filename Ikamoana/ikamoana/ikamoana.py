@@ -104,7 +104,7 @@ class IkaSim :
                                        dimensions=self.forcing_dims,
                                        deferred_load=False)
             self.ocean.add_field(prcl.Field.from_netcdf(None, landmask,
-                                                        varname='landmask',
+                                                        var_name='landmask',
                                                         dimensions= {'lon':'lon',
                                                                      'lat':'lat',
                                                                      'time':'time'},
