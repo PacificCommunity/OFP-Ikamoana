@@ -64,7 +64,7 @@ def closestCoord(coords: Union[list,np.ndarray,xr.DataArray],
     Union[np.datetime64, float]
         The closest element to `value` in `coords`.
     """
-    
+
     return coords[indexClosestCoord(coords, value)].data
 
 def coordsAccess(coords: xr.Coordinate) -> Tuple[LambdaType,LambdaType,LambdaType]:
@@ -145,7 +145,7 @@ class FeedingHabitat :
 
     Third example : Calculate the habitat for a cohort that evolves over
     time.
-    
+
     >>> fh = ikamoana.feedinghabitat.FeedingHabitat(
     ...     xml_filepath="./path/to/file.xml")
     >>> result = fh.computeEvolvingFeedingHabitat(
@@ -157,7 +157,7 @@ class FeedingHabitat :
         (...)
     [...Many informations to print...]
     """
-    
+
     def __init__(self, xml_filepath: str, days_length_float_32: bool = True) :
         """
         Initialize the FeedingHabitat instance according to the XML
@@ -179,7 +179,7 @@ class FeedingHabitat :
             Specify if the data in NetCDF files are in float 32 (True) or float
             64 (False).
             The default is True.
-            
+
         Returns
         -------
         FeedingHabitat
@@ -204,7 +204,7 @@ class FeedingHabitat :
                          ) -> Tuple[int,int,int,int,int,int] :
         """Determine if the arguments are correctly chosen. If they are
         outside the time and space limits an error is returned."""
-        
+
         coords = self.data_structure.coords
 
         if (lat_min is not None) :
@@ -512,7 +512,7 @@ class FeedingHabitat :
         verbose : boolean, optional
             If True, print some informations about the running state.
             The default is False.
-            
+
         See Also
         --------
         FeedingHabitat DocString shows examples of use cases.
@@ -524,12 +524,12 @@ class FeedingHabitat :
             in the `cohorts` argument.
 
         """
-      
+
         cohorts = np.array(cohorts).ravel()
         if True in ((cohorts<0) | (cohorts>=self.data_structure.cohorts_number)) :
             raise ValueError("cohort out of bounds. Min is 0 and Max is %d"%(
                     self.data_structure.cohorts_number-1))
-            
+
         if control_arg :
             (time_start,time_end,lat_min,lat_max,lon_min,lon_max) = (
                 self.controlArguments(
@@ -664,7 +664,7 @@ class FeedingHabitat :
         time_array = np.arange(time_start, time_end+1)
 
         cohorts_number = self.data_structure.cohorts_number
-        
+
         if cohort_start is None : cohort_start = 0
 ## TODO : I don't understand the comment. I think this cases is already taken into account.
 # Must be verified.
@@ -678,7 +678,11 @@ class FeedingHabitat :
         if cohort_start is None :
             cohort_start = 0
         if cohort_end is None :
-            cohort_end = cohorts_number - 1
+            if time_end is not None:
+                #This might cause a bug if simulation time is longer than final cohort
+                cohort_end = cohort_start + time_end - time_start
+            else:
+                cohort_end = cohorts_number - 1
 
         if (cohort_start < 0) or (cohort_start >= cohorts_number) :
             raise ValueError("cohort_start out of bounds. Min is %d and Max is %d"%(
@@ -752,7 +756,7 @@ class FeedingHabitat :
         Since the estimate of sigma with SST is always lower due to
         larger extension of warm watermasses in the surface, we will add
         1.0 to sigma_0.
-        
+
         .. SEAPODYM C++ Documentation :
             Original is from SEAPODYM, Senina et al. (2020). Adapted to
             python by J. Lehodey (2021).
@@ -762,7 +766,7 @@ class FeedingHabitat :
         print("Warning : This function (correctEpiTempWithZeu) was only tested"
               " for Skipjack.\n It will also add +1 to sigma_min. Cf. function"
               " documentation for more details.")
-        
+
         dTdz = np.divide(
             2.0 * (self.data_structure.variables_dictionary['sst']
             - self.data_structure.variables_dictionary['temperature_L1']),
