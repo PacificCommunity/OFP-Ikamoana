@@ -1,22 +1,20 @@
 import warnings
 import xml.etree.ElementTree as ET
-from typing import Tuple, Union
+from typing import Dict, List, Tuple, Union
 
 import numpy as np
 import parcels
 import xarray as xr
 from parcels.tools.converters import Geographic, GeographicPolar
 
-from ..feedinghabitat import FeedingHabitat, coordsAccess, feedinghabitatconfigreader as fhcf
-from .ikamoanafieldsconfigreader import readIkamoanaFieldsXML
-from .. import dymfiles as df
+from ..feedinghabitat import FeedingHabitat
+from ..feedinghabitat import feedinghabitatconfigreader as fhcf
 from ..fisherieseffort import fisherieseffort
+from .ikamoanafieldsconfigreader import readIkamoanaFieldsXML
 
 
 def convertToField(field : Union[xr.DataArray, xr.Dataset], name=None) :
-    """
-    Converts a DataSet/DataArray to a `parcels.FieldSet`.
-    """
+    """Converts a DataSet/DataArray to a `parcels.FieldSet`."""
     
     if isinstance(field, xr.DataArray) :
         field = field.to_dataset(name=name if name is not None else field.name)
@@ -78,20 +76,17 @@ def sliceField(field : Union[xr.DataArray, xr.Dataset],
 
     return field.sel(time=coord_time, lat=coord_lat, lon=coord_lon)
 
-
-
-## TODO : Add FeedingHabitat
-
 class IkamoanaFields :
 
 # ------------------------- CORE FUNCTIONS ------------------------- #
 
+# TODO : Add normalization after the creation of the FeedingHabitat
     def __init__(self,
                  #xml_fields : str,
                  xml_feeding_habitat : str,
                  feeding_habitat : xr.DataArray = None):
-        """Create a IkamoanaFields class. Can compute Taxis, Current and Diffusion
-        fields."""
+        """Create a IkamoanaFields class. Can compute Taxis, Current, Diffusion,
+        and mortality fields."""
 
         #self.ikamoana_fields_structure = readIkamoanaFieldsXML(xml_fields)
         self.ikamoana_fields_structure = readIkamoanaFieldsXML(None)
@@ -100,23 +95,28 @@ class IkamoanaFields :
             self.feeding_habitat = feeding_habitat
         else :
             raise TypeError("feeding_habitat must be a Xarray.DataArray or None."
-                            "Actual type is : %s"%(str(type(feeding_habitat))))
+                            "Current type is : %s"%(str(type(feeding_habitat))))
 
-    def readFisheriesXML(self, xml_config_file: str,
-                         species_name: str = None) -> dict :
-
+    def readFisheriesXML(
+            self, xml_config_file: str, species_name: str = None
+            ) -> dict :
+        """Read a XML file to get all parameters needed for mortality
+        field production."""
+        
         tree = ET.parse(xml_config_file)
         root = tree.getroot()
-        if species_name == None : species_name = root.find("sp_name").text
+        if species_name == None :
+            species_name = root.find("sp_name").text
 
         nb_fishery = int(root.find('nb_fishery').attrib['value'])
         list_fishery_name = root.find('list_fishery_name').text.split()
 
         # fisheries name
         if len(list_fishery_name) != nb_fishery :
-            raise ValueError("nb_fishery is %d but list_fishery_name"%(nb_fishery)
-                             + "contains %d elements."%(len(list_fishery_name)))
-
+            raise ValueError((
+                "nb_fishery is {} but list_fishery_name contains {} elements."
+                ).format(nb_fishery, len(list_fishery_name)))
+                            
         f_param = {}
         for f in list_fishery_name :
             tmp_dict = {
@@ -127,6 +127,7 @@ class IkamoanaFields :
                     "s_sp_fishery").find(f).attrib[species_name]),
                 "length_threshold":float(root.find('s_sp_fishery').find(f).find(
                     "length_threshold").attrib[species_name])}
+            
             if tmp_dict['function_type'] == 3 :
                 tmp_dict['right_asymptote'] = float(
                     root.find("s_sp_fishery").find(f).find(
@@ -141,25 +142,25 @@ class IkamoanaFields :
         return (self.ikamoana_fields_structure.vmax_a
              * np.power(length, self.ikamoana_fields_structure.vmax_b))
 
-## TODO : Déplacer le control d'argument vers le wrapper ?
-# Meilleure idée : ajouter un argument use_SEAPODYM_global_mask comme ça
-# on peut quand même controler l'argument malgré l'utilisation du 
-# global_mask (un peu comme un array_like)
     def landmask(self, habitat_field : xr.DataArray = None,
                  use_SEAPODYM_global_mask: bool = False,
                  shallow_sea_to_ocean=False, lim=1e-45,
                  lat_min: int = None,lat_max: int = None,
                  lon_min: int = None,lon_max: int = None) -> xr.DataArray :
-        """Return the landmask of a given habitat or FeedingHabitat.global_mask.
+        """Return the landmask of a given habitat (`habitat_field`) or 
+        generated from the FeedingHabitat.global_mask which is used by
+        SEAPODYM (`use_SEAPODYM_global_mask: bool = True`).
+        
         Mask values :
-        2 -> is Shallow
-        1 -> is Land or No_Data
-        0 -> deep ocean with habitat data
+        - 2 -> is Shallow
+        - 1 -> is Land or No_Data
+        - 0 -> deep ocean with habitat data
 
         Note
         ----
         Landmask in Original (with Parcels Fields) is flipped on latitude axis.
         """
+        
         def controlArguments(habitat_field, lat_min, lat_max, lon_min, lon_max) :
             if habitat_field is not None:
                 if lat_min is None :
@@ -218,8 +219,7 @@ class IkamoanaFields :
             coords = {'lat':habitat_field.coords['lat'],
                       'lon':habitat_field.coords['lon']}
 
-        ## TODO : Ask why lon is between 1 and ny-1
-        # Answer -> in-coming
+        ## TODO : Why is lon between 1 and ny-1 ?
         landmask[-1,:] = landmask[0,:] = 0
         
         return xr.DataArray(data=landmask, name='landmask',
@@ -319,28 +319,48 @@ class IkamoanaFields :
                     dims=('time','lat','lon'),
                     attrs=field.attrs))
 
+## TODO : Take into account L1 is a simplification.
+# Should use accessibility + forage distribution + current L1/L2/L3
     def current_forcing(self):
-        U = fhcf.seapodymFieldConstructor(self.feeding_habitat_structure.data_structure.root_directory+
-                               self.ikamoana_fields_structure.u_file,  dym_varname='u_L1')
-        V = fhcf.seapodymFieldConstructor(self.feeding_habitat_structure.data_structure.root_directory+
-                               self.ikamoana_fields_structure.v_file,  dym_varname='v_L1')
+        U = fhcf.seapodymFieldConstructor(
+            self.feeding_habitat_structure.data_structure.root_directory
+            + self.ikamoana_fields_structure.u_file,  dym_varname='u_L1')
+        V = fhcf.seapodymFieldConstructor(
+            self.feeding_habitat_structure.data_structure.root_directory
+            + self.ikamoana_fields_structure.v_file,  dym_varname='v_L1')
 
         if self.feeding_habitat is not None:
-            timefun, latfun, lonfun  = coordsAccess(U)
-            minlon_idx = lonfun(min(self.feeding_habitat.coords['lon'].data))
-            maxlon_idx = lonfun(max(self.feeding_habitat.coords['lon'].data))
-            minlat_idx = latfun(max(self.feeding_habitat.coords['lat'].data))
-            maxlat_idx = latfun(min(self.feeding_habitat.coords['lat'].data))
-            mintime_idx = timefun(min(self.feeding_habitat.coords['time'].data))
-            maxtime_idx =timefun(max(self.feeding_habitat.coords['time'].data))
-            U = sliceField(U, mintime_idx, maxtime_idx,
-                            minlat_idx, maxlat_idx,
-                            minlon_idx, maxlon_idx)
-            V = sliceField(V, mintime_idx, maxtime_idx,
-                            minlat_idx, maxlat_idx,
-                            minlon_idx, maxlon_idx)
+    # NOTE : DataArray.loc[] is a xarray native function.
+            minlon_idx = min(self.feeding_habitat.lon.data)
+            maxlon_idx = max(self.feeding_habitat.lon.data)
+            minlat_idx = max(self.feeding_habitat.lat.data)
+            maxlat_idx = min(self.feeding_habitat.lat.data)
+            mintime_idx = min(self.feeding_habitat.time.data)
+            maxtime_idx = max(self.feeding_habitat.time.data)
+            
+            U = U.loc[mintime_idx:maxtime_idx,
+                      minlat_idx:maxlat_idx,
+                      minlon_idx:maxlon_idx]
+            
+            V = V.loc[mintime_idx:maxtime_idx,
+                      minlat_idx:maxlat_idx,
+                      minlon_idx:maxlon_idx]
+            
+            # timefun, latfun, lonfun  = coordsAccess(U)
+            # minlon_idx = lonfun(min(self.feeding_habitat.coords['lon'].data))
+            # maxlon_idx = lonfun(max(self.feeding_habitat.coords['lon'].data))
+            # minlat_idx = latfun(max(self.feeding_habitat.coords['lat'].data))
+            # maxlat_idx = latfun(min(self.feeding_habitat.coords['lat'].data))
+            # mintime_idx = timefun(min(self.feeding_habitat.coords['time'].data))
+            # maxtime_idx =timefun(max(self.feeding_habitat.coords['time'].data))
+            # U = sliceField(U, mintime_idx, maxtime_idx,
+            #                 minlat_idx, maxlat_idx,
+            #                 minlon_idx, maxlon_idx)
+            # V = sliceField(V, mintime_idx, maxtime_idx,
+            #                 minlat_idx, maxlat_idx,
+            #                 minlon_idx, maxlon_idx)
+            
         return U, V
-
 
     def taxis(self, dHdlon: xr.DataArray, dHdlat: xr.DataArray,
               name: str = None) -> Tuple[xr.DataArray,xr.DataArray] :
@@ -451,14 +471,18 @@ class IkamoanaFields :
                             dims=("time","lat","lon"),
                             attrs=habitat.attrs)
 
-    def fishingMortality(self, effort_ds: xr.Dataset, fisheries_parameters: dict,
-                         start_age: int = 0, convertion_tab: dict = None,
-                         evolving: bool = True) -> xr.DataArray :
-      
-        if len(effort_ds) != len(fisheries_parameters.keys()) :
-            raise ValueError("effort_ds (%d) and fisheries_parameters (%d) "
-                             "must have same length."%(len(effort_ds),
-                                                       len(fisheries_parameters.keys())))
+    def fishingMortality(
+            self, effort_ds: xr.Dataset, fisheries_parameters: dict,
+            start_age: int = 0, evolving: bool = True,
+            convertion_tab: Dict[str, Union[str,int,float]] = None,
+            ) -> xr.DataArray :
+
+        # # This is not necessary :
+        # if len(effort_ds) != len(fisheries_parameters.keys()) :
+        #     raise ValueError((
+        #         "effort_ds ({}) and fisheries_parameters ({}) must have "
+        #         "same length.").format(
+        #             len(effort_ds),len(fisheries_parameters.keys())))
 
         # TYPE I - Not Supported
         def selectivityLimitOne(length, sigma):
@@ -501,44 +525,46 @@ class IkamoanaFields :
         fishing_mortality = {}
         for p_name, params in fisheries_parameters.items() :
             f_name = convertion_tab[p_name] if p_name in convertion_tab else p_name
-            data = effort_ds[f_name].data
-            f_data = np.empty_like(data)
-            
-            q = params['q']
-            selectivity_fun = selectivity(
-                function_type=params['function_type'],
-                sigma=params['variable'],
-                mu=params['length_threshold'],
-                r_asymp=(params['right_asymptote']
-                         if 'right_asymptote' in params else None))
-            
-            if evolving :
-                c_nb = self.feeding_habitat_structure.data_structure.cohorts_number
-                tmp = np.arange(start_age, c_nb)
-                age = np.concatenate(
-                    (tmp,np.repeat(c_nb-1, effort_ds.time.data.size - tmp.size)))
-            else : age = start_age
-                    
-            for t in range(effort_ds.time.data.size) :
-                # length in cm
-                length = length_fun(age[t]) if evolving else length_fun(age)
-                f_data[t,:,:] = data[t,:,:] * q * selectivity_fun(length)
-            
-            fishing_mortality[f_name] = xr.DataArray(
-                f_data,
-                coords=effort_ds[f_name].coords,
-                attrs=effort_ds[f_name].attrs)
+            if f_name in effort_ds :
+                data = effort_ds[f_name].data
+                f_data = np.empty_like(data)
+                
+                q = params['q']
+                selectivity_fun = selectivity(
+                    function_type=params['function_type'],
+                    sigma=params['variable'],
+                    mu=params['length_threshold'],
+                    r_asymp=(params['right_asymptote'] 
+                             if 'right_asymptote' in params else None))
+                
+                if evolving :
+                    c_nb = self.feeding_habitat_structure.data_structure.cohorts_number
+                    tmp = np.arange(start_age, c_nb)
+                    age = np.concatenate(
+                        (tmp,np.repeat(c_nb-1, effort_ds.time.data.size - tmp.size)))
+                else : age = start_age
+                        
+                for t in range(effort_ds.time.data.size) :
+                    # length in cm
+                    length = length_fun(age[t]) if evolving else length_fun(age)
+                    f_data[t,:,:] = data[t,:,:] * q * selectivity_fun(length)
+                
+                fishing_mortality[f_name] = xr.DataArray(
+                    f_data,
+                    coords=effort_ds[f_name].coords,
+                    attrs=effort_ds[f_name].attrs)
             
         fishing_mortality_ds = xr.Dataset(fishing_mortality)
         fishing_mortality_ds.attrs.update(effort_ds.attrs)
+        fishing_mortality_ds.attrs["Fisheries"] = list(fishing_mortality.keys())
 
-        return fisherieseffort.sumDataSet(fishing_mortality_ds)
+        return fisherieseffort.sumDataSet(fishing_mortality_ds,
+                                          name="Mortality")
 
-# ------------------------- WRAPPER ------------------------- #
+# ------------------------------ WRAPPER ----------------------------- #
 
-
-    def _commonWrapperTaxis(self, feeding_habitat, name,
-                            lat_min, lat_max, lon_min, lon_max):
+    def _commonWrapperTaxis(self, feeding_habitat, name, lat_min, lat_max,
+                            lon_min, lon_max):
         
         hf_cond, ssto_cond = (self.ikamoana_fields_structure.landmask_from_habitat,
                               self.ikamoana_fields_structure.shallow_sea_to_ocean)
@@ -701,5 +727,85 @@ class IkamoanaFields :
         
         return self._commonWrapperTaxis(feeding_habitat, name, lat_min,
                                         lat_max, lon_min, lon_max)
-      
-      
+    
+    # TODO : Write the description
+    def computeMortality(
+            self, effort_filepath: str, fisheries_xml_filepath: str,
+            time_reso: int, space_reso: float, skiprows: int = 0,
+            removeNoCatch: bool = False, predict_effort: bool = False,
+            remove_fisheries: List[Union[float,str,int]] = None,
+            convertion_tab: Dict[str, Union[str,int,float]] = None,
+            verbose: bool = False
+            ) -> xr.DataArray :
+        
+        params_fisheries = self.readFisheriesXML(fisheries_xml_filepath)
+        
+        to_remove = []
+        for f in remove_fisheries :
+            to_remove.append(
+                convertion_tab[f] if f in convertion_tab.keys() else f)
+        
+        effort_ds = fisherieseffort.effortByFishery(
+            effort_filepath, time_reso=time_reso, space_reso=space_reso,
+            skiprows=skiprows, removeNoCatch=removeNoCatch,
+            remove_fisheries=to_remove, predict_effort=predict_effort,
+            verbose=verbose)
+        
+        return self.fishingMortality(effort_ds, params_fisheries,
+                                     convertion_tab=convertion_tab)
+        
+# ------------------------------- MAIN ------------------------------- #
+
+# TODO : Add args
+    def computeIkamoanaFields(
+            self, effort_filepath: str, fisheries_xml_filepath: str,
+            time_reso: int, space_reso: float, skiprows: int = 0,
+            removeNoCatch: bool = False, predict_effort: bool = False,
+            remove_fisheries: List[Union[float,str,int]] = None,
+            convertion_tab: Dict[str, Union[str,int,float]] = None,
+            
+            evolve: bool = True, cohort_start: int = None,
+            cohort_end: int = None, time_start: int = None, time_end: int = None,
+            lat_min: int = None, lat_max: int = None, lon_min: int = None,
+            lon_max: int = None, verbose: bool = False
+            ) -> Dict[str, xr.DataArray]:
+        
+        self.feeding_habitat_structure.data_structure.normalizeCoords()
+        
+        hf_cond, ssto_cond = (
+            self.ikamoana_fields_structure.landmask_from_habitat,
+            self.ikamoana_fields_structure.shallow_sea_to_ocean)
+        
+        # TODO : add args
+        if evolve :
+            taxis_lon, taxis_lat = self.computeEvolvingTaxis()
+        else :
+            taxis_lon, taxis_lat = self.computeTaxis()
+        
+        if hf_cond :
+            landmask = self.landmask(
+                habitat_field= self.feeding_habitat, use_SEAPODYM_global_mask=not(hf_cond),
+                shallow_sea_to_ocean=ssto_cond, lat_min=lat_min, lat_max=lat_max,
+                lon_min=lon_min, lon_max=lon_max)
+        
+        diffusion = self.diffusion(self.feeding_habitat)
+        gradient_diffusion_lon, gradient_diffusion_lat = self.gradient(diffusion, landmask)
+        
+        mortality = self.computeMortality(
+            effort_filepath=effort_filepath, fisheries_xml_filepath=fisheries_xml_filepath,
+            time_reso=time_reso, space_reso=space_reso, skiprows=skiprows,
+            removeNoCatch=removeNoCatch, predict_effort=predict_effort,
+            remove_fisheries=remove_fisheries, convertion_tab=convertion_tab,
+            verbose=verbose)
+
+        return {'taxis_lon':taxis_lon,
+                'taxis_lat':taxis_lat,
+                'landmask':landmask,
+                'gradient_diffusion_lon':gradient_diffusion_lon,
+                'gradient_diffusion_lat':gradient_diffusion_lat,
+                'mortality':mortality}
+        
+        
+        
+        
+        
