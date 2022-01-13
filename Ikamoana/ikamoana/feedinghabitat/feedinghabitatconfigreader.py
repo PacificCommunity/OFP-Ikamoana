@@ -60,7 +60,7 @@ def seapodymFieldConstructor(filepath: str, dym_varname : str = None,
     #DymFile
     if filepath.lower().endswith('.dym') :
         if dym_varname is None : dym_varname = filepath
-        return df.dym2ToDataArray(infile = filepath,
+        return df.dym2ToDataArray(infilepath = filepath,
                                   varname = dym_varname,
                                   attributs = dym_attributs)
 
@@ -330,10 +330,10 @@ def _readXmlConfigParameters(root) :
 
     parameters_dictionary["o_star"] = float(
         root.find('b_oxy_habitat').attrib[sp_name])
-    
+
     parameters_dictionary["deltaT"] = float(
         root.find('deltaT').attrib["value"])
-    
+
     ## NOTE :
     # - "space_reso" : Resolution in degrees
     # - "deltaX/Y" : Resolution in nautic miles

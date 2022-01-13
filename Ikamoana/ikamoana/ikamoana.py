@@ -7,10 +7,10 @@ import xml.etree.ElementTree as ET
 class IkaSim :
 
     def __init__(self, xml_parameterfile: str):
+        
         self.ika_params = self._readParams(xml_filepath=xml_parameterfile)
-        self.forcing_gen = ika.ikamoanafields.IkamoanaFields(
-            xml_feeding_habitat=(self.ika_params['forcing_dir']
-                                 + self.ika_params['SEAPODYM_file']))
+        self.forcing_gen = ika.ikamoanafields.IkamoanaFields(self.ika_params['SEAPODYM_file'])
+        
         if self.ika_params['random_seed'] is None:
             np.random.RandomState()
             self.ika_params['random_seed'] = np.random.get_state()
@@ -24,6 +24,8 @@ class IkaSim :
         start = data_structure.findIndexByDatetime(self.ika_params['start_time'])[0]
         end = data_structure.findIndexByDatetime(
             self.ika_params['start_time']+ self.ika_params['T'])[0]
+        self.start_age = ages[0]
+        
         lonlims = self.ika_params['spatial_lims']['lonlim']
         lonlims = data_structure.findCoordIndexByValue(lonlims, coord='lon')
         #lonlims = [int(l) for l in lonlims]
@@ -49,6 +51,15 @@ class IkaSim :
             
         self.forcing_vars.update({'Tx': 'Tx', 'Ty': 'Ty'})
 
+        self.forcing['landmask'] = self.forcing_gen.landmask(use_SEAPODYM_global_mask=True,
+                                                             field_output=True)
+        #self.forcing_vars.update({'landmask': 'landmask'})
+
+        if self.ika_params['start_filestem'] is not None:
+            self.forcing['start'] = self.forcing_gen.start_distribution(
+                                    self.ika_params['start_filestem']+str(self.start_age)+'.dym')
+            self.forcing_vars.update({'start': 'start'})
+
         ### Mortality fields to do
 
         self.forcing['U'], self.forcing['V'] = self.forcing_gen.current_forcing()
@@ -64,6 +75,7 @@ class IkaSim :
             name='K')
         self.forcing_vars.update({'dK_dx':'dK_dx', 'dK_dy':'dK_dy'})
 
+
         if to_file:
             for (var, forcing) in self.forcing.items():
                 forcing.to_netcdf(path='%s/%s_%s.nc' % (
@@ -72,7 +84,6 @@ class IkaSim :
                 
         #Parcels will need a mapping of dimension coordinate names
         self.forcing_dims = {'lon':'lon', 'lat':'lat', 'time':'time'}
-        self.start_age = ages[0]
 
     def createFieldSet(self, from_disk: bool = False):
         if from_disk:
@@ -80,13 +91,22 @@ class IkaSim :
                                        self.ika_params['run_name'])
             self.ocean = prcl.FieldSet.from_netcdf(filestem,
                                                    variables=self.forcing_vars,
-                                                   dimensions=self.forcing.coords)
+                                                   dimensions=self.forcing.forcing_dims,
+                                                   deferred_load=False)
         else:
-            self.ocean = prcl.FieldSet.from_xarray_dataset(
-                self.forcing, variables=self.forcing_vars,
-                dimensions=self.forcing_dims)
-    # TODO : remove print
-        print(self.ocean.Tx.grid.time_origin)
+            landmask = self.forcing.pop('landmask')
+            self.ocean = prcl.FieldSet.from_xarray_dataset(self.forcing,
+                                       variables=self.forcing_vars,
+                                       dimensions=self.forcing_dims,
+                                       deferred_load=False)
+            self.ocean.add_field(prcl.Field.from_netcdf(None, landmask,
+                                                        var_name='landmask',
+                                                        dimensions= {'lon':'lon',
+                                                                     'lat':'lat',
+                                                                     'time':'time'},
+                                                        allow_time_extrapolation=True,
+                                                        deferred_load=False))
+
         print(self.ocean.Tx.grid.time_origin.fulltime(self.ocean.Tx.grid.time[0]))
 
     def _setConstant(self, name, val):
@@ -106,10 +126,10 @@ class IkaSim :
         else:
             if self.ocean.start is None :
                 raise ValueError('No starting distribution field in ocean fieldset!')
-    # TODO : Error with the ocean variable, mean self.ocean ?
             self.fish = prcl.ParticleSet.from_field(
-                fieldset=ocean, start=self.ocean.start,
+                fieldset=self.ocean, start=self.ocean.start,
                 time=self.ika_params['start_time'], size=n_fish, pclass=pclass)
+            
         #Initialise fish
         cohort_dt = self.forcing_gen.feeding_habitat_structure.data_structure.\
             species_dictionary['cohorts_sp_unit'][0]
@@ -160,12 +180,15 @@ class IkaSim :
         #params['ageing_cohort'] = True if int(cohort.attrib['ageing']) == 1 else False
         # NOTE : Is equivalent to
         params['ageing_cohort'] = int(cohort.attrib['ageing']) == 1
+        params['start_filestem'] = (
+            params['forcing_dir']
+            + cohort.attrib['start_filestem'] if 'start_filestem' in cohort.attrib else None)
 
         time = root.find('time')
         params['start_time'] = np.datetime64(time.attrib['start'])
         params['T'] = int(time.attrib['sim_time'])
-        params['output_dt'] = int(time.attrib['dt'])
-        params['dt'] = int(time.attrib['output_dt'])
+        params['dt'] = int(time.attrib['dt'])*86400
+        params['output_dt'] = int(time.attrib['output_dt'])*86400
 
         domain = root.find('domain')
         params['spatial_lims'] = {
