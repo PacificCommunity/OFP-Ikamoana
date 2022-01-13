@@ -52,7 +52,7 @@ class IkaSim :
                                   'Ty': 'Ty'})
 
         self.forcing['landmask'] = self.forcing_gen.landmask(use_SEAPODYM_global_mask=True,
-                                                             time_dim=True)
+                                                             field_output=True)
         #self.forcing_vars.update({'landmask': 'landmask'})
 
         if self.ika_params['start_filestem'] is not None:
