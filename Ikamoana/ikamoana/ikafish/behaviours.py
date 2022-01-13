@@ -19,8 +19,8 @@ def IkaDymMove(particle, fieldset, time):
 def IkaDimMoveWithDiffusionReroll(particle, fieldset, time):
     particle.prev_lon = particle.lon
     particle.prev_lat = particle.lat
-    adv_x = Ax + Tx
-    adv_y = Ay + Ty
+    adv_x = Ax + tx
+    adv_y = Ay + ty
     if adv_x > 2:
         adv_x = 2
     if adv_y > 2:
@@ -36,13 +36,13 @@ def IkaDimMoveWithDiffusionReroll(particle, fieldset, time):
         # Look along a transect of the potential move for land
         newlon = particle.lon + (jump_loop + 1) * (move_x/sections) # one section of the potential movement
         newlat = particle.lat + (jump_loop + 1) * (move_y/sections)
-        onland = fieldset.landMask[0, particle.depth, newlat, newlon]
+        onland = fieldset.landmask[0, particle.depth, newlat, newlon]
         jump_loop += 1
         if onland == 1:
             Rx = random.uniform(-1., 1.)
             Ry = random.uniform(-1., 1.)
-            Dx = Rx * Rx_component * f_lon
-            Dy = Ry * Ry_component * f_lat
+            Dx = Rx * Rx_component * f_lon /particle.dt
+            Dy = Ry * Ry_component * f_lat /particle.dt
             loop_count += 1
             jump_loop = 0 # restart the transect
             if loop_count > 500: # Give up trying to find legal moves
