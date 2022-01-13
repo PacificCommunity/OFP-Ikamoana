@@ -157,6 +157,8 @@ class IkamoanaFields :
         - 2 -> is Shallow
         - 1 -> is Land or No_Data
         - 0 -> deep ocean with habitat data
+        
+        If field_output is True, time coordinate is added to landmask.
 
         Note
         ----
@@ -203,7 +205,7 @@ class IkamoanaFields :
         else :
             if habitat_field is None :
                 raise ValueError("You must specify a habitat_field argument if"
-                                 "use_SEAPODYM_global_mask is False.")
+                                 " use_SEAPODYM_global_mask is False.")
             habitat_f = habitat_field[0,:,:]
             lmeso_f = self.feeding_habitat_structure.data_structure.variables_dictionary[
                 'forage_lmeso'][0, lat_min:lat_max, lon_min:lon_max]
@@ -224,17 +226,24 @@ class IkamoanaFields :
         ## TODO : Why is lon between 1 and ny-1 ?
         landmask[-1,:] = landmask[0,:] = 0
 
-        if field_output:
-            landmask = landmask[np.newaxis]
-            landmask = np.flip(landmask, axis=1)
-            coords.update({'time': np.zeros(1, dtype=np.float32)})
+        if field_output :
+            if habitat_field is None :
+                raise ValueError("If field_output is True you must passe a "
+                                 "habitat_field. Otherwise the time coordinate"
+                                 " length can't be calculated.")
+            landmask = np.tile(landmask[np.newaxis],
+                               (habitat_field.time.size, 1, 1))
+            coords['time'] = habitat_field.time
             dimensions = ('time', 'lat', 'lon')
+        else :
+            dimensions = ('lat', 'lon')
 
-        return xr.DataArray(data=landmask, name='landmask',
-                            coords=coords, dims=dimensions)
+        return xr.DataArray(data=landmask, name='landmask', coords=coords,
+                            dims=dimensions)
 
-    def gradient(self, field: xr.DataArray, landmask: xr.DataArray,
-                 name: str = None) -> Tuple[xr.DataArray]:
+    def gradient(
+            self, field: xr.DataArray, landmask: xr.DataArray, name: str = None
+            ) -> Tuple[xr.DataArray]:
         """
         Gradient calculation for a Xarray DataArray seapodym-equivalent calculation
         requires LandMask forward and backward differencing for domain edges
@@ -329,7 +338,7 @@ class IkamoanaFields :
 
 ## TODO : Take into account L1 is a simplification.
 # Should use accessibility + forage distribution + current L1/L2/L3
-    def current_forcing(self):
+    def current_forcing(self) -> Tuple[xr.DataArray, xr.DataArray]:
         U = fhcf.seapodymFieldConstructor(
             self.feeding_habitat_structure.data_structure.root_directory
             + self.ikamoana_fields_structure.u_file,  dym_varname='u_L1')
@@ -388,11 +397,10 @@ class IkamoanaFields :
                             minlon_idx, maxlon_idx)
         return dist
 
-    def taxis(self, dHdlon: xr.DataArray, dHdlat: xr.DataArray,
-              name: str = None) -> Tuple[xr.DataArray,xr.DataArray] :
-        """
-        Calculation of the Taxis field from the gradient.
-        """
+    def taxis(
+            self, dHdlon: xr.DataArray, dHdlat: xr.DataArray, name: str = None
+            ) -> Tuple[xr.DataArray,xr.DataArray] :
+        """Calculation of the Taxis field from the gradient."""
 
         def argumentCheck(array) :
             if array.attrs.get('cohort_start') is not None :
@@ -622,7 +630,7 @@ class IkamoanaFields :
 
         Parameters
         ----------
-        cohort : int, optional
+        cohort : int, optional if `use_already_computed_habitat` is True
             The cohort whose habitat is to be calculated.
         time_start : int, optional
             [description]
@@ -668,7 +676,7 @@ class IkamoanaFields :
 
         if (self.feeding_habitat is None) or (not use_already_computed_habitat) :
             if cohort is None :
-                raise ValueError("cohort argument must be specified. "
+                raise ValueError("Cohort argument must be specified. "
                                  "Actual is %s."%(str(cohort)))
             feeding_habitat = (
                 self.feeding_habitat_structure.computeFeedingHabitat(
@@ -782,7 +790,7 @@ class IkamoanaFields :
         
 # ------------------------------- MAIN ------------------------------- #
 
-# TODO : Add args
+# TODO : Mortality isn't calculated for now. Uncomment to do so.
     def computeIkamoanaFields(
             self, effort_filepath: str, fisheries_xml_filepath: str,
             time_reso: int, space_reso: float, skiprows: int = 0,
@@ -795,6 +803,9 @@ class IkamoanaFields :
             lat_min: int = None, lat_max: int = None, lon_min: int = None,
             lon_max: int = None, verbose: bool = False
             ) -> Dict[str, xr.DataArray]:
+        """
+        Feeding Habitat is calculated everytime, see WARNING commentary.
+        """
         
         self.feeding_habitat_structure.data_structure.normalizeCoords()
         
@@ -804,32 +815,44 @@ class IkamoanaFields :
         
         # TODO : add args
         if evolve :
-            taxis_lon, taxis_lat = self.computeEvolvingTaxis()
+            taxis_lon, taxis_lat = self.computeEvolvingTaxis(
+                cohort=cohort_start, cohort_end=cohort_end, time_start=time_start,
+                time_end=time_end, lat_min=lat_min, lat_max=lat_max,
+                lon_min=lon_min, lon_max=lon_max, verbose=verbose,
+        # WARNING : will compute feeding habitat everytime.
+                use_already_computed_habitat=False)
         else :
-            taxis_lon, taxis_lat = self.computeTaxis()
+            taxis_lon, taxis_lat = self.computeTaxis(
+                cohort=cohort_start, time_start=time_start, time_end=time_end,
+                lat_min=lat_min, lat_max=lat_max, lon_min=lon_min, lon_max=lon_max,
+        # WARNING : will compute feeding habitat everytime.
+                use_already_computed_habitat=False, verbose=verbose)
         
-        if hf_cond :
-            landmask = self.landmask(
-                habitat_field= self.feeding_habitat, use_SEAPODYM_global_mask=not(hf_cond),
-                shallow_sea_to_ocean=ssto_cond, lat_min=lat_min, lat_max=lat_max,
-                lon_min=lon_min, lon_max=lon_max)
+        landmask = self.landmask(
+            habitat_field=self.feeding_habitat, use_SEAPODYM_global_mask=not(hf_cond),
+            shallow_sea_to_ocean=ssto_cond, lat_min=lat_min, lat_max=lat_max,
+            lon_min=lon_min, lon_max=lon_max, field_output=True)
         
         diffusion = self.diffusion(self.feeding_habitat)
-        gradient_diffusion_lon, gradient_diffusion_lat = self.gradient(diffusion, landmask)
+        gradient_diffusion_lon, gradient_diffusion_lat = self.gradient(
+            diffusion, landmask.loc[landmask.time.data[0],:,:])
         
-        mortality = self.computeMortality(
-            effort_filepath=effort_filepath, fisheries_xml_filepath=fisheries_xml_filepath,
-            time_reso=time_reso, space_reso=space_reso, skiprows=skiprows,
-            removeNoCatch=removeNoCatch, predict_effort=predict_effort,
-            remove_fisheries=remove_fisheries, convertion_tab=convertion_tab,
-            verbose=verbose)
+        U, V = self.current_forcing()
+        
+        # mortality = self.computeMortality(
+        #     effort_filepath=effort_filepath, fisheries_xml_filepath=fisheries_xml_filepath,
+        #     time_reso=time_reso, space_reso=space_reso, skiprows=skiprows,
+        #     removeNoCatch=removeNoCatch, predict_effort=predict_effort,
+        #     remove_fisheries=remove_fisheries, convertion_tab=convertion_tab,
+        #     verbose=verbose)
 
-        return {'taxis_lon':taxis_lon,
-                'taxis_lat':taxis_lat,
+        return {'Tx':taxis_lon, 'Ty':taxis_lat,
+                'K':diffusion,
+                'dK_dx':gradient_diffusion_lon, 'dK_dy':gradient_diffusion_lat,
+                'U':U, 'V':V,
                 'landmask':landmask,
-                'gradient_diffusion_lon':gradient_diffusion_lon,
-                'gradient_diffusion_lat':gradient_diffusion_lat,
-                'mortality':mortality}
+                #'mortality':mortality
+        }
         
         
         

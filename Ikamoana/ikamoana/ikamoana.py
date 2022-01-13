@@ -1,8 +1,12 @@
+import xml.etree.ElementTree as ET
+
 import numpy as np
 import ikamoana as ika
 from .ikafish import ikafish, behaviours
 import parcels as prcl
-import xml.etree.ElementTree as ET
+
+# from ..ikamoana.ikamoanafields import IkamoanaFields
+# from .ikafish import behaviours, ikafish
 
 class IkaSim :
 
@@ -84,6 +88,43 @@ class IkaSim :
                 
         #Parcels will need a mapping of dimension coordinate names
         self.forcing_dims = {'lon':'lon', 'lat':'lat', 'time':'time'}
+
+
+# TODO : WORK IN PROGRESS
+
+    # def generateForcingNEW(self, to_file=False):
+        
+    #     data_structure = self.forcing_gen.feeding_habitat_structure.data_structure
+    #     ages = data_structure.findCohortByLength(self.ika_params['start_length'])
+    #     start = data_structure.findIndexByDatetime(self.ika_params['start_time'])[0]
+    #     end = data_structure.findIndexByDatetime(
+    #         self.ika_params['start_time']+ self.ika_params['T'])[0]
+    #     self.start_age = ages[0]
+        
+    #     lonlims = self.ika_params['spatial_lims']['lonlim']
+    #     lonlims = data_structure.findCoordIndexByValue(lonlims, coord='lon')
+    #     lonlims = np.int32(lonlims)
+    #     latlims = self.ika_params['spatial_lims']['latlim']
+    #     latlims = data_structure.findCoordIndexByValue(latlims, coord='lat')
+    #     latlims = np.int32(latlims)
+        
+    #     evolve = self.ika_params['ageing_cohort']
+        
+    #     self.forcing = self.forcing_gen.computeIkamoanaFields(
+    #         # Mortality is coming soon ---------------------------------
+    #         effort_filepath=None,fisheries_xml_filepath=None, time_reso=None,
+    #         space_reso=None, skiprows=None, removeNoCatch=None, predict_effort=None,
+    #         remove_fisheries=None, convertion_tab=None,
+    #         # ----------------------------------------------------------
+    #         evolve=evolve,
+    #         # NOTE : must select one cohort
+    #         cohort_start= ages[0],
+    #         cohort_end= None,
+    #         time_start=start, time_end=end,
+    #         lon_min=lonlims[0], lon_max=lonlims[1],
+    #         lat_min=latlims[1], lat_max=latlims[0],
+    #     )
+    #     self.forcing_vars = dict([(i,i) for i in self.forcing.keys()])
 
     def createFieldSet(self, from_disk: bool = False):
         if from_disk:
