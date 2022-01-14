@@ -666,8 +666,15 @@ class FeedingHabitat :
         cohorts_number = self.data_structure.cohorts_number
 
         if cohort_start is None : cohort_start = 0
-## TODO : I don't understand the comment. I think this cases is already taken into account.
-# Must be verified.
+## TODO : cohort_end is equal, at most, to the oldest cohort. If you define a
+# time_end bigger then there will be repetitions of the cohort_end.
+# 
+# I will test the case : time_start and time_end are defined but cohort_end is not.
+# -> There is a bug if time interval is smaller than cohort interval
+# Resolution : in the for loop range muse be set on
+# [min(cohort_array.size, time_array.size)] rather than cohort_array.size.
+# 
+#
 #        if cohort_end is None :
 #            if time_end is not None:
 #                #This might cause a bug if simulation time is longer than final cohort
@@ -678,11 +685,7 @@ class FeedingHabitat :
         if cohort_start is None :
             cohort_start = 0
         if cohort_end is None :
-            if time_end is not None:
-                #This might cause a bug if simulation time is longer than final cohort
-                cohort_end = cohort_start + time_end - time_start
-            else:
-                cohort_end = cohorts_number - 1
+            cohort_end = cohorts_number - 1
 
         if (cohort_start < 0) or (cohort_start >= cohorts_number) :
             raise ValueError("cohort_start out of bounds. Min is %d and Max is %d"%(
@@ -694,15 +697,16 @@ class FeedingHabitat :
             cohort_start, cohort_end = cohort_end, cohort_start
         cohort_array = np.arange(cohort_start, cohort_end+1)
 
+        max_size = min(cohort_array.size, time_array.size)
         if cohort_array[-1] < cohorts_number-1 :
-            max_size = min(cohort_array.size, time_array.size)
             cohort_array = cohort_array[:max_size]
             time_array = time_array[:max_size]
 
 
         cohort_axis = []
         final_array = []
-        for i in range(cohort_array.size) :
+        #for i in range(cohort_array.size) :
+        for i in range(max_size) :
             # Oldest cohort with many time steps
             if (cohort_array[i:].size == 1) and (time_array[i:].size > 1) :
                 cohort_axis.extend([cohort_array[i]] * time_array[i:].size)
