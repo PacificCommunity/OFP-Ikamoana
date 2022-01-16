@@ -12,7 +12,7 @@ import math
 # - Fmor / Nmor
 # - Dx = Dy = Cx = Cy = Vx = Vy = Ax = Ay = 0.
 #
-# Not defined 
+# Not defined
 # - tx / ty
 # - random
 # - Rx_component / Ry_component
@@ -21,6 +21,17 @@ import math
 
 
 ################## Moving and cleanup kernels ####################
+
+def MoveSouth(particle, fieldset, time):
+    particle.prev_lat = particle.lat
+    particle.prev_lon = particle.lon
+    particle.lat = particle.lat - 0.3
+
+def LandBlock(particle, fieldset, time):
+    onland = fieldset.landmask[0, particle.depth, particle.lat, particle.lon]
+    if onland == 1:
+        particle.lat = particle.prev_lat
+        particle.lon = particle.prev_lon
 
 def IkaDymMove(particle, fieldset, time):
     particle.prev_lon = particle.lon
@@ -48,7 +59,7 @@ def IkaDimMoveWithDiffusionReroll(particle, fieldset, time):
     loop_count = 0
     jump_loop = 0
     sections = 8
-    #Check along the trajector to make sure we're not jumping over small landmasses
+    #Check along the trajectory to make sure we're not jumping over small landmasses
     #mainly for sub 1deg forcing fields
     while jump_loop < sections:
         move_x = adv_x + Dx + Cx
@@ -193,4 +204,6 @@ AllKernels = {'IkaDymMove':IkaDymMove,
               'FishingMortality':FishingMortality,
               'NaturalMortality':NaturalMortality,
               'UpdateSurvivalProb':UpdateSurvivalProb,
-              'Age':Age}
+              'Age':Age,
+              'MoveSouth':MoveSouth,
+              'LandBlock':LandBlock}
