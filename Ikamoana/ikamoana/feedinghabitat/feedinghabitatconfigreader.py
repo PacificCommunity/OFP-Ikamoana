@@ -31,6 +31,7 @@ from .. import dymfiles as df
 # TODO : Supprimer le champ layer_number s'il n'est plus utile.
 # WARNING : 0.000001 is added on forage layer to copy SEAPODYM behavior.
 
+# TODO : ajouter une vérification de l'existance du fichier + message erreur
 def seapodymFieldConstructor(filepath: str, dym_varname : str = None,
                              dym_attributs : dict = None) -> xr.DataArray :
     """
@@ -53,13 +54,15 @@ def seapodymFieldConstructor(filepath: str, dym_varname : str = None,
     xr.DataArray
         [description]
     """
+
     #NetCDF
     if filepath.lower().endswith(('.nc', '.cdf')) :
         return xr.open_dataarray(filepath)
 
     #DymFile
     if filepath.lower().endswith('.dym') :
-        if dym_varname is None : dym_varname = filepath
+        if dym_varname is None :
+            dym_varname = filepath
         return df.dym2ToDataArray(infilepath = filepath,
                                   varname = dym_varname,
                                   attributs = dym_attributs)
@@ -264,7 +267,7 @@ def _readXmlConfigFilepaths(root, root_directory, layers_number) :
     forage_filetype = ".dym" if temperature_filepaths[0].lower().endswith('.dym') else ".nc"
     for forage in ordered_forage :
         forage_filepaths.append(
-            root_directory+forage_directory+'Fbiom_'+forage+".nc")
+            root_directory+forage_directory+'Fbiom_'+forage+forage_filetype)
 
     # SST #####################################################################
     if root.find('strfile_sst') is None :
