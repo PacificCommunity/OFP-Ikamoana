@@ -92,7 +92,7 @@ class IkaSim :
 
 
 # TODO : WORK IN PROGRESS
-# - Reverse dataArray latitude before convert them to Field ?
+# - Reverse dataArray latitude before convert them to Field ? Yes
 
     def generateForcingNEW(self, to_file=False):
         
@@ -154,6 +154,8 @@ class IkaSim :
                 # deferred_load=False
             )
             # TODO I removed this cause landmask is now consistant with dataset
+            # -> On va laisser ça car plus efficace + permet de marcher quelque
+            # soit la date.
             # self.ocean.add_field(prcl.Field.from_netcdf(None, landmask,
             #                                             var_name='landmask',
             #                                             dimensions= {'lon':'lon',

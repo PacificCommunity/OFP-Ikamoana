@@ -28,7 +28,8 @@ def convertToField(field : Union[xr.DataArray, xr.Dataset], name=None) :
 def sliceField(field : Union[xr.DataArray, xr.Dataset],
                time_start: int = None, time_end: int = None,
                lat_min: int = None, lat_max: int = None,
-               lon_min: int = None, lon_max: int = None) -> Union[xr.DataArray, xr.Dataset] :
+               lon_min: int = None, lon_max: int = None
+               ) -> Union[xr.DataArray, xr.Dataset] :
     """
     This function is equivalent to `xarray.DataArray.loc[]`. Moreover,
     sliceField will not automaticaly find the nearest value while
@@ -336,7 +337,7 @@ class IkamoanaFields :
                     dims=('time','lat','lon'),
                     attrs=field.attrs))
 
-## TODO : Take into account L1 is a simplification.
+## TODO plus tard : Take into account L1 is a simplification.
 # Should use accessibility + forage distribution + current L1/L2/L3
     def current_forcing(self) -> Tuple[xr.DataArray, xr.DataArray]:
         U = fhcf.seapodymFieldConstructor(
@@ -348,8 +349,12 @@ class IkamoanaFields :
 
         if self.feeding_habitat is not None:
     # NOTE : DataArray.loc[] is a xarray native function.
+    # TODO : la fonction loc native crée une erreur (charge une date de trop)
             minlon_idx = min(self.feeding_habitat.lon.data)
             maxlon_idx = max(self.feeding_habitat.lon.data)
+            # TODO : Is it normal ?
+            # Reponse -> on change mais il faudra inverser a latitude
+            # lors de la lecture des fichier (convertion en fields)
             minlat_idx = max(self.feeding_habitat.lat.data)
             maxlat_idx = min(self.feeding_habitat.lat.data)
             mintime_idx = min(self.feeding_habitat.time.data)
@@ -384,17 +389,28 @@ class IkamoanaFields :
         dist = fhcf.seapodymFieldConstructor(dist_file,
                                               dym_varname='start')
         #clip dimensions to the same as the feeding habitats, but only the first two time-steps
+        # if self.feeding_habitat is not None:
+        #     timefun, latfun, lonfun  = coordsAccess(dist)
+        #     minlon_idx = lonfun(min(self.feeding_habitat.coords['lon'].data))
+        #     maxlon_idx = lonfun(max(self.feeding_habitat.coords['lon'].data))
+        #     minlat_idx = latfun(max(self.feeding_habitat.coords['lat'].data))
+        #     maxlat_idx = latfun(min(self.feeding_habitat.coords['lat'].data))
+        #     mintime_idx = timefun(min(self.feeding_habitat.coords['time'].data))
+        #     maxtime_idx =timefun(min(self.feeding_habitat.coords['time'].data)+1)
+        #     dist = sliceField(dist, mintime_idx, maxtime_idx,
+        #                     minlat_idx, maxlat_idx,
+        #                     minlon_idx, maxlon_idx)
         if self.feeding_habitat is not None:
-            timefun, latfun, lonfun  = coordsAccess(dist)
-            minlon_idx = lonfun(min(self.feeding_habitat.coords['lon'].data))
-            maxlon_idx = lonfun(max(self.feeding_habitat.coords['lon'].data))
-            minlat_idx = latfun(max(self.feeding_habitat.coords['lat'].data))
-            maxlat_idx = latfun(min(self.feeding_habitat.coords['lat'].data))
-            mintime_idx = timefun(min(self.feeding_habitat.coords['time'].data))
-            maxtime_idx =timefun(min(self.feeding_habitat.coords['time'].data)+1)
-            dist = sliceField(dist, mintime_idx, maxtime_idx,
-                            minlat_idx, maxlat_idx,
-                            minlon_idx, maxlon_idx)
+            minlon = min(self.feeding_habitat.lon.data)
+            maxlon = max(self.feeding_habitat.lon.data)
+            # TODO : Is it normal ?
+            # Reponse -> on change mais il faudra inverser a latitude
+            # lors de la lecture des fichier (convertion en fields)
+            minlat = max(self.feeding_habitat.lat.data)
+            maxlat = min(self.feeding_habitat.lat.data)
+            mintime = np.sort(self.feeding_habitat.time.data)[0]
+            maxtime = np.sort(self.feeding_habitat.time.data)[1]
+            dist = dist.loc[mintime:maxtime, minlat:maxlat, minlon:maxlon]
         return dist
 
     def taxis(
