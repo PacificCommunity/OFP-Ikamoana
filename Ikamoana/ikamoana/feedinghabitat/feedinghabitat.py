@@ -158,7 +158,9 @@ class FeedingHabitat :
     [...Many informations to print...]
     """
 
-    def __init__(self, xml_filepath: str, days_length_float_32: bool = True) :
+    def __init__(
+            self, xml_filepath: str, root_directory: str = None,
+            days_length_float_32: bool = True) :
         """
         Initialize the FeedingHabitat instance according to the XML
         configuration file passed in argument.
@@ -186,7 +188,7 @@ class FeedingHabitat :
         """
 
         self.data_structure = hds.HabitatDataStructure(
-            fhcr.loadFromXml(xml_filepath, days_length_float_32)
+            fhcr.loadFromXml(xml_filepath, root_directory, days_length_float_32)
         )
 
     def __str__(self) -> str:

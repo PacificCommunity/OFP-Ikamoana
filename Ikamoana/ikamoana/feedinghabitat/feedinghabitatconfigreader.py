@@ -19,21 +19,28 @@ See Also
 
 """
 
-from math import sin, asin, acos, tan, pi
 import xml.etree.ElementTree as ET
-from typing import List
+from math import acos, asin, pi, sin, tan
+from os.path import exists, dirname
+
+import numpy as np
 import pandas as pd
 import xarray as xr
-import numpy as np
 
 from .. import dymfiles as df
+
+# TODO : à terme, la lecture du fichier configuration de SEAPODYM
+# dépasse le cadre de l'habitat d'alimentation. il devrait être lu par
+# un module externe qui retournerai les balises ainsi que leurs valeurs.
+# Lesquelles seraient utilisées pour produire la structure de données
+# de l'habitat (ou bien d'autres modules tels qu'IKAMOANA).
 
 # TODO : Supprimer le champ layer_number s'il n'est plus utile.
 # WARNING : 0.000001 is added on forage layer to copy SEAPODYM behavior.
 
-# TODO : ajouter une vérification de l'existance du fichier + message erreur
-def seapodymFieldConstructor(filepath: str, dym_varname : str = None,
-                             dym_attributs : dict = None) -> xr.DataArray :
+def seapodymFieldConstructor(
+        filepath: str, dym_varname : str = None, dym_attributs : dict = None
+        ) -> xr.DataArray :
     """
     Return a Seapodym field as a DataArray using NetCDF or Dym method
     according to the file extension : 'nc', 'cdf' or 'dym'.
@@ -54,18 +61,19 @@ def seapodymFieldConstructor(filepath: str, dym_varname : str = None,
     xr.DataArray
         [description]
     """
-
-    #NetCDF
-    if filepath.lower().endswith(('.nc', '.cdf')) :
-        return xr.open_dataarray(filepath)
-
-    #DymFile
-    if filepath.lower().endswith('.dym') :
-        if dym_varname is None :
-            dym_varname = filepath
-        return df.dym2ToDataArray(infilepath = filepath,
-                                  varname = dym_varname,
-                                  attributs = dym_attributs)
+    if exists(filepath) :
+        #NetCDF
+        if filepath.lower().endswith(('.nc', '.cdf')) :
+            return xr.open_dataarray(filepath)
+        #DymFile
+        if filepath.lower().endswith('.dym') :
+            if dym_varname is None :
+                dym_varname = filepath
+            return df.dym2ToDataArray(infilepath = filepath,
+                                      varname = dym_varname,
+                                      attributs = dym_attributs)
+    else :
+        raise ValueError("No such file : {}".format(filepath))
 
 ###############################################################################
 # ---------------------------- READ XML FILE -------------------------------- #
@@ -261,8 +269,8 @@ def _readXmlConfigFilepaths(root, root_directory, layers_number) :
             tmp_position = val_list.index((str(x),str(y)))
             ordered_forage.append(key_list[tmp_position])
 
-    forage_filepaths = []
     forage_directory  = root.find('strdir_forage').attrib['value']
+    forage_filepaths = []
     #We will assume if the temp files are in dym format, so are the forage
     forage_filetype = ".dym" if temperature_filepaths[0].lower().endswith('.dym') else ".nc"
     for forage in ordered_forage :
@@ -282,10 +290,10 @@ def _readXmlConfigFilepaths(root, root_directory, layers_number) :
         zeu_filepath = root_directory + root.find('strfile_zeu').attrib['value']
 
     # MASK ####################################################################
-    if root.find('strfile_mask') == None :
+    if root.find('str_file_mask') == None :
         mask_filepath = None
     else :
-        mask_filepath = root_directory + root.find('strfile_mask').attrib['value']
+        mask_filepath = root_directory + root.find('str_file_mask').attrib['value']
 
     return (temperature_filepaths, oxygen_filepaths, forage_filepaths, sst_filepath,
             zeu_filepath, mask_filepath, partial_oxygen_time_axis)
@@ -345,9 +353,9 @@ def _readXmlConfigParameters(root) :
 
     return parameters_dictionary, species_dictionary
 
-def _loadVariablesFromFilepaths(root, temperature_filepaths, oxygen_filepaths,
-                                forage_filepaths, sst_filepath, zeu_filepath,
-                                mask_filepath, sp_name, float_32=True) :
+def _loadVariablesFromFilepaths(
+        root, temperature_filepaths, oxygen_filepaths, forage_filepaths,
+        sst_filepath, zeu_filepath, mask_filepath, sp_name, float_32=True) :
     """Load all Seapodym Fields using the seapodymFieldConstructor
     method. Their are stored in a dictionary and returned."""
 
@@ -449,7 +457,10 @@ def _loadVariablesFromFilepaths(root, temperature_filepaths, oxygen_filepaths,
 # ----------------------------- MAIN FUNCTION ------------------------------- #
 ###############################################################################
 
-def loadFromXml(xml_filepath: str, days_length_float_32: bool = True) -> dict :
+def loadFromXml(
+        xml_filepath: str, root_directory: str = None,
+        days_length_float_32: bool = True
+        ) -> dict :
     """
     This is the main function used by the feedingHabitat module. It is
     used to read the XML configuration file and load all variables and
@@ -459,9 +470,12 @@ def loadFromXml(xml_filepath: str, days_length_float_32: bool = True) -> dict :
     ----------
     xml_filepath : str
         The filepath to the FeedingHabitat XML configuration file.
+    working_directory : str, optional
+        If the configuration file is not in the root of the working
+        directory, this directory path must be specified.
     days_length_float_32 : bool, optional
         Specify if the day length must be convert from float 64 to
-        float32, by default True.
+        float32.
 
     Returns
     -------
@@ -484,9 +498,20 @@ def loadFromXml(xml_filepath: str, days_length_float_32: bool = True) -> dict :
     tree = ET.parse(xml_filepath)
     root = tree.getroot()
 
-    root_directory  = root.find('strdir').attrib['value']
+    # TODO : Verify
+    # WARNING : os.path module is always the path module suitable
+    # for the operating system Python is running on. dirname should
+    # work on windows but it must be verified.
+    if root_directory is None :
+        prefix = dirname(xml_filepath)
+        # Support windows paths using backslash ("\")
+        prefix += "\\" if "\\" in prefix else "/"
+    else :
+        prefix = dirname(xml_filepath) if root_directory is None else root_directory
+        print(prefix)
+    root_directory = prefix + root.find('strdir').attrib['value']
     output_directory = root_directory + root.find('strdir_output').attrib['value']
-    layers_number  = int(root.find('nb_layer').attrib['value'])
+    layers_number = int(root.find('nb_layer').attrib['value'])
 
     # Variables Filepaths #####################################################
     (temperature_filepaths,
@@ -495,15 +520,14 @@ def loadFromXml(xml_filepath: str, days_length_float_32: bool = True) -> dict :
      sst_filepath,
      zeu_filepath,
      mask_filepath,
-     partial_oxygen_time_axis) = _readXmlConfigFilepaths(root,
-                                                         root_directory,
-                                                         layers_number)
+     partial_oxygen_time_axis) = _readXmlConfigFilepaths(
+         root, root_directory, layers_number)
 
     # Parameters ##############################################################
     parameters_dictionary, species_dictionary = _readXmlConfigParameters(root)
     cohorts_number = sum([int(x) for x in (
-        root.find('nb_cohort_life_stage').find(species_dictionary['sp_name']
-                                               ).text.split(' ')
+        root.find('nb_cohort_life_stage').find(
+            species_dictionary['sp_name']).text.split(' ')
         )])
 
     # Variables ###############################################################
