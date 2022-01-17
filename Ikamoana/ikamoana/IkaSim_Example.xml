@@ -5,7 +5,7 @@
 
   <seapodym_parameters>/home/ash/Documents/GitHub_Repositories/OFP-Ikamoana/Ikamoana/data/feeding_habitat_data/run-test/skj_interim_CL_2018_IKAMOANA.xml</seapodym_parameters>
 
-  <kernels>CalcLonLatScalers IkAdvectionRK4 TaxisRK4 RandomWalkNonUniformDiffusion IkaDymMove</kernels>
+  <kernels>CalcLonLatScalers IkAdvectionRK4 TaxisRK4 RandomWalkNonUniformDiffusion IkaDimMoveWithDiffusionReroll</kernels>
 
   <random_seed>None</random_seed>
 

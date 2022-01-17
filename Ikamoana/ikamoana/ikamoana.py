@@ -12,10 +12,10 @@ import parcels as prcl
 class IkaSim :
 
     def __init__(self, xml_parameterfile: str):
-        
+
         self.ika_params = self._readParams(xml_filepath=xml_parameterfile)
         self.forcing_gen = ika.ikamoanafields.IkamoanaFields(self.ika_params['SEAPODYM_file'])
-        
+
         if self.ika_params['random_seed'] is None:
             np.random.RandomState()
             self.ika_params['random_seed'] = np.random.get_state()
@@ -23,14 +23,14 @@ class IkaSim :
             np.random.RandomState(self.ika_params['random_seed'])
 
     def generateForcing(self, to_file=False):
-        
+
         data_structure = self.forcing_gen.feeding_habitat_structure.data_structure
         ages = data_structure.findCohortByLength(self.ika_params['start_length'])
         start = data_structure.findIndexByDatetime(self.ika_params['start_time'])[0]
         end = data_structure.findIndexByDatetime(
             self.ika_params['start_time']+ self.ika_params['T'])[0]
         self.start_age = ages[0]
-        
+
         lonlims = self.ika_params['spatial_lims']['lonlim']
         lonlims = data_structure.findCoordIndexByValue(lonlims, coord='lon')
         #lonlims = [int(l) for l in lonlims]
@@ -53,11 +53,12 @@ class IkaSim :
             self.forcing['Tx'], self.forcing['Ty'] = self.forcing_gen.computeTaxis(
                 cohort=ages, time_start=start, time_end=end, lon_min=lonlims[0],
                 lon_max=lonlims[1], lat_min=latlims[1], lat_max=latlims[0])
-            
+
         self.forcing_vars.update({'Tx': 'Tx', 'Ty': 'Ty'})
 
         self.forcing['landmask'] = self.forcing_gen.landmask(use_SEAPODYM_global_mask=True,
-                                                             field_output=True)
+                                                             field_output=True,
+                                                             habitat_field=self.forcing_gen.feeding_habitat)
         #self.forcing_vars.update({'landmask': 'landmask'})
 
         if self.ika_params['start_filestem'] is not None:
@@ -72,7 +73,7 @@ class IkaSim :
 
         self.forcing['K'] = self.forcing_gen.diffusion(self.forcing_gen.feeding_habitat)
         self.forcing_vars.update({'K': 'K'})
-        
+
         self.forcing['dK_dx'], self.forcing['dK_dy'] = self.forcing_gen.gradient(
             self.forcing['K'], self.forcing_gen.landmask(
                 self.forcing_gen.feeding_habitat, lon_min=lonlims[0],
@@ -86,7 +87,7 @@ class IkaSim :
                 forcing.to_netcdf(path='%s/%s_%s.nc' % (
                     self.ika_params['forcing_dir'],
                     self.ika_params['run_name'], var))
-                
+
         #Parcels will need a mapping of dimension coordinate names
         self.forcing_dims = {'lon':'lon', 'lat':'lat', 'time':'time'}
 
@@ -146,26 +147,20 @@ class IkaSim :
                 # deferred_load=False
             )
         else:
-            # landmask = self.forcing.pop('landmask')
-            self.ocean = prcl.FieldSet.from_xarray_dataset(
-                self.forcing, variables=self.forcing_vars,
-                dimensions=self.forcing_dims,
-                # NOTE : This argument is unexpected
-                # deferred_load=False
-            )
-            # TODO I removed this cause landmask is now consistant with dataset
-            # -> On va laisser ça car plus efficace + permet de marcher quelque
-            # soit la date.
-            # self.ocean.add_field(prcl.Field.from_netcdf(None, landmask,
-            #                                             var_name='landmask',
-            #                                             dimensions= {'lon':'lon',
-            #                                                          'lat':'lat',
-            #                                                          'time':'time'},
-            #                                             allow_time_extrapolation=True,
-            #                                             deferred_load=False))
-
-        # TODO : Remove this
-        #print(self.ocean.Tx.grid.time_origin.fulltime(self.ocean.Tx.grid.time[0]))
+            landmask = self.forcing.pop('landmask')
+            self.ocean = prcl.FieldSet.from_xarray_dataset(self.forcing,
+                                       variables=self.forcing_vars,
+                                       dimensions=self.forcing_dims,
+                                       deferred_load=False)
+            self.ocean.add_field(prcl.Field.from_netcdf(None, landmask,
+                                                        var_name='landmask',
+                                                        dimensions= {'lon':'lon',
+                                                                     'lat':'lat',
+                                                                     'time':'time'},
+                                                        allow_time_extrapolation=True,
+                                                        interp_method='nearest',
+                                                        deferred_load=False))
+        print(self.ocean.Tx.grid.time_origin.fulltime(self.ocean.Tx.grid.time[0]))
 
     def _setConstant(self, name, val):
         self.ocean.add_constant(name, val)
@@ -181,7 +176,7 @@ class IkaSim :
     # NOTE : raise exception rather than assert for a better readability
             if start.shape[1] != n_fish :
                 raise ValueError('Number of fish and provided initial positions'
-                                 ' not equal!') 
+                                 ' not equal!')
             self.fish = prcl.ParticleSet.from_list(
                 fieldset=self.ocean, lon=start[0],
                 time=self.ika_params['start_time'], lat=start[1], pclass=pclass)
@@ -189,9 +184,9 @@ class IkaSim :
             if self.ocean.start is None :
                 raise ValueError('No starting distribution field in ocean fieldset!')
             self.fish = prcl.ParticleSet.from_field(
-                fieldset=self.ocean, start=self.ocean.start,
+                fieldset=self.ocean, start_field=self.ocean.start,
                 time=self.ika_params['start_time'], size=n_fish, pclass=pclass)
-            
+
         #Initialise fish
         cohort_dt = self.forcing_gen.feeding_habitat_structure.data_structure.\
             species_dictionary['cohorts_sp_unit'][0]
@@ -221,7 +216,7 @@ class IkaSim :
         KernelString = ''.join(
             [('Behaviours[{}]+').format(i) for i in range(len(Behaviours))])
         run_kernels = eval(KernelString[:-1])
-        
+
         self.fish.execute(
             run_kernels, runtime=T, dt=self.ika_params['dt'], output_file=pfile,
             recovery={
@@ -231,11 +226,11 @@ class IkaSim :
     def _readParams(self, xml_filepath: str) -> dict :
         """Reads the parameters from a XML parameter file and stores
         them in a dictionary."""
-        
+
         tree = ET.parse(xml_filepath)
         root = tree.getroot()
         params = {}
-        
+
         params['run_name'] = root.find('run_name').text
         params['SEAPODYM_file'] = root.find('seapodym_parameters').text
         params['forcing_dir'] = root.find('forcing_dir').text
@@ -260,7 +255,7 @@ class IkaSim :
 
         domain = root.find('domain')
         params['spatial_lims'] = {
-            # 'lonlim': np.float32([domain.find('lon').text.split()[0], 
+            # 'lonlim': np.float32([domain.find('lon').text.split()[0],
             #                       domain.find('lon').text.split()[1]]),
             # 'latlim': np.float32([domain.find('lat').text.split()[0],
             #                       domain.find('lat').text.split()[1]])}
