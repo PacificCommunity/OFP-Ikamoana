@@ -5,7 +5,7 @@
 
   <seapodym_parameters>C:/Users/joes/Dropbox/SPC_2020/TagSim/skj_po_interim_2deg_configuration_file.xml</seapodym_parameters>
 
-  <kernels>CalcLonLatScalers IkAdvectionRK4 TaxisRK4 RandomWalkNonUniformDiffusion IkaDymMove</kernels>
+  <kernels>CalcLonLatScalers IkAdvectionRK4 TaxisRK4 RandomWalkNonUniformDiffusion IkaDimMoveWithDiffusionReroll</kernels>
 
   <random_seed>None</random_seed>
 
