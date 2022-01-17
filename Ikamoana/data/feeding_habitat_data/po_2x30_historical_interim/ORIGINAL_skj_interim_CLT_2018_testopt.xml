@@ -87,7 +87,7 @@
 <!-- DataFiles -->
 
 <!-- Working Directory -->
-<strdir value="C:/Users/julesl/Documents (Local)/JupyterLabWorkspace/Data/Concat/PO/2x30/"/>
+<strdir value="/home/ash/Documents/GitHub_Repositories/OFP-Ikamoana/Ikamoana/data/feeding_habitat_data/po_2x30_historical_interim/"/>
 
 <str_file_mask value="po_interim_2deg_mask_short_noIO.txt"/>
 <!--<str_file_topo value="po_interim_2deg_topo_noeff.txt"/>-->
@@ -129,7 +129,7 @@
 <type_oxy value="0"/>
 
 <strfile_pp value="po_interim_historic_2x30d_pp_1979_2010.dym"/>
-<strfile_sst value="po_interim_historic_2x30d_sst_1979_2010.dym"/>
+<strfile_sst value="MFCat_po_interim_historic_2x30d_sst_1979_2010.nc"/>
 <strfile_vld value="po_interim_historic_2x30d_zeu_1979_2010.dym"/>
 <strfile_u layer0="po_interim_historic_2x30d_u_L1_1979_2010.dym" layer1="po_interim_historic_2x30d_u_L2_1979_2010.dym" layer2="po_interim_historic_2x30d_u_L3_1979_2010.dym"/>
 <strfile_v layer0="po_interim_historic_2x30d_v_L1_1979_2010.dym" layer1="po_interim_historic_2x30d_v_L2_1979_2010.dym" layer2="po_interim_historic_2x30d_v_L3_1979_2010.dym"/>
@@ -159,11 +159,11 @@
 
 <nb_forage value="6"/>
 
-<frg_name>epi meso mmeso bathy mbathy hmbathy</frg_name>
+<frg_name>epi umeso mumeso lmeso mlmeso hmlmeso</frg_name>
 
-<source_frg epi="0.17" meso="0.1" mmeso="0.22" bathy="0.18" mbathy="0.13" hmbathy="0.2"/>
-<day_layer epi="0" meso="1" mmeso="1" bathy="2" mbathy="2" hmbathy="2"/>
-<night_layer epi="0" meso="1" mmeso="0" bathy="2" mbathy="1" hmbathy="0"/>
+<source_frg epi="0.17" umeso="0.1" mumeso="0.22" lmeso="0.18" mlmeso="0.13" hmlmeso="0.2"/>
+<day_layer epi="0" umeso="1" mumeso="1" lmeso="2" mlmeso="2" hmlmeso="2"/>
+<night_layer epi="0" umeso="1" mumeso="0" lmeso="2" mlmeso="1" hmlmeso="0"/>
 
 <tstep_forage value="30"/>
 <sigma_fcte value="10"/>
@@ -326,25 +326,25 @@
         <variable min="0.0" max="4.0" use="true"/>
     </epi>
 
-    <meso skj="0.05">
+    <umeso skj="0.05">
         <variable min="0.0" max="4.0" use="true"/>
-    </meso>
+    </umeso>
 
-    <mmeso skj="0.897307278945509">
+    <mumeso skj="0.897307278945509">
         <variable min="0.0" max="2.0" use="true"/>
-    </mmeso>
+    </mumeso>
 
-    <bathy skj="0.0">
+    <lmeso skj="0.0">
         <variable min="0.0" max="1.0" use="true"/>
-    </bathy>
+    </lmeso>
 
-    <mbathy skj="0.0">
+    <mlmeso skj="0.0">
         <variable min="0.0" max="1.0" use="true"/>
-    </mbathy>
+    </mlmeso>
 
-    <hmbathy skj="3.999946416753347">
+    <hmlmeso skj="3.999946416753347">
         <variable min="0.0" max="4.0" use="true"/>
-    </hmbathy>
+    </hmlmeso>
 </eF_habitat>
 <!--=== end of Adult feeding habitat ===========-->
 

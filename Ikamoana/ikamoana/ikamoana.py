@@ -1,8 +1,13 @@
+import xml.etree.ElementTree as ET
+
+import xarray as xr
 import numpy as np
 import ikamoana as ika
 from .ikafish import ikafish, behaviours
 import parcels as prcl
-import xml.etree.ElementTree as ET
+
+# from ..ikamoana.ikamoanafields import IkamoanaFields
+# from .ikafish import behaviours, ikafish
 
 class IkaSim :
 
@@ -86,14 +91,61 @@ class IkaSim :
         #Parcels will need a mapping of dimension coordinate names
         self.forcing_dims = {'lon':'lon', 'lat':'lat', 'time':'time'}
 
+
+# TODO : WORK IN PROGRESS
+# - Reverse dataArray latitude before convert them to Field ? Yes
+
+    def generateForcingNEW(self, to_file=False):
+        
+        data_structure = self.forcing_gen.feeding_habitat_structure.data_structure
+        ages = data_structure.findCohortByLength(self.ika_params['start_length'])
+        start = data_structure.findIndexByDatetime(self.ika_params['start_time'])[0]
+        end = data_structure.findIndexByDatetime(
+            self.ika_params['start_time']+ self.ika_params['T'])[0]
+        self.start_age = ages[0]
+        
+        lonlims = self.ika_params['spatial_lims']['lonlim']
+        lonlims = data_structure.findCoordIndexByValue(lonlims, coord='lon')
+        lonlims = np.int32(lonlims)
+        latlims = self.ika_params['spatial_lims']['latlim']
+        latlims = data_structure.findCoordIndexByValue(latlims, coord='lat')
+        latlims = np.int32(latlims)
+        
+        evolve = self.ika_params['ageing_cohort']
+        
+        self.forcing = self.forcing_gen.computeIkamoanaFields(
+            # Mortality is coming soon ---------------------------------
+            effort_filepath=None,fisheries_xml_filepath=None, time_reso=None,
+            space_reso=None, skiprows=None, removeNoCatch=None, predict_effort=None,
+            remove_fisheries=None, convertion_tab=None,
+            # ----------------------------------------------------------
+            evolve=evolve,
+            # NOTE : must select one cohort
+            cohort_start= ages[0],
+            cohort_end= None,
+            time_start=start, time_end=end,
+            lon_min=lonlims[0], lon_max=lonlims[1],
+            lat_min=latlims[1], lat_max=latlims[0],
+        )
+        
+        if 'mortality' in self.forcing.keys():
+            mortality = self.forcing.pop('mortality')
+        self.forcing = xr.Dataset(self.forcing)
+        
+        self.forcing_vars = dict([(i,i) for i in self.forcing.keys()])
+        #Parcels will need a mapping of dimension coordinate names
+        self.forcing_dims = {'lon':'lon', 'lat':'lat', 'time':'time'}
+
     def createFieldSet(self, from_disk: bool = False):
         if from_disk:
             filestem = '%s/%s_*.nc' % (self.ika_params['forcing_dir'],
                                        self.ika_params['run_name'])
-            self.ocean = prcl.FieldSet.from_netcdf(filestem,
-                                                   variables=self.forcing_vars,
-                                                   dimensions=self.forcing.forcing_dims,
-                                                   deferred_load=False)
+            self.ocean = prcl.FieldSet.from_netcdf(
+                filestem, variables=self.forcing_vars,
+                dimensions=self.forcing.forcing_dims,
+                # NOTE : This argument is unexpected
+                # deferred_load=False
+            )
         else:
             landmask = self.forcing.pop('landmask')
             self.ocean = prcl.FieldSet.from_xarray_dataset(self.forcing,
@@ -113,7 +165,11 @@ class IkaSim :
     def _setConstant(self, name, val):
         self.ocean.add_constant(name, val)
 
-    def initialiseFishParticles(self,start,n_fish=10,pclass=prcl.JITParticle):
+# NOTE : If there is a possibility to start a simulation without start
+# argument, maybe it should be switch to optional :
+#   start: np.ndarray = None
+    def initialiseFishParticles(
+            self,start,n_fish=10, pclass:prcl.JITParticle=prcl.JITParticle):
     # NOTE : Can use isinstance() function
         #if type(start) is np.ndarray:
         if isinstance(start, np.ndarray) :
@@ -134,11 +190,17 @@ class IkaSim :
         #Initialise fish
         cohort_dt = self.forcing_gen.feeding_habitat_structure.data_structure.\
             species_dictionary['cohorts_sp_unit'][0]
+
+        # NOTE : This wont work if the pclass is wrong. Should test with
+        # isinstance ?
         for f in range(len(self.fish.particles)):
             self.fish.particles[f].age_class = self.start_age
             self.fish.particles[f].age = self.start_age*cohort_dt
+        
         self._setConstant('cohort_dt', cohort_dt)
 
+    # NOTE : Arguments names may be more explicite ? Otherwise a good
+    # documentation is needed.
     def runKernels(self, T, pfile_suffix='', verbose=True):
         pfile = self.fish.ParticleFile(
             name=self.ika_params['run_name']+pfile_suffix+'.nc',

@@ -28,7 +28,8 @@ def convertToField(field : Union[xr.DataArray, xr.Dataset], name=None) :
 def sliceField(field : Union[xr.DataArray, xr.Dataset],
                time_start: int = None, time_end: int = None,
                lat_min: int = None, lat_max: int = None,
-               lon_min: int = None, lon_max: int = None) -> Union[xr.DataArray, xr.Dataset] :
+               lon_min: int = None, lon_max: int = None
+               ) -> Union[xr.DataArray, xr.Dataset] :
     """
     This function is equivalent to `xarray.DataArray.loc[]`. Moreover,
     sliceField will not automaticaly find the nearest value while
@@ -157,6 +158,8 @@ class IkamoanaFields :
         - 2 -> is Shallow
         - 1 -> is Land or No_Data
         - 0 -> deep ocean with habitat data
+        
+        If field_output is True, time coordinate is added to landmask.
 
         Note
         ----
@@ -203,7 +206,7 @@ class IkamoanaFields :
         else :
             if habitat_field is None :
                 raise ValueError("You must specify a habitat_field argument if"
-                                 "use_SEAPODYM_global_mask is False.")
+                                 " use_SEAPODYM_global_mask is False.")
             habitat_f = habitat_field[0,:,:]
             lmeso_f = self.feeding_habitat_structure.data_structure.variables_dictionary[
                 'forage_lmeso'][0, lat_min:lat_max, lon_min:lon_max]
@@ -236,11 +239,12 @@ class IkamoanaFields :
         else :
             dimensions = ('lat', 'lon')
 
-        return xr.DataArray(data=landmask, name='landmask',
-                            coords=coords, dims=dimensions)
+        return xr.DataArray(data=landmask, name='landmask', coords=coords,
+                            dims=dimensions)
 
-    def gradient(self, field: xr.DataArray, landmask: xr.DataArray,
-                 name: str = None) -> Tuple[xr.DataArray]:
+    def gradient(
+            self, field: xr.DataArray, landmask: xr.DataArray, name: str = None
+            ) -> Tuple[xr.DataArray]:
         """
         Gradient calculation for a Xarray DataArray seapodym-equivalent calculation
         requires LandMask forward and backward differencing for domain edges
@@ -333,9 +337,9 @@ class IkamoanaFields :
                     dims=('time','lat','lon'),
                     attrs=field.attrs))
 
-## TODO : Take into account L1 is a simplification.
+## TODO plus tard : Take into account L1 is a simplification.
 # Should use accessibility + forage distribution + current L1/L2/L3
-    def current_forcing(self):
+    def current_forcing(self) -> Tuple[xr.DataArray, xr.DataArray]:
         U = fhcf.seapodymFieldConstructor(
             self.feeding_habitat_structure.data_structure.root_directory
             + self.ikamoana_fields_structure.u_file,  dym_varname='u_L1')
@@ -344,9 +348,14 @@ class IkamoanaFields :
             + self.ikamoana_fields_structure.v_file,  dym_varname='v_L1')
 
         if self.feeding_habitat is not None:
-    # NOTE : DataArray.loc[] is a xarray native function.
+            # NOTE : DataArray.loc[] is a xarray native function.
+            # TODO : la fonction loc native crée une erreur
+            # -> charge une date de trop
             # minlon_idx = min(self.feeding_habitat.lon.data)
             # maxlon_idx = max(self.feeding_habitat.lon.data)
+            # TODO : Is it normal ?
+            # Reponse -> on change mais il faudra inverser a latitude
+            # lors de la lecture des fichier (convertion en fields)
             # minlat_idx = max(self.feeding_habitat.lat.data)
             # maxlat_idx = min(self.feeding_habitat.lat.data)
             # mintime_idx = min(self.feeding_habitat.time.data)
@@ -373,7 +382,6 @@ class IkamoanaFields :
             V = sliceField(V, mintime_idx, maxtime_idx,
                             minlat_idx, maxlat_idx,
                             minlon_idx, maxlon_idx)
-
         return U, V
 
 # TODO : Review this
@@ -381,24 +389,34 @@ class IkamoanaFields :
         dist = fhcf.seapodymFieldConstructor(dist_file,
                                               dym_varname='start')
         #clip dimensions to the same as the feeding habitats, but only the first two time-steps
+        # if self.feeding_habitat is not None:
+        #     timefun, latfun, lonfun  = coordsAccess(dist)
+        #     minlon_idx = lonfun(min(self.feeding_habitat.coords['lon'].data))
+        #     maxlon_idx = lonfun(max(self.feeding_habitat.coords['lon'].data))
+        #     minlat_idx = latfun(max(self.feeding_habitat.coords['lat'].data))
+        #     maxlat_idx = latfun(min(self.feeding_habitat.coords['lat'].data))
+        #     mintime_idx = timefun(min(self.feeding_habitat.coords['time'].data))
+        #     maxtime_idx =timefun(min(self.feeding_habitat.coords['time'].data)+1)
+        #     dist = sliceField(dist, mintime_idx, maxtime_idx,
+        #                     minlat_idx, maxlat_idx,
+        #                     minlon_idx, maxlon_idx)
         if self.feeding_habitat is not None:
-            timefun, latfun, lonfun  = coordsAccess(dist)
-            minlon_idx = lonfun(min(self.feeding_habitat.coords['lon'].data))
-            maxlon_idx = lonfun(max(self.feeding_habitat.coords['lon'].data))
-            minlat_idx = latfun(max(self.feeding_habitat.coords['lat'].data))
-            maxlat_idx = latfun(min(self.feeding_habitat.coords['lat'].data))
-            mintime_idx = timefun(min(self.feeding_habitat.coords['time'].data))
-            maxtime_idx =timefun(min(self.feeding_habitat.coords['time'].data)+1)
-            dist = sliceField(dist, mintime_idx, maxtime_idx,
-                            minlat_idx, maxlat_idx,
-                            minlon_idx, maxlon_idx)
+            minlon = min(self.feeding_habitat.lon.data)
+            maxlon = max(self.feeding_habitat.lon.data)
+            # TODO : Is it normal ?
+            # Reponse -> on change mais il faudra inverser a latitude
+            # lors de la lecture des fichier (convertion en fields)
+            minlat = max(self.feeding_habitat.lat.data)
+            maxlat = min(self.feeding_habitat.lat.data)
+            mintime = np.sort(self.feeding_habitat.time.data)[0]
+            maxtime = np.sort(self.feeding_habitat.time.data)[1]
+            dist = dist.loc[mintime:maxtime, minlat:maxlat, minlon:maxlon]
         return dist
 
-    def taxis(self, dHdlon: xr.DataArray, dHdlat: xr.DataArray,
-              name: str = None) -> Tuple[xr.DataArray,xr.DataArray] :
-        """
-        Calculation of the Taxis field from the gradient.
-        """
+    def taxis(
+            self, dHdlon: xr.DataArray, dHdlat: xr.DataArray, name: str = None
+            ) -> Tuple[xr.DataArray,xr.DataArray] :
+        """Calculation of the Taxis field from the gradient."""
 
         def argumentCheck(array) :
             if array.attrs.get('cohort_start') is not None :
@@ -628,7 +646,7 @@ class IkamoanaFields :
 
         Parameters
         ----------
-        cohort : int, optional
+        cohort : int, optional if `use_already_computed_habitat` is True
             The cohort whose habitat is to be calculated.
         time_start : int, optional
             [description]
@@ -674,7 +692,7 @@ class IkamoanaFields :
 
         if (self.feeding_habitat is None) or (not use_already_computed_habitat) :
             if cohort is None :
-                raise ValueError("cohort argument must be specified. "
+                raise ValueError("Cohort argument must be specified. "
                                  "Actual is %s."%(str(cohort)))
             feeding_habitat = (
                 self.feeding_habitat_structure.computeFeedingHabitat(
@@ -788,7 +806,7 @@ class IkamoanaFields :
 
 # ------------------------------- MAIN ------------------------------- #
 
-# TODO : Add args
+# TODO : Mortality isn't calculated for now. Uncomment to do so.
     def computeIkamoanaFields(
             self, effort_filepath: str, fisheries_xml_filepath: str,
             time_reso: int, space_reso: float, skiprows: int = 0,
@@ -801,7 +819,10 @@ class IkamoanaFields :
             lat_min: int = None, lat_max: int = None, lon_min: int = None,
             lon_max: int = None, verbose: bool = False
             ) -> Dict[str, xr.DataArray]:
-
+        """
+        Feeding Habitat is calculated everytime, see WARNING commentary.
+        """
+  
         self.feeding_habitat_structure.data_structure.normalizeCoords()
 
         hf_cond, ssto_cond = (
@@ -810,29 +831,41 @@ class IkamoanaFields :
 
         # TODO : add args
         if evolve :
-            taxis_lon, taxis_lat = self.computeEvolvingTaxis()
+            taxis_lon, taxis_lat = self.computeEvolvingTaxis(
+                cohort_start=cohort_start, cohort_end=cohort_end, time_start=time_start,
+                time_end=time_end, lat_min=lat_min, lat_max=lat_max,
+                lon_min=lon_min, lon_max=lon_max, verbose=verbose,
+        # WARNING : will compute feeding habitat everytime.
+                use_already_computed_habitat=False)
         else :
-            taxis_lon, taxis_lat = self.computeTaxis()
-
-        if hf_cond :
-            landmask = self.landmask(
-                habitat_field= self.feeding_habitat, use_SEAPODYM_global_mask=not(hf_cond),
-                shallow_sea_to_ocean=ssto_cond, lat_min=lat_min, lat_max=lat_max,
-                lon_min=lon_min, lon_max=lon_max)
-
+            taxis_lon, taxis_lat = self.computeTaxis(
+                cohort=cohort_start, time_start=time_start, time_end=time_end,
+                lat_min=lat_min, lat_max=lat_max, lon_min=lon_min, lon_max=lon_max,
+        # WARNING : will compute feeding habitat everytime.
+                use_already_computed_habitat=False, verbose=verbose)
+        
+        landmask = self.landmask(
+            habitat_field=self.feeding_habitat, use_SEAPODYM_global_mask=not(hf_cond),
+            shallow_sea_to_ocean=ssto_cond, lat_min=lat_min, lat_max=lat_max,
+            lon_min=lon_min, lon_max=lon_max, field_output=True)
+        
         diffusion = self.diffusion(self.feeding_habitat)
-        gradient_diffusion_lon, gradient_diffusion_lat = self.gradient(diffusion, landmask)
+        gradient_diffusion_lon, gradient_diffusion_lat = self.gradient(
+            diffusion, landmask.loc[landmask.time.data[0],:,:])
+        
+        U, V = self.current_forcing()
+        
+        # mortality = self.computeMortality(
+        #     effort_filepath=effort_filepath, fisheries_xml_filepath=fisheries_xml_filepath,
+        #     time_reso=time_reso, space_reso=space_reso, skiprows=skiprows,
+        #     removeNoCatch=removeNoCatch, predict_effort=predict_effort,
+        #     remove_fisheries=remove_fisheries, convertion_tab=convertion_tab,
+        #     verbose=verbose)
 
-        mortality = self.computeMortality(
-            effort_filepath=effort_filepath, fisheries_xml_filepath=fisheries_xml_filepath,
-            time_reso=time_reso, space_reso=space_reso, skiprows=skiprows,
-            removeNoCatch=removeNoCatch, predict_effort=predict_effort,
-            remove_fisheries=remove_fisheries, convertion_tab=convertion_tab,
-            verbose=verbose)
-
-        return {'taxis_lon':taxis_lon,
-                'taxis_lat':taxis_lat,
+        return {'Tx':taxis_lon, 'Ty':taxis_lat,
+                'K':diffusion,
+                'dK_dx':gradient_diffusion_lon, 'dK_dy':gradient_diffusion_lat,
+                'U':U, 'V':V,
                 'landmask':landmask,
-                'gradient_diffusion_lon':gradient_diffusion_lon,
-                'gradient_diffusion_lat':gradient_diffusion_lat,
-                'mortality':mortality}
+                #'mortality':mortality
+        }
