@@ -1,1 +1,7 @@
-from . import dymfiles, feedinghabitat, ikamoanafields, fisherieseffort, ikamoana
+from . import (
+    dymfiles,
+    feedinghabitat,
+    ikamoanafields,
+    fisherieseffort,
+    ikamoana,
+    ikafish)
