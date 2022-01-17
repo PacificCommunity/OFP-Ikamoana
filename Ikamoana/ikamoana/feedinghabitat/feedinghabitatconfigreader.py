@@ -470,7 +470,7 @@ def loadFromXml(
     ----------
     xml_filepath : str
         The filepath to the FeedingHabitat XML configuration file.
-    working_directory : str, optional
+    root_directory : str, optional
         If the configuration file is not in the root of the working
         directory, this directory path must be specified.
     days_length_float_32 : bool, optional

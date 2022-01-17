@@ -169,6 +169,9 @@ class FeedingHabitat :
         ----------
         xml_filepath : string
             The pass to the XML configuration file.
+        root_directory : str, optional
+            If the configuration file is not in the root of the working
+            directory, this directory path must be specified.
         partial_cohorts_computation : list of int, optional
             If you want to perform a partial feeding habitat computation, you
             can  specify a group of cohort using a number corresponding to the
