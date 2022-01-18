@@ -173,7 +173,7 @@ def FishingMortality(particle, fieldset, time):
 def NaturalMortality(particle, fieldset, time):
     Mnat = fieldset.MPmax*math.exp(-fieldset.MPexp*particle.age_class) + fieldset.MSmax*math.pow(particle.age_class, fieldset.MSslope)
     Mvar = Mnat * math.pow(1 - fieldset.Mrange, 1-fieldset.H[time, particle.depth, particle.lat, particle.lon]/2)
-    Nmor = (Mvar * (particle.dt / (7 * 24 * 60 * 60))) #The division by the seapodym dt needs to be generalised
+    Nmor = (Mvar * (particle.dt / fieldset.SEAPODYM_dt))
     particle.Nmor = Nmor
 
 def UpdateSurvivalProbNOnly(particle, fieldset, time):
