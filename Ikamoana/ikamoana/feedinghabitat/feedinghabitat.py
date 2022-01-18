@@ -754,7 +754,7 @@ class FeedingHabitat :
                 **self.data_structure.parameters_dictionary)
             )
 
-    def correctEpiTempWithZeu(self) :
+    def correctEpiTempWithVld(self) :
         """
         Correct the T_epi temperature by the vertical gradieng magnitude.
         Improves fit in EPO and shallow-thermocline zones.
@@ -772,17 +772,17 @@ class FeedingHabitat :
 
         """
 
-        print("Warning : This function (correctEpiTempWithZeu) was only tested"
+        print("Warning : This function (correctEpiTempWithVld) was only tested"
               " for Skipjack.\n It will also add +1 to sigma_min. Cf. function"
               " documentation for more details.")
 
         dTdz = np.divide(
             2.0 * (self.data_structure.variables_dictionary['sst']
             - self.data_structure.variables_dictionary['temperature_L1']),
-            #(1000.0 * self.variables_dictionary['zeu']),
-            self.data_structure.variables_dictionary['zeu'],
-            out=np.zeros_like(self.data_structure.variables_dictionary['zeu']),
-            where=self.data_structure.variables_dictionary['zeu']!=0.0)
+            #(1000.0 * self.variables_dictionary['vld']),
+            self.data_structure.variables_dictionary['vld'],
+            out=np.zeros_like(self.data_structure.variables_dictionary['vld']),
+            where=self.data_structure.variables_dictionary['vld']!=0.0)
 
         dTdz = np.where(dTdz < 0.0, 0.0, dTdz)
         dTdz = np.where(dTdz > 0.2, 0.2, dTdz)
@@ -798,3 +798,4 @@ class FeedingHabitat :
         # due to larger extension of warm watermasses in the surface
         # will add 1.0 here while passing to integrated T
         self.data_structure.parameters_dictionary['sigma_0'] += 1.0
+        

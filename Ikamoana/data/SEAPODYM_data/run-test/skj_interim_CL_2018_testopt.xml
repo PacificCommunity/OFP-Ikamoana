@@ -108,7 +108,7 @@
 
 <strfile_pp value="po_interim_historic_2x30d_pp_1979_2010.dym"/>
 <strfile_sst value="po_interim_historic_2x30d_sst_1979_2010.dym"/>
-<strfile_zeu value="po_interim_historic_2x30d_zeu_1979_2010.dym"/>
+<strfile_vld value="po_interim_historic_2x30d_zeu_1979_2010.dym"/>
 <strfile_u layer0="po_interim_historic_2x30d_u_L1_1979_2010.dym"
            layer1="po_interim_historic_2x30d_u_L2_1979_2010.dym"
            layer2="po_interim_historic_2x30d_u_L3_1979_2010.dym"/>
