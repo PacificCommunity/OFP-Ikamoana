@@ -176,6 +176,11 @@ def NaturalMortality(particle, fieldset, time):
     Nmor = (Mvar * (particle.dt / (7 * 24 * 60 * 60))) #The division by the seapodym dt needs to be generalised
     particle.Nmor = Nmor
 
+def UpdateSurvivalProbNOnly(particle, fieldset, time):
+    depletion = particle.SurvProb - particle.SurvProb * math.exp(-Nmor)
+    particle.depletionN = depletion
+    particle.SurvProb -= depletion
+
 def UpdateSurvivalProb(particle, fieldset, time):
     depletion = particle.SurvProb - particle.SurvProb * math.exp(-(Fmor + Nmor))
     particle.depletionF = depletion*Fmor/(Fmor+Nmor)
@@ -203,6 +208,7 @@ AllKernels = {'IkaDymMove':IkaDymMove,
               'RandomWalkNonUniformDiffusion':RandomWalkNonUniformDiffusion,
               'FishingMortality':FishingMortality,
               'NaturalMortality':NaturalMortality,
+              'UpdateSurvivalProbNOnly':UpdateSurvivalProbNOnly,
               'UpdateSurvivalProb':UpdateSurvivalProb,
               'Age':Age,
               'MoveSouth':MoveSouth,
