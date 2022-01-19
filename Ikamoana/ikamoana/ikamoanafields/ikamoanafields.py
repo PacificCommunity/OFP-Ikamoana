@@ -158,6 +158,30 @@ class IkamoanaFields :
 
         return f_param
 
+    def readMortalityXML(
+            self, xml_config_file: str, species_name: str = None
+            ) -> dict :
+        """Read a XML file to get all parameters needed for mortality
+        field production."""
+
+        tree = ET.parse(xml_config_file)
+        root = tree.getroot()
+        if species_name == None :
+            species_name = root.find("sp_name").text
+
+        n_param = {'MPmax': float(root.find(
+                                  'Mp_mean_max').attrib[species_name]),
+                   'MPexp': float(root.find(
+                                  'Mp_mean_exp').attrib[species_name]),
+                   'MSmax': float(root.find(
+                                  'Ms_mean_max').attrib[species_name]),
+                   'MSslope': float(root.find(
+                                    'Ms_mean_max').attrib[species_name]),
+                   'Mrange': float(root.find(
+                                    'Ms_mean_max').attrib[species_name])}
+
+        return n_param
+
     def vMax(self, length : float) -> float :
         """Return the maximum velocity of a fish with a given length."""
 
@@ -178,7 +202,7 @@ class IkamoanaFields :
         - 2 -> is Shallow
         - 1 -> is Land or No_Data
         - 0 -> deep ocean with habitat data
-        
+
         If field_output is True, time coordinate is added to landmask.
 
         Note
@@ -849,7 +873,7 @@ class IkamoanaFields :
         """
         Feeding Habitat is calculated everytime, see WARNING commentary.
         """
-  
+
         self.feeding_habitat_structure.data_structure.normalizeCoords()
 
         hf_cond, ssto_cond = (
@@ -870,18 +894,18 @@ class IkamoanaFields :
                 lat_min=lat_min, lat_max=lat_max, lon_min=lon_min, lon_max=lon_max,
         # WARNING : will compute feeding habitat everytime.
                 use_already_computed_habitat=False, verbose=verbose)
-        
+
         landmask = self.landmask(
             habitat_field=self.feeding_habitat, use_SEAPODYM_global_mask=not(hf_cond),
             shallow_sea_to_ocean=ssto_cond, lat_min=lat_min, lat_max=lat_max,
             lon_min=lon_min, lon_max=lon_max, field_output=True)
-        
+
         diffusion = self.diffusion(self.feeding_habitat)
         gradient_diffusion_lon, gradient_diffusion_lat = self.gradient(
             diffusion, landmask.loc[landmask.time.data[0],:,:])
-        
+
         U, V = self.current_forcing()
-        
+
         # mortality = self.computeMortality(
         #     effort_filepath=effort_filepath, fisheries_xml_filepath=fisheries_xml_filepath,
         #     time_reso=time_reso, space_reso=space_reso, skiprows=skiprows,

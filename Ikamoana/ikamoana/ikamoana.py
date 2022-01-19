@@ -22,6 +22,7 @@ class IkaSim :
         else:
             np.random.RandomState(self.ika_params['random_seed'])
 
+
     def generateForcing(self, to_file=False):
 
         data_structure = self.forcing_gen.feeding_habitat_structure.data_structure
@@ -42,7 +43,6 @@ class IkaSim :
         latlims = np.int32(latlims)
 
         self.forcing = {}
-        self.forcing_vars = {}
 
         if self.ika_params['ageing_cohort']:
             self.forcing['Tx'], self.forcing['Ty'] = self.forcing_gen.computeEvolvingTaxis(
@@ -54,32 +54,27 @@ class IkaSim :
                 cohort=ages, time_start=start, time_end=end, lon_min=lonlims[0],
                 lon_max=lonlims[1], lat_min=latlims[1], lat_max=latlims[0])
 
-        self.forcing_vars.update({'Tx': 'Tx', 'Ty': 'Ty'})
-
         self.forcing['landmask'] = self.forcing_gen.landmask(use_SEAPODYM_global_mask=True,
                                                              field_output=True,
                                                              habitat_field=self.forcing_gen.feeding_habitat)
-        #self.forcing_vars.update({'landmask': 'landmask'})
+
+        self.forcing['H'] = self.forcing_gen.feeding_habitat
 
         if self.ika_params['start_filestem'] is not None:
             self.forcing['start'] = self.forcing_gen.start_distribution(
                                     self.ika_params['start_filestem']+str(self.start_age)+'.dym')
-            self.forcing_vars.update({'start': 'start'})
 
         ### Mortality fields to do
 
         self.forcing['U'], self.forcing['V'] = self.forcing_gen.current_forcing()
-        self.forcing_vars.update({'U': 'U', 'V': 'V'})
 
         self.forcing['K'] = self.forcing_gen.diffusion(self.forcing_gen.feeding_habitat)
-        self.forcing_vars.update({'K': 'K'})
 
         self.forcing['dK_dx'], self.forcing['dK_dy'] = self.forcing_gen.gradient(
             self.forcing['K'], self.forcing_gen.landmask(
                 self.forcing_gen.feeding_habitat, lon_min=lonlims[0],
                 lon_max=lonlims[1], lat_min=latlims[1], lat_max=latlims[0]),
             name='K')
-        self.forcing_vars.update({'dK_dx':'dK_dx', 'dK_dy':'dK_dy'})
 
 
         if to_file:
@@ -89,6 +84,9 @@ class IkaSim :
                     self.ika_params['run_name'], var))
 
         #Parcels will need a mapping of dimension coordinate names
+        self.forcing_vars = {}
+        for f in self.forcing:
+            self.forcing_vars.update({f:f})
         self.forcing_dims = {'lon':'lon', 'lat':'lat', 'time':'time'}
 
 
@@ -96,23 +94,23 @@ class IkaSim :
 # - Reverse dataArray latitude before convert them to Field ? Yes
 
     def generateForcingNEW(self, to_file=False):
-        
+
         data_structure = self.forcing_gen.feeding_habitat_structure.data_structure
         ages = data_structure.findCohortByLength(self.ika_params['start_length'])
         start = data_structure.findIndexByDatetime(self.ika_params['start_time'])[0]
         end = data_structure.findIndexByDatetime(
             self.ika_params['start_time']+ self.ika_params['T'])[0]
         self.start_age = ages[0]
-        
+
         lonlims = self.ika_params['spatial_lims']['lonlim']
         lonlims = data_structure.findCoordIndexByValue(lonlims, coord='lon')
         lonlims = np.int32(lonlims)
         latlims = self.ika_params['spatial_lims']['latlim']
         latlims = data_structure.findCoordIndexByValue(latlims, coord='lat')
         latlims = np.int32(latlims)
-        
+
         evolve = self.ika_params['ageing_cohort']
-        
+
         self.forcing = self.forcing_gen.computeIkamoanaFields(
             # Mortality is coming soon ---------------------------------
             effort_filepath=None,fisheries_xml_filepath=None, time_reso=None,
@@ -132,7 +130,7 @@ class IkaSim :
         if 'mortality' in self.forcing.keys():
             mortality = self.forcing.pop('mortality')
         self.forcing = xr.Dataset(self.forcing)
-        
+
         self.forcing_vars = dict([(i,i) for i in self.forcing.keys()])
         #Parcels will need a mapping of dimension coordinate names
         self.forcing_dims = {'lon':'lon', 'lat':'lat', 'time':'time'}
@@ -149,6 +147,7 @@ class IkaSim :
             )
         else:
             landmask = self.forcing.pop('landmask')
+            self.forcing_vars.pop('landmask')
             self.ocean = prcl.FieldSet.from_xarray_dataset(self.forcing,
                                        variables=self.forcing_vars,
                                        dimensions=self.forcing_dims,
@@ -161,7 +160,19 @@ class IkaSim :
                                                         allow_time_extrapolation=True,
                                                         interp_method='nearest',
                                                         deferred_load=False))
-        print(self.ocean.Tx.grid.time_origin.fulltime(self.ocean.Tx.grid.time[0]))
+
+        #Add necessary field constants
+        #(constants easily accessed by particles during kernel execution)
+        data_structure = self.forcing_gen.feeding_habitat_structure.data_structure
+        if 'NaturalMortality' in self.ika_params['kernels']:
+            N_params = self.forcing_gen.readMortalityXML(self.ika_params['SEAPODYM_file'])
+            self._setConstant('SEAPODYM_dt',
+                              data_structure.parameters_dictionary['deltaT']*24*60*60)
+            for (p, val) in N_params.items():
+                self._setConstant(p, val)
+        if 'Age' in self.ika_params['kernels']:
+            self._setConstant('cohort_dt',
+                              data_structure.parameters_dictionary['deltaT']*24*60*60)
 
     def _setConstant(self, name, val):
         self.ocean.add_constant(name, val)
@@ -197,7 +208,7 @@ class IkaSim :
         for f in range(len(self.fish.particles)):
             self.fish.particles[f].age_class = self.start_age
             self.fish.particles[f].age = self.start_age*cohort_dt
-        
+
         self._setConstant('cohort_dt', cohort_dt)
 
     # NOTE : Arguments names may be more explicite ? Otherwise a good
@@ -209,11 +220,7 @@ class IkaSim :
 
         Behaviours = [self.fish.Kernel(ika.ikafish.behaviours.AllKernels[b])
                       for b in self.ika_params['kernels']]
-        # KernelString = sum([['Behaviours[', str(i), ']', '+']
-        #                     for i in range(len(Behaviours))], [])[:-1]
-        # KernelString = ''.join(KernelString)
-        # run_kernels = eval(KernelString)
-        # NOTE : Is equivalent to
+
         KernelString = ''.join(
             [('Behaviours[{}]+').format(i) for i in range(len(Behaviours))])
         run_kernels = eval(KernelString[:-1])
