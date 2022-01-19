@@ -125,7 +125,8 @@ class IkaSim :
             lon_min=lonlims[0], lon_max=lonlims[1],
             lat_min=latlims[1], lat_max=latlims[0],
         )
-
+        
+        # Mortality hasn't the same coordinates as others.
         if 'mortality' in self.forcing.keys():
             mortality = self.forcing.pop('mortality')
         self.forcing = xr.Dataset(self.forcing)
