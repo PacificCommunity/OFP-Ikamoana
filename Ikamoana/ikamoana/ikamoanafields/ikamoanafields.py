@@ -111,7 +111,7 @@ class IkamoanaFields :
         and mortality fields."""
 
         #self.ikamoana_fields_structure = readIkamoanaFieldsXML(xml_fields)
-        self.ikamoana_fields_structure = FieldsDataStructure()
+        self.ikamoana_fields_structure = FieldsDataStructure(xml_feeding_habitat)
         self.feeding_habitat_structure = FeedingHabitat(xml_feeding_habitat)
         if (feeding_habitat is None) or isinstance(feeding_habitat,xr.DataArray) :
             self.feeding_habitat = feeding_habitat
@@ -921,12 +921,16 @@ class IkamoanaFields :
         #     removeNoCatch=removeNoCatch, predict_effort=predict_effort,
         #     remove_fisheries=remove_fisheries, convertion_tab=convertion_tab,
         #     verbose=verbose)
-
-        return {'Tx':latitudeDirection(taxis_lon,south_to_nort),
-                'Ty':latitudeDirection(taxis_lat,south_to_nort),
-                'K':latitudeDirection(diffusion,south_to_nort),
-                'dK_dx':latitudeDirection(gradient_diffusion_lon,south_to_nort),
-                'dK_dy':latitudeDirection(gradient_diffusion_lat,south_to_nort),
+        return {'Tx':latitudeDirection(
+            taxis_lon,south_to_nort).drop_vars('cohorts'),
+                'Ty':latitudeDirection(
+                    taxis_lat,south_to_nort).drop_vars('cohorts'),
+                'K':latitudeDirection(
+                    diffusion,south_to_nort).drop_vars('cohorts'),
+                'dK_dx':latitudeDirection(
+                    gradient_diffusion_lon,south_to_nort).drop_vars('cohorts'),
+                'dK_dy':latitudeDirection(
+                    gradient_diffusion_lat,south_to_nort).drop_vars('cohorts'),
                 'U':latitudeDirection(U,south_to_nort),
                 'V':latitudeDirection(V,south_to_nort),
                 'landmask':latitudeDirection(landmask,south_to_nort),

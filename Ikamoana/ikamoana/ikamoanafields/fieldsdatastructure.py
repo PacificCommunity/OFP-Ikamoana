@@ -1,9 +1,10 @@
+import xml.etree.ElementTree as ET
 
 class FieldsDataStructure :
 
 ## NOTE : This is a hardcoded structure. Only for test.
 
-    def __init__(self) -> None :
+    def __init__(self, SEAPODYM_config_filepath: str) -> None :
 
         # TODO : This is from IKAMOANA config file
         self.diffusion_boost=0
@@ -17,8 +18,21 @@ class FieldsDataStructure :
         self.timestep=30*24*60*60
         self.start_file = ''
 
+        tree = ET.parse(SEAPODYM_config_filepath)
+        root = tree.getroot()
+
         # TODO : This is from the SEAPODYM config file
         ## TAXIS ####################################
+        sp_name = root.find('sp_name').text
+        print(root.find('MSS_species').attrib[sp_name])
+        print(root.find('MSS_size_slope').attrib[sp_name])
+        print(root.find('sigma_species').attrib[sp_name])
+        print(root.find('c_diff_fish').attrib[sp_name])
+        
+        # print(root.find('strfile_u').attrib[sp_name])
+        # print(root.find('strfile_u').attrib[sp_name])
+        
+        
         self.vmax_a=2.225841100458143
         """SEAPODYM name is MSS_species. Velocity at maximal habitat
         gradient and `A = 1, BL/s`."""

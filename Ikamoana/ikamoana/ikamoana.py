@@ -130,7 +130,7 @@ class IkaSim :
 
         # TODO : this is temporary generation of the start_distribution
         if self.ika_params['start_filestem'] is not None:
-            self.forcing['start'] = self.forcing_gen.start_distribution(
+            self.start_dist = self.forcing_gen.start_distribution(
                 self.ika_params['start_filestem']+str(self.start_age)+'.dym')
 
         # Mortality hasn't the same coordinates as others.
@@ -138,7 +138,6 @@ class IkaSim :
             mortality = self.forcing.pop('mortality')
 
         self.forcing = xr.Dataset(self.forcing)
-        self.forcing = self.forcing.drop_vars('cohorts')
 
         self.forcing_vars = dict([(i,i) for i in self.forcing.keys()])
         #Parcels will need a mapping of dimension coordinate names
@@ -166,6 +165,8 @@ class IkaSim :
             self.ocean.add_field(prcl.Field.from_xarray(
                 landmask, name='landmask', dimensions=self.forcing_dims,
                 allow_time_extrapolation=True, interp_method='nearest',))
+            self.start_dist = prcl.Field.from_xarray(
+                self.start_dist, name='start_dist', dimensions=self.forcing_dims)
 
         #Add necessary field constants
         #(constants easily accessed by particles during kernel execution)
@@ -197,11 +198,14 @@ class IkaSim :
                 fieldset=self.ocean, lon=start[0],
                 time=self.ika_params['start_time'], lat=start[1], pclass=pclass)
         else:
-            if self.ocean.start is None :
+            if self.start_dist is None :
                 raise ValueError('No starting distribution field in ocean fieldset!')
             self.fish = prcl.ParticleSet.from_field(
-                fieldset=self.ocean, start_field=self.ocean.start,
-                time=None, size=n_fish, pclass=pclass)
+                fieldset=self.ocean, start_field=self.start_dist,
+                time=self.ika_params['start_time'], size=n_fish, pclass=pclass)
+                # fieldset=self.ocean, start_field=self.ocean.start,
+                # time=None, size=n_fish, pclass=pclass)
+
 
         #Initialise fish
         cohort_dt = self.forcing_gen.feeding_habitat_structure.data_structure.\
