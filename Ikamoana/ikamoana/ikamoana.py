@@ -55,7 +55,7 @@ class IkaSim :
                 lon_max=lonlims[1], lat_min=latlims[1], lat_max=latlims[0])
 
         self.forcing['landmask'] = self.forcing_gen.landmask(
-            use_SEAPODYM_global_mask=True, field_output=True, 
+            use_SEAPODYM_global_mask=True, field_output=True,
             habitat_field=self.forcing_gen.feeding_habitat)
 
         self.forcing['H'] = self.forcing_gen.feeding_habitat
@@ -127,16 +127,16 @@ class IkaSim :
             lon_min=lonlims[0], lon_max=lonlims[1],
             lat_min=latlims[1], lat_max=latlims[0],
         )
-        
+
         # TODO : this is temporary generation of the start_distribution
         if self.ika_params['start_filestem'] is not None:
             self.start_dist = self.forcing_gen.start_distribution(
                 self.ika_params['start_filestem']+str(self.start_age)+'.dym')
-        
+
         # Mortality hasn't the same coordinates as others.
         if 'mortality' in self.forcing.keys():
             mortality = self.forcing.pop('mortality')
-        
+
         self.forcing = xr.Dataset(self.forcing)
 
         self.forcing_vars = dict([(i,i) for i in self.forcing.keys()])
@@ -160,7 +160,7 @@ class IkaSim :
             self.forcing = self.forcing.drop_vars('landmask')
             self.forcing_vars.pop('landmask')
             self.ocean = prcl.FieldSet.from_xarray_dataset(
-                self.forcing, variables=self.forcing_vars, 
+                self.forcing, variables=self.forcing_vars,
                 dimensions=self.forcing_dims)
             self.ocean.add_field(prcl.Field.from_xarray(
                 landmask, name='landmask', dimensions=self.forcing_dims,
@@ -203,14 +203,17 @@ class IkaSim :
             self.fish = prcl.ParticleSet.from_field(
                 fieldset=self.ocean, start_field=self.start_dist,
                 time=self.ika_params['start_time'], size=n_fish, pclass=pclass)
+                # fieldset=self.ocean, start_field=self.ocean.start,
+                # time=None, size=n_fish, pclass=pclass)
+
 
         #Initialise fish
         cohort_dt = self.forcing_gen.feeding_habitat_structure.data_structure.\
             species_dictionary['cohorts_sp_unit'][0]
-            
-        for f in range(len(self.fish.particles)):
-            self.fish.particles[f].age_class = self.start_age
-            self.fish.particles[f].age = self.start_age*cohort_dt
+
+        for f in range(len(self.fish)):
+            self.fish[f].age_class = self.start_age
+            self.fish[f].age = self.start_age*cohort_dt
 
         self._setConstant('cohort_dt', cohort_dt)
 
