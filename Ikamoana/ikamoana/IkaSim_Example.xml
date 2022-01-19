@@ -1,9 +1,12 @@
 <?xml version="1.0"?>
 <ika_params>
   <run_name>IkaSim_Example</run_name>
-  <forcing_dir>/home/ash/Documents/GitHub_Repositories/OFP-Ikamoana/Ikamoana/data/feeding_habitat_data/run-test/</forcing_dir>
 
-  <seapodym_parameters>/home/ash/Documents/GitHub_Repositories/OFP-Ikamoana/Ikamoana/data/feeding_habitat_data/run-test/skj_interim_CL_2018_IKAMOANA.xml</seapodym_parameters>
+  <forcing_dir>/home/ash/Documents/GitHub_Repositories/OFP-Ikamoana/Ikamoana/data/SEAPODYM_data/run-test/data/run-interim_2x30d_po</forcing_dir>
+  <!-- <forcing_dir>Joe's path</forcing_dir> -->
+
+  <seapodym_parameters>/home/ash/Documents/GitHub_Repositories/OFP-Ikamoana/Ikamoana/data/SEAPODYM_data/run-test/skj_interim_CL_2018_testopt.xml</seapodym_parameters>
+  <!-- <seapodym_parameters>Joe's path</seapodym_parameters> -->
 
   <kernels>CalcLonLatScalers IkAdvectionRK4 TaxisRK4 RandomWalkNonUniformDiffusion IkaDimMoveWithDiffusionReroll</kernels>
 

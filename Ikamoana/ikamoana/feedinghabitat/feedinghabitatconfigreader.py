@@ -283,11 +283,11 @@ def _readXmlConfigFilepaths(root, root_directory, layers_number) :
     else :
         sst_filepath = root_directory + root.find('strfile_sst').attrib['value']
 
-    # ZEU #####################################################################
-    if root.find('strfile_zeu') is None :
-        zeu_filepath = None
+    # VLD #####################################################################
+    if root.find('strfile_vld') is None :
+        vld_filepath = None
     else :
-        zeu_filepath = root_directory + root.find('strfile_zeu').attrib['value']
+        vld_filepath = root_directory + root.find('strfile_vld').attrib['value']
 
     # MASK ####################################################################
     if root.find('str_file_mask') == None :
@@ -296,7 +296,7 @@ def _readXmlConfigFilepaths(root, root_directory, layers_number) :
         mask_filepath = root_directory + root.find('str_file_mask').attrib['value']
 
     return (temperature_filepaths, oxygen_filepaths, forage_filepaths, sst_filepath,
-            zeu_filepath, mask_filepath, partial_oxygen_time_axis)
+            vld_filepath, mask_filepath, partial_oxygen_time_axis)
 
 def _readXmlConfigParameters(root) :
     """Reads the parameters from the XML configuration file and stores
@@ -355,7 +355,7 @@ def _readXmlConfigParameters(root) :
 
 def _loadVariablesFromFilepaths(
         root, temperature_filepaths, oxygen_filepaths, forage_filepaths,
-        sst_filepath, zeu_filepath, mask_filepath, sp_name, float_32=True) :
+        sst_filepath, vld_filepath, mask_filepath, sp_name, float_32=True) :
     """Load all Seapodym Fields using the seapodymFieldConstructor
     method. Their are stored in a dictionary and returned."""
 
@@ -428,10 +428,10 @@ def _loadVariablesFromFilepaths(
         np.nan_to_num,
         seapodymFieldConstructor(sst_filepath, "sst"))
 
-    # ZEU #####################################################################
-    variables_dictionary["zeu"] = xr.apply_ufunc(
+    # VLD #####################################################################
+    variables_dictionary["vld"] = xr.apply_ufunc(
         np.nan_to_num,
-        seapodymFieldConstructor(zeu_filepath, "zeu"))
+        seapodymFieldConstructor(vld_filepath, "vld"))
 
     # LENGTHS, WEIGHT & AGE ###################################################
     cohorts_mean_length = np.array(
@@ -518,7 +518,7 @@ def loadFromXml(
      oxygen_filepaths,
      forage_filepaths,
      sst_filepath,
-     zeu_filepath,
+     vld_filepath,
      mask_filepath,
      partial_oxygen_time_axis) = _readXmlConfigFilepaths(
          root, root_directory, layers_number)
@@ -540,7 +540,7 @@ def loadFromXml(
                                                     oxygen_filepaths,
                                                     forage_filepaths,
                                                     sst_filepath,
-                                                    zeu_filepath,
+                                                    vld_filepath,
                                                     mask_filepath,
                                                     species_dictionary['sp_name'],
                                                     days_length_float_32)

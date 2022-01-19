@@ -131,6 +131,7 @@ class HabitatDataStructure :
         ----------
         kargs : dict
             Contains all the data needed to compute the FeedingHabitat.
+            
             - root_directory
             - output_directory
             - layers_number
@@ -145,21 +146,24 @@ class HabitatDataStructure :
         Notes
         -----
         variables_dictionary contains :
+        
             - 'oxygen_L1', 'oxygen_L2', 'oxygen_L3',
             - 'temperature_L1','temperature_L2', 'temperature_L3', 
             - 'forage_epi', 'forage_umeso', 'forage_mumeso', 
             - 'forage_lmeso', 'forage_mlmeso', 'forage_hmlmeso', 
-            - 'sst', 'zeu', 'days_length'}
+            - 'sst', 'vld', 'days_length'
         
         parameters_dictionary contains :
+        
             - 'eF_list', 'sigma_0', 'sigma_K', 'T_star_1', 'T_star_K',
-            - 'bT', 'gamma', 'o_star', 'deltaT', 'space_reso'}
+            - 'bT', 'gamma', 'o_star', 'deltaT', 'space_reso'
 
         species_dictionary contains :
+        
             - 'sp_name', 'nb_life_stages', 'life_stage',
             - 'nb_cohort_life_stage', 'cohorts_mean_length',
             - 'cohorts_mean_weight', 'cohorts_sp_unit',
-            - 'cohorts_starting_age', 'cohorts_final_age'}
+            - 'cohorts_starting_age', 'cohorts_final_age'
         """
 
         self.root_directory           = kargs['root_directory']

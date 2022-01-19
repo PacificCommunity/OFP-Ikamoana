@@ -77,15 +77,30 @@ def sliceField(field : Union[xr.DataArray, xr.Dataset],
 
     return field.sel(time=coord_time, lat=coord_lat, lon=coord_lon)
 
+# NOTE : maybe a generalized function would be usefull. Depending on the
+# user needs.
+def latitudeDirection(
+        field: Union[xr.DataArray, xr.Dataset], south_to_north: bool = False) :
+    """Reindexes the latitude axis of a field in a south-north or
+    north-south direction according to the `south_to_north` argument."""
+    
+    f_is_north_to_south = field.lat.data[0] > field.lat.data[-1]
+    # logical XAND 
+    if ((f_is_north_to_south and south_to_north)
+        or (not f_is_north_to_south and not south_to_north)) :
+        return field.reindex(lat=field.lat[::-1])
+    else :
+        return field
+
 class IkamoanaFields :
 
 # ------------------------- CORE FUNCTIONS ------------------------- #
 
 # TODO : Add normalization after the creation of the FeedingHabitat
-    def __init__(self,
-                 #xml_fields : str,
-                 xml_feeding_habitat : str,
-                 feeding_habitat : xr.DataArray = None):
+    def __init__(
+            self, #xml_fields : str,
+            xml_feeding_habitat : str,
+            feeding_habitat : xr.DataArray = None):
         """Create a IkamoanaFields class. Can compute Taxis, Current, Diffusion,
         and mortality fields."""
 
@@ -167,13 +182,12 @@ class IkamoanaFields :
         return (self.ikamoana_fields_structure.vmax_a
              * np.power(length, self.ikamoana_fields_structure.vmax_b))
 
-    def landmask(self, habitat_field : xr.DataArray = None,
-                 use_SEAPODYM_global_mask: bool = False,
-                 shallow_sea_to_ocean=False, lim=1e-45,
-                 lat_min: int = None,lat_max: int = None,
-                 lon_min: int = None,lon_max: int = None,
-                 field_output: bool = False
-                 ) -> xr.DataArray :
+    def landmask(
+            self, habitat_field : xr.DataArray = None,
+            use_SEAPODYM_global_mask: bool = False, shallow_sea_to_ocean=False,
+            lim=1e-45, lat_min: int = None, lat_max: int = None,
+            lon_min: int = None, lon_max: int = None, field_output: bool = False
+            ) -> xr.DataArray :
         """Return the landmask of a given habitat (`habitat_field`) or
         generated from the FeedingHabitat.global_mask which is used by
         SEAPODYM (`use_SEAPODYM_global_mask: bool = True`).
@@ -364,6 +378,13 @@ class IkamoanaFields :
 ## TODO plus tard : Take into account L1 is a simplification.
 # Should use accessibility + forage distribution + current L1/L2/L3
     def current_forcing(self) -> Tuple[xr.DataArray, xr.DataArray]:
+        """Load current forcing for NetCDF or Dym files.
+
+        Returns
+        -------
+        Tuple[xr.DataArray, xr.DataArray]
+            U, V
+        """
         U = fhcf.seapodymFieldConstructor(
             self.feeding_habitat_structure.data_structure.root_directory
             + self.ikamoana_fields_structure.u_file,  dym_varname='u_L1')
@@ -396,10 +417,10 @@ class IkamoanaFields :
             timefun, latfun, lonfun  = coordsAccess(U)
             minlon_idx = lonfun(min(self.feeding_habitat.coords['lon'].data))
             maxlon_idx = lonfun(max(self.feeding_habitat.coords['lon'].data))
-            minlat_idx = latfun(max(self.feeding_habitat.coords['lat'].data))
-            maxlat_idx = latfun(min(self.feeding_habitat.coords['lat'].data))
+            minlat_idx = latfun(min(self.feeding_habitat.coords['lat'].data))
+            maxlat_idx = latfun(max(self.feeding_habitat.coords['lat'].data))
             mintime_idx = timefun(min(self.feeding_habitat.coords['time'].data))
-            maxtime_idx =timefun(max(self.feeding_habitat.coords['time'].data))
+            maxtime_idx = timefun(max(self.feeding_habitat.coords['time'].data))
             U = sliceField(U, mintime_idx, maxtime_idx,
                             minlat_idx, maxlat_idx,
                             minlon_idx, maxlon_idx)
@@ -430,8 +451,8 @@ class IkamoanaFields :
             # TODO : Is it normal ?
             # Reponse -> on change mais il faudra inverser a latitude
             # lors de la lecture des fichier (convertion en fields)
-            minlat = max(self.feeding_habitat.lat.data)
-            maxlat = min(self.feeding_habitat.lat.data)
+            minlat = min(self.feeding_habitat.lat.data)
+            maxlat = max(self.feeding_habitat.lat.data)
             mintime = np.sort(self.feeding_habitat.time.data)[0]
             maxtime = np.sort(self.feeding_habitat.time.data)[1]
             dist = dist.loc[mintime:maxtime, minlat:maxlat, minlon:maxlon]
@@ -491,8 +512,10 @@ class IkamoanaFields :
                              dims=('time','lat','lon'),
                              attrs=dHdlat.attrs))
 
-    def diffusion(self, habitat: xr.DataArray, name: str = None) -> xr.DataArray :
-        """DESCRIPTION : This is simply calculating the required indices of the
+    def diffusion(
+            self, habitat: xr.DataArray, name: str = None
+            ) -> xr.DataArray :
+        """This is simply calculating the required indices of the
         forcing for this simulation."""
 
         def argumentCheck(array) :
@@ -545,11 +568,37 @@ class IkamoanaFields :
                             dims=("time","lat","lon"),
                             attrs=habitat.attrs)
 
+# TODO : finish DocString
     def fishingMortality(
             self, effort_ds: xr.Dataset, fisheries_parameters: dict,
             start_age: int = 0, evolving: bool = True,
             convertion_tab: Dict[str, Union[str,int,float]] = None,
             ) -> xr.DataArray :
+        """Convert effort by fishery to fishing mortality by applying
+        a selectivity function which can be :
+        
+        - Limit one (not supported yet)
+        - Sigmoid
+        - Asymmetric Gaussian
+
+        Parameters
+        ----------
+        effort_ds : xr.Dataset
+            [description]
+        fisheries_parameters : dict
+            [description]
+        start_age : int, optional
+            [description]
+        evolving : bool, optional
+            [description]
+        convertion_tab : Dict[str, Union[str,int,float]], optional
+            [description]
+
+        Returns
+        -------
+        xr.DataArray
+            [description]
+        """
 
         # # This is not necessary :
         # if len(effort_ds) != len(fisheries_parameters.keys()) :
@@ -637,8 +686,8 @@ class IkamoanaFields :
 
 # ------------------------------ WRAPPER ----------------------------- #
 
-    def _commonWrapperTaxis(self, feeding_habitat, name, lat_min, lat_max,
-                            lon_min, lon_max):
+    def _commonWrapperTaxis(
+            self, feeding_habitat, name, lat_min, lat_max, lon_min, lon_max):
 
         hf_cond, ssto_cond = (self.ikamoana_fields_structure.landmask_from_habitat,
                               self.ikamoana_fields_structure.shallow_sea_to_ocean)
@@ -654,7 +703,7 @@ class IkamoanaFields :
         return self.taxis(grad_lon, grad_lat,
                           name=feeding_habitat.name if name is None else name)
 
-    # TODO : Finish the description
+# TODO : Finish the description
     def computeTaxis(
             self, cohort: int = None,
             time_start: int = None, time_end: int = None,
@@ -732,7 +781,7 @@ class IkamoanaFields :
         return self._commonWrapperTaxis(feeding_habitat_da, name, lat_min,
                                         lat_max, lon_min, lon_max)
 
-    # TODO : Finish the description
+# TODO : Finish the description
     def computeEvolvingTaxis(
             self, cohort_start: int = None, cohort_end: int = None,
             time_start: int = None, time_end: int = None,
@@ -802,7 +851,7 @@ class IkamoanaFields :
         return self._commonWrapperTaxis(feeding_habitat, name, lat_min,
                                         lat_max, lon_min, lon_max)
 
-    # TODO : Write the description
+# TODO : Write the description
     def computeMortality(
             self, effort_filepath: str, fisheries_xml_filepath: str,
             time_reso: int, space_reso: float, skiprows: int = 0,
@@ -841,7 +890,9 @@ class IkamoanaFields :
             evolve: bool = True, cohort_start: int = None,
             cohort_end: int = None, time_start: int = None, time_end: int = None,
             lat_min: int = None, lat_max: int = None, lon_min: int = None,
-            lon_max: int = None, verbose: bool = False
+            lon_max: int = None, verbose: bool = False,
+  
+            south_to_nort: bool = True
             ) -> Dict[str, xr.DataArray]:
         """
         Feeding Habitat is calculated everytime, see WARNING commentary.
@@ -886,10 +937,13 @@ class IkamoanaFields :
         #     remove_fisheries=remove_fisheries, convertion_tab=convertion_tab,
         #     verbose=verbose)
 
-        return {'Tx':taxis_lon, 'Ty':taxis_lat,
-                'K':diffusion,
-                'dK_dx':gradient_diffusion_lon, 'dK_dy':gradient_diffusion_lat,
-                'U':U, 'V':V,
-                'landmask':landmask,
-                #'mortality':mortality
+        return {'Tx':latitudeDirection(taxis_lon,south_to_nort),
+                'Ty':latitudeDirection(taxis_lat,south_to_nort),
+                'K':latitudeDirection(diffusion,south_to_nort),
+                'dK_dx':latitudeDirection(gradient_diffusion_lon,south_to_nort),
+                'dK_dy':latitudeDirection(gradient_diffusion_lat,south_to_nort),
+                'U':latitudeDirection(U,south_to_nort),
+                'V':latitudeDirection(V,south_to_nort),
+                'landmask':latitudeDirection(landmask,south_to_nort),
+                #'mortality':latitudeDirection(mortality,south_to_nort)
         }
