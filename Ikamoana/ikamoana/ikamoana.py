@@ -54,15 +54,17 @@ class IkaSim :
                 cohort=ages, time_start=start, time_end=end, lon_min=lonlims[0],
                 lon_max=lonlims[1], lat_min=latlims[1], lat_max=latlims[0])
 
-        self.forcing['landmask'] = self.forcing_gen.landmask(use_SEAPODYM_global_mask=True,
-                                                             field_output=True,
-                                                             habitat_field=self.forcing_gen.feeding_habitat)
+        self.forcing['landmask'] = self.forcing_gen.landmask(
+            use_SEAPODYM_global_mask=True, field_output=True, 
+            habitat_field=self.forcing_gen.feeding_habitat)
 
         self.forcing['H'] = self.forcing_gen.feeding_habitat
 
         if self.ika_params['start_filestem'] is not None:
+            print(self.ika_params['start_filestem'])
             self.forcing['start'] = self.forcing_gen.start_distribution(
-                                    self.ika_params['start_filestem']+str(self.start_age)+'.dym')
+                self.ika_params['start_filestem']+str(self.start_age)+'.dym')
+            print(self.ika_params['start_filestem']+str(self.start_age)+'.dym')
 
         ### Mortality fields to do
 
@@ -126,14 +128,21 @@ class IkaSim :
             lat_min=latlims[1], lat_max=latlims[0],
         )
         
+        # TODO : this is temporary generation of the start_distribution
+        if self.ika_params['start_filestem'] is not None:
+            self.forcing['start'] = self.forcing_gen.start_distribution(
+                self.ika_params['start_filestem']+str(self.start_age)+'.dym')
+        
         # Mortality hasn't the same coordinates as others.
         if 'mortality' in self.forcing.keys():
             mortality = self.forcing.pop('mortality')
+        
         self.forcing = xr.Dataset(self.forcing)
+        self.forcing = self.forcing.drop_vars('cohorts')
 
         self.forcing_vars = dict([(i,i) for i in self.forcing.keys()])
         #Parcels will need a mapping of dimension coordinate names
-        self.forcing_dims = {'lon':'lon', 'lat':'lat', 'time':'time'}
+        self.forcing_dims = {'time':'time', 'lat':'lat', 'lon':'lon'}
 
     def createFieldSet(self, from_disk: bool = False):
         if from_disk:
@@ -146,20 +155,17 @@ class IkaSim :
                 # deferred_load=False
             )
         else:
-            landmask = self.forcing.pop('landmask')
+            # forcing must be a dataset, not a dict
+            #landmask = self.forcing.pop('landmask')
+            landmask = self.forcing['landmask']
+            self.forcing = self.forcing.drop_vars('landmask')
             self.forcing_vars.pop('landmask')
-            self.ocean = prcl.FieldSet.from_xarray_dataset(self.forcing,
-                                       variables=self.forcing_vars,
-                                       dimensions=self.forcing_dims,
-                                       deferred_load=False)
-            self.ocean.add_field(prcl.Field.from_netcdf(None, landmask,
-                                                        var_name='landmask',
-                                                        dimensions= {'lon':'lon',
-                                                                     'lat':'lat',
-                                                                     'time':'time'},
-                                                        allow_time_extrapolation=True,
-                                                        interp_method='nearest',
-                                                        deferred_load=False))
+            self.ocean = prcl.FieldSet.from_xarray_dataset(
+                self.forcing, variables=self.forcing_vars, 
+                dimensions=self.forcing_dims)
+            self.ocean.add_field(prcl.Field.from_xarray(
+                landmask, name='landmask', dimensions=self.forcing_dims,
+                allow_time_extrapolation=True, interp_method='nearest',))
 
         #Add necessary field constants
         #(constants easily accessed by particles during kernel execution)
@@ -182,10 +188,8 @@ class IkaSim :
 #   start: np.ndarray = None
     def initialiseFishParticles(
             self,start,n_fish=10, pclass:prcl.JITParticle=prcl.JITParticle):
-    # NOTE : Can use isinstance() function
-        #if type(start) is np.ndarray:
+
         if isinstance(start, np.ndarray) :
-    # NOTE : raise exception rather than assert for a better readability
             if start.shape[1] != n_fish :
                 raise ValueError('Number of fish and provided initial positions'
                                  ' not equal!')
@@ -195,6 +199,7 @@ class IkaSim :
         else:
             if self.ocean.start is None :
                 raise ValueError('No starting distribution field in ocean fieldset!')
+            
             self.fish = prcl.ParticleSet.from_field(
                 fieldset=self.ocean, start_field=self.ocean.start,
                 time=self.ika_params['start_time'], size=n_fish, pclass=pclass)
@@ -202,9 +207,7 @@ class IkaSim :
         #Initialise fish
         cohort_dt = self.forcing_gen.feeding_habitat_structure.data_structure.\
             species_dictionary['cohorts_sp_unit'][0]
-
-        # NOTE : This wont work if the pclass is wrong. Should test with
-        # isinstance ?
+            
         for f in range(len(self.fish.particles)):
             self.fish.particles[f].age_class = self.start_age
             self.fish.particles[f].age = self.start_age*cohort_dt

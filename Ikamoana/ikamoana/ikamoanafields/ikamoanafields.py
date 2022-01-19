@@ -10,7 +10,7 @@ from parcels.tools.converters import Geographic, GeographicPolar
 from ..feedinghabitat import FeedingHabitat, coordsAccess
 from ..feedinghabitat import feedinghabitatconfigreader as fhcf
 from ..fisherieseffort import fisherieseffort
-from .ikamoanafieldsconfigreader import readIkamoanaFieldsXML
+from .fieldsdatastructure import FieldsDataStructure
 
 
 def convertToField(field : Union[xr.DataArray, xr.Dataset], name=None) :
@@ -111,7 +111,7 @@ class IkamoanaFields :
         and mortality fields."""
 
         #self.ikamoana_fields_structure = readIkamoanaFieldsXML(xml_fields)
-        self.ikamoana_fields_structure = readIkamoanaFieldsXML(None)
+        self.ikamoana_fields_structure = FieldsDataStructure()
         self.feeding_habitat_structure = FeedingHabitat(xml_feeding_habitat)
         if (feeding_habitat is None) or isinstance(feeding_habitat,xr.DataArray) :
             self.feeding_habitat = feeding_habitat
@@ -421,7 +421,10 @@ class IkamoanaFields :
 
     def start_distribution(self, filepath: str) -> xr.DataArray :
         """Description"""
+        
         dist = fhcf.seapodymFieldConstructor(filepath, dym_varname='start')
+        #dist = xr.apply_ufunc(np.nan_to_num,dist)
+        
         # Clip dimensions to the same as the feeding habitats, but only
         dist = latitudeDirection(dist, south_to_north=True)
         if self.feeding_habitat is not None :
@@ -492,7 +495,12 @@ class IkamoanaFields :
             self, habitat: xr.DataArray, name: str = None
             ) -> xr.DataArray :
         """This is simply calculating the required indices of the
-        forcing for this simulation."""
+        forcing for this simulation.
+        
+        See Also
+        --------
+        Seapodym user manual page 32 : Active random movement
+        """
 
         def argumentCheck(array) :
             if array.attrs.get('cohort_start') is not None :
@@ -905,6 +913,7 @@ class IkamoanaFields :
             diffusion, landmask.loc[landmask.time.data[0],:,:])
 
         U, V = self.current_forcing()
+        #start = self.start_distribution()
 
         # mortality = self.computeMortality(
         #     effort_filepath=effort_filepath, fisheries_xml_filepath=fisheries_xml_filepath,
@@ -921,5 +930,6 @@ class IkamoanaFields :
                 'U':latitudeDirection(U,south_to_nort),
                 'V':latitudeDirection(V,south_to_nort),
                 'landmask':latitudeDirection(landmask,south_to_nort),
+                #'start':
                 #'mortality':latitudeDirection(mortality,south_to_nort)
         }
