@@ -359,9 +359,6 @@ class IkamoanaFields :
 
 ## TODO plus tard : Take into account L1 is a simplification.
 # Should use accessibility + forage distribution + current L1/L2/L3
-# TODO : Use loc for lat and lon + slice for time
-# Le problème vient du fait que les dates ne sont pas forcement les mêmes
-# -> utilisation de normalizeCoords()
     def current_forcing(self) -> Tuple[xr.DataArray, xr.DataArray]:
         """Load current forcing for NetCDF or Dym files.
 
@@ -370,29 +367,19 @@ class IkamoanaFields :
         Tuple[xr.DataArray, xr.DataArray]
             U, V
         """
+        
         U = fhcf.seapodymFieldConstructor(
             self.feeding_habitat_structure.data_structure.root_directory
             + self.ikamoana_fields_structure.u_file,  dym_varname='u_L1')
         V = fhcf.seapodymFieldConstructor(
             self.feeding_habitat_structure.data_structure.root_directory
             + self.ikamoana_fields_structure.v_file,  dym_varname='v_L1')
+        
+        U = latitudeDirection(U, south_to_north=True)
+        V = latitudeDirection(V, south_to_north=True)
 
         if self.feeding_habitat is not None:
-            # minlon_idx = min(self.feeding_habitat.lon.data)
-            # maxlon_idx = max(self.feeding_habitat.lon.data)
-            # minlat_idx = min(self.feeding_habitat.lat.data)
-            # maxlat_idx = max(self.feeding_habitat.lat.data)
-            # mintime_idx = min(self.feeding_habitat.time.data)
-            # maxtime_idx = max(self.feeding_habitat.time.data)
-            #
-            # U = U.loc[mintime_idx:maxtime_idx,
-            #           minlat_idx:maxlat_idx,
-            #           minlon_idx:maxlon_idx]
-            #
-            # V = V.loc[mintime_idx:maxtime_idx,
-            #           minlat_idx:maxlat_idx,
-            #           minlon_idx:maxlon_idx]
-
+            # NOTE : We assume that U and V have same coordinates.
             timefun, latfun, lonfun = coordsAccess(U)
             minlon_idx = lonfun(min(self.feeding_habitat.coords['lon'].data))
             maxlon_idx = lonfun(max(self.feeding_habitat.coords['lon'].data))
@@ -400,38 +387,28 @@ class IkamoanaFields :
             maxlat_idx = latfun(max(self.feeding_habitat.coords['lat'].data))
             mintime_idx = timefun(min(self.feeding_habitat.coords['time'].data))
             maxtime_idx = timefun(max(self.feeding_habitat.coords['time'].data))
-            U = sliceField(U, mintime_idx, maxtime_idx,
-                            minlat_idx, maxlat_idx,
-                            minlon_idx, maxlon_idx)
-            V = sliceField(V, mintime_idx, maxtime_idx,
-                            minlat_idx, maxlat_idx,
-                            minlon_idx, maxlon_idx)
+            U = U[mintime_idx:maxtime_idx+1,
+                  minlat_idx:maxlat_idx+1,
+                  minlon_idx:maxlon_idx+1]
+            V = V[mintime_idx:maxtime_idx+1,
+                  minlat_idx:maxlat_idx+1,
+                  minlon_idx:maxlon_idx+1]
         return U, V
 
-# TODO : Use loc for lat and lon + slice for time
-# Le problème vient du fait que les dates ne sont pas forcement les mêmes
-# -> utilisation de normalizeCoords()
-    def start_distribution(            self, filepath: str) -> xr.DataArray :
+    def start_distribution(self, filepath: str) -> xr.DataArray :
         """Description"""
         dist = fhcf.seapodymFieldConstructor(filepath, dym_varname='start')
         # Clip dimensions to the same as the feeding habitats, but only
-        # the first two time-steps.
-        # TODO : Quel sont les coordonnées de dist ? On ne choisi pas
-        # les deux premiers time step s'il n'y a pas d'habitat déjà calculé ?
+        dist = latitudeDirection(dist, south_to_north=True)
         if self.feeding_habitat is not None :
             _, latfun, lonfun  = coordsAccess(dist)
             minlon_idx = lonfun(min(self.feeding_habitat.coords['lon'].data))
             maxlon_idx = lonfun(max(self.feeding_habitat.coords['lon'].data))
             minlat_idx = latfun(min(self.feeding_habitat.coords['lat'].data))
             maxlat_idx = latfun(max(self.feeding_habitat.coords['lat'].data))
-            # mintime_idx = timefun(min(self.feeding_habitat.coords['time'].data))
-            # maxtime_idx = timefun(min(self.feeding_habitat.coords['time'].data)+1)
-            dist.isel(time=[0,1], lat=np.arange(minlat_idx,maxlat_idx),
-                      lon=np.arange(minlon_idx,maxlon_idx))
-            # dist = sliceField(dist, mintime_idx, maxtime_idx,
-            #                 minlat_idx, maxlat_idx,
-            #                 minlon_idx, maxlon_idx)
-        return dist
+            return dist[:2, minlat_idx:maxlat_idx+1, minlon_idx:maxlon_idx+1]
+        else :
+            return dist[:2]
 
     def taxis(
             self, dHdlon: xr.DataArray, dHdlat: xr.DataArray, name: str = None
