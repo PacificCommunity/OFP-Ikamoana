@@ -1,4 +1,4 @@
-import math
+import parcels.rng as ParcelsRandom
 
 ## NOTE : These variables camed from the "ikafish.py" module.
 #
@@ -70,8 +70,8 @@ def IkaDimMoveWithDiffusionReroll(particle, fieldset, time):
         onland = fieldset.landmask[0, particle.depth, newlat, newlon]
         jump_loop += 1
         if onland == 1:
-            Rx = random.uniform(-1., 1.)
-            Ry = random.uniform(-1., 1.)
+            Rx = ParcelsRandom.uniform(-1., 1.)
+            Ry = ParcelsRandom.uniform(-1., 1.)
             Dx = Rx * Rx_component * f_lon /particle.dt
             Dy = Ry * Ry_component * f_lat /particle.dt
             loop_count += 1
@@ -146,8 +146,8 @@ def TaxisRK4(particle, fieldset, time):
 
 def RandomWalkNonUniformDiffusion(particle, fieldset, time):
     r_var = 1/3.
-    Rx = random.uniform(-1., 1.)
-    Ry = random.uniform(-1., 1.)
+    Rx = ParcelsRandom.uniform(-1., 1.)
+    Ry = ParcelsRandom.uniform(-1., 1.)
     dKdx, dKdy = (fieldset.dK_dx[time, particle.depth, particle.lat, particle.lon], fieldset.dK_dy[time, particle.depth, particle.lat, particle.lon])
     k = fieldset.K[time, particle.depth, particle.lat, particle.lon]
     Rx_component = math.sqrt(2 * k * particle.dt / r_var)
