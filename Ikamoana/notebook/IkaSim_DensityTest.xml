@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<ika_params>
+  <run_name>IkaSim_DensityTest</run_name>
+  <!--
+    <forcing_dir>C:/Users/joes/Dropbox/SPC_2020/OFP-Ikamoana/Ikamoana/data/SEAPODYM_data/run-test/</forcing_dir>
+    <seapodym_parameters>C:/Users/joes/Dropbox/SPC_2020/OFP-Ikamoana/Ikamoana/data/SEAPODYM_data/run-test/skj_CLT_e5_3_est_modif.xml</seapodym_parameters>
+  -->
+  <forcing_dir>/home/ash/Documents/GitHub_Repositories/OFP-Ikamoana/Ikamoana/data/SEAPODYM_data/run-test/</forcing_dir>
+  <seapodym_parameters>/home/ash/Documents/GitHub_Repositories/OFP-Ikamoana/Ikamoana/data/SEAPODYM_data/run-test/skj_CLT_e5_3_est.xml</seapodym_parameters>
+
+  <kernels>CalcLonLatScalers IkAdvectionRK4 TaxisRK4 RandomWalkNonUniformDiffusion IkaDimMoveWithDiffusionReroll</kernels>
+
+  <random_seed>None</random_seed>
+
+  <cohort_info length='21' ageing='1'
+               start_filestem='skj_age'/>
+
+  <time start='2008-01-15' sim_time='90' dt='86400' output_dt='7'/>
+
+  <domain>
+    <lon>120 290</lon>
+    <lat>-40 50</lat>
+  </domain>
+</ika_params>
