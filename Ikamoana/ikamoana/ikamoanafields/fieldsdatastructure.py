@@ -29,8 +29,8 @@ class FieldsDataStructure :
         print(root.find('sigma_species').attrib[sp_name])
         print(root.find('c_diff_fish').attrib[sp_name])
         
-        print(root.find('strfile_u').attrib[sp_name])
-        print(root.find('strfile_u').attrib[sp_name])
+        # print(root.find('strfile_u').attrib[sp_name])
+        # print(root.find('strfile_u').attrib[sp_name])
         
         
         self.vmax_a=2.225841100458143
