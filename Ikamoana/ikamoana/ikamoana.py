@@ -14,7 +14,7 @@ class IkaSim :
     def __init__(self, xml_parameterfile: str):
 
         self.ika_params = self._readParams(xml_filepath=xml_parameterfile)
-        self.forcing_gen = ika.ikamoanafields.IkamoanaFields(self.ika_params['SEAPODYM_file'])
+        self.forcing_gen = ika.ikamoanafields.IkamoanaFields(xml_parameterfile)
 
         if self.ika_params['random_seed'] is None:
             np.random.RandomState()
@@ -22,7 +22,7 @@ class IkaSim :
         else:
             np.random.RandomState(self.ika_params['random_seed'])
 
-
+# TODO : This version of the generateForcing will be removed
     def generateForcing(self, to_file=False):
 
         data_structure = self.forcing_gen.feeding_habitat_structure.data_structure
@@ -91,10 +91,6 @@ class IkaSim :
             self.forcing_vars.update({f:f})
         self.forcing_dims = {'lon':'lon', 'lat':'lat', 'time':'time'}
 
-
-# TODO : WORK IN PROGRESS
-# - Reverse dataArray latitude before convert them to Field ? Yes
-
     def generateForcingNEW(self, to_file=False):
 
         data_structure = self.forcing_gen.feeding_habitat_structure.data_structure
@@ -103,18 +99,16 @@ class IkaSim :
         end = data_structure.findIndexByDatetime(
             self.ika_params['start_time']+ self.ika_params['T'])[0]
         self.start_age = ages[0]
-
         lonlims = self.ika_params['spatial_lims']['lonlim']
         lonlims = data_structure.findCoordIndexByValue(lonlims, coord='lon')
         lonlims = np.int32(lonlims)
         latlims = self.ika_params['spatial_lims']['latlim']
         latlims = data_structure.findCoordIndexByValue(latlims, coord='lat')
         latlims = np.int32(latlims)
-
         evolve = self.ika_params['ageing_cohort']
 
         self.forcing = self.forcing_gen.computeIkamoanaFields(
-            # Mortality is coming soon ---------------------------------
+            # TODO : Mortality is coming soon ---------------------------------
             effort_filepath=None,fisheries_xml_filepath=None, time_reso=None,
             space_reso=None, skiprows=None, removeNoCatch=None, predict_effort=None,
             remove_fisheries=None, convertion_tab=None,
@@ -135,13 +129,22 @@ class IkaSim :
 
         # Mortality hasn't the same coordinates as others.
         if 'mortality' in self.forcing.keys():
-            mortality = self.forcing.pop('mortality')
+            self.mortality = self.forcing.pop('mortality')
+        # Landmask hasn't the same coordinates as others.
+        self.landmask = self.forcing.pop('landmask')
 
         self.forcing = xr.Dataset(self.forcing)
 
         self.forcing_vars = dict([(i,i) for i in self.forcing.keys()])
-        #Parcels will need a mapping of dimension coordinate names
+        # Parcels will need a mapping of dimension coordinate names
         self.forcing_dims = {'time':'time', 'lat':'lat', 'lon':'lon'}
+        
+        # TODO : finish this part
+        # if to_file:
+        #     for (var, forcing) in self.forcing.items():
+        #         forcing.to_netcdf(path='%s/%s_%s.nc' % (
+        #             self.ika_params['forcing_dir'],
+        #             self.ika_params['run_name'], var))
 
     def createFieldSet(self, from_disk: bool = False):
         if from_disk:
@@ -154,16 +157,11 @@ class IkaSim :
                 # deferred_load=False
             )
         else:
-            # forcing must be a dataset, not a dict
-            #landmask = self.forcing.pop('landmask')
-            landmask = self.forcing['landmask']
-            self.forcing = self.forcing.drop_vars('landmask')
-            self.forcing_vars.pop('landmask')
             self.ocean = prcl.FieldSet.from_xarray_dataset(
                 self.forcing, variables=self.forcing_vars,
                 dimensions=self.forcing_dims)
             self.ocean.add_field(prcl.Field.from_xarray(
-                landmask, name='landmask', dimensions=self.forcing_dims,
+                self.landmask, name='landmask', dimensions=self.forcing_dims,
                 allow_time_extrapolation=True, interp_method='nearest',))
             self.start_dist = prcl.Field.from_xarray(
                 self.start_dist, name='start_dist', dimensions=self.forcing_dims)

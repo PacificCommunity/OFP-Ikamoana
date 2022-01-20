@@ -102,22 +102,44 @@ class IkamoanaFields :
 
 # ------------------------- CORE FUNCTIONS ------------------------- #
 
-# TODO : Add normalization after the creation of the FeedingHabitat ?
     def __init__(
-            self, #xml_fields : str,
-            xml_feeding_habitat : str,
+            self, IKAMOANA_config_filepath : str,
+            root_directory: str = None, SEAPODYM_config_filepath : str = None,
             feeding_habitat : xr.DataArray = None):
         """Create a IkamoanaFields class. Can compute Taxis, Current, Diffusion,
-        and mortality fields."""
+        and mortality fields.
 
-        #self.ikamoana_fields_structure = readIkamoanaFieldsXML(xml_fields)
-        self.ikamoana_fields_structure = FieldsDataStructure(xml_feeding_habitat)
-        self.feeding_habitat_structure = FeedingHabitat(xml_feeding_habitat)
+        Parameters
+        ----------
+        IKAMOANA_config_filepath : str
+            Path to the IKAMOANA configuration XML file.
+        root_directory : str, optional
+            If the SEAPODYM configuration file is not in the root of the
+            working directory, this directory path must be specified.
+        SEAPODYM_config_filepath : str, optional
+            SEAPODYM configuration filepath can also be specified by
+            user rather than in the IKAMOANA configuration file.
+        feeding_habitat : xr.DataArray, optional
+            If the feeding habitat has already been calculated, it can
+            be passed directly to the constructor.
+
+        Raises
+        ------
+        TypeError
+            feeding_habitat must be a Xarray.DataArray or None.
+        """
+
+        self.ikamoana_fields_structure = FieldsDataStructure(
+            IKAMOANA_config_filepath, root_directory, SEAPODYM_config_filepath)
+        self.feeding_habitat_structure = FeedingHabitat(
+            self.ikamoana_fields_structure.SEAPODYM_config_filepath)
+        
         if (feeding_habitat is None) or isinstance(feeding_habitat,xr.DataArray) :
             self.feeding_habitat = feeding_habitat
         else :
-            raise TypeError("feeding_habitat must be a Xarray.DataArray or None."
-                            "Current type is : %s"%(str(type(feeding_habitat))))
+            raise TypeError((
+                "feeding_habitat must be a Xarray.DataArray or None."
+                "Current type is : {}").format(type(feeding_habitat)))
 
     def readFisheriesXML(
             self, xml_config_file: str, species_name: str = None
@@ -876,19 +898,17 @@ class IkamoanaFields :
             lat_min: int = None, lat_max: int = None, lon_min: int = None,
             lon_max: int = None, verbose: bool = False,
   
-            south_to_nort: bool = True
+            south_to_north: bool = True
             ) -> Dict[str, xr.DataArray]:
         """
         Feeding Habitat is calculated everytime, see WARNING commentary.
         """
 
-        self.feeding_habitat_structure.data_structure.normalizeCoords()
-
+        #self.feeding_habitat_structure.data_structure.normalizeCoords()
         hf_cond, ssto_cond = (
             self.ikamoana_fields_structure.landmask_from_habitat,
             self.ikamoana_fields_structure.shallow_sea_to_ocean)
 
-        # TODO : add args
         if evolve :
             taxis_lon, taxis_lat = self.computeEvolvingTaxis(
                 cohort_start=cohort_start, cohort_end=cohort_end, time_start=time_start,
@@ -913,7 +933,7 @@ class IkamoanaFields :
             diffusion, landmask.loc[landmask.time.data[0],:,:])
 
         U, V = self.current_forcing()
-        #start = self.start_distribution()
+        # start = self.start_distribution()
 
         # mortality = self.computeMortality(
         #     effort_filepath=effort_filepath, fisheries_xml_filepath=fisheries_xml_filepath,
@@ -921,19 +941,21 @@ class IkamoanaFields :
         #     removeNoCatch=removeNoCatch, predict_effort=predict_effort,
         #     remove_fisheries=remove_fisheries, convertion_tab=convertion_tab,
         #     verbose=verbose)
+        
+        # TODO : add the feeding habitat
         return {'Tx':latitudeDirection(
-            taxis_lon,south_to_nort).drop_vars('cohorts'),
+            taxis_lon,south_to_north).drop_vars('cohorts'),
                 'Ty':latitudeDirection(
-                    taxis_lat,south_to_nort).drop_vars('cohorts'),
+                    taxis_lat,south_to_north).drop_vars('cohorts'),
                 'K':latitudeDirection(
-                    diffusion,south_to_nort).drop_vars('cohorts'),
+                    diffusion,south_to_north).drop_vars('cohorts'),
                 'dK_dx':latitudeDirection(
-                    gradient_diffusion_lon,south_to_nort).drop_vars('cohorts'),
+                    gradient_diffusion_lon,south_to_north).drop_vars('cohorts'),
                 'dK_dy':latitudeDirection(
-                    gradient_diffusion_lat,south_to_nort).drop_vars('cohorts'),
-                'U':latitudeDirection(U,south_to_nort),
-                'V':latitudeDirection(V,south_to_nort),
-                'landmask':latitudeDirection(landmask,south_to_nort),
-                #'start':
-                #'mortality':latitudeDirection(mortality,south_to_nort)
+                    gradient_diffusion_lat,south_to_north).drop_vars('cohorts'),
+                'U':latitudeDirection(U,south_to_north),
+                'V':latitudeDirection(V,south_to_north),
+                'landmask':latitudeDirection(landmask,south_to_north),
+                'H':latitudeDirection(self.feeding_habitat,south_to_north)
+                #'mortality':latitudeDirection(mortality,south_to_north)
         }

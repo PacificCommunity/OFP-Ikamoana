@@ -426,6 +426,8 @@ class HabitatDataStructure :
         time_reso = self.parameters_dictionary["deltaT"]
         time_coords = self.coords['time'].data
         
+        # TODO : This will cause a bug if all variables have not the same
+        # number of dates.
         if time_reso == 30 : # SEAPODYM MONTHLY correspond to 30 days
             normalized_time_coords = np.array(time_coords,
                                               dtype='datetime64[M]')
