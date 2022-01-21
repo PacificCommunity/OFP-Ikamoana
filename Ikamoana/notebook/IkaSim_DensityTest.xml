@@ -4,9 +4,11 @@
   <!--
     <forcing_dir>C:/Users/joes/Dropbox/SPC_2020/OFP-Ikamoana/Ikamoana/data/SEAPODYM_data/run-test/</forcing_dir>
     <seapodym_parameters>C:/Users/joes/Dropbox/SPC_2020/OFP-Ikamoana/Ikamoana/data/SEAPODYM_data/run-test/skj_CLT_e5_3_est_modif.xml</seapodym_parameters>
+    <seapodym_parameters>/home/ash/Documents/GitHub_Repositories/OFP-Ikamoana/Ikamoana/data/SEAPODYM_data/run-test/skj_CLT_e5_3_est.xml</seapodym_parameters>
+    <forcing_dir>/home/ash/Documents/GitHub_Repositories/OFP-Ikamoana/Ikamoana/data/SEAPODYM_data/run-test/</forcing_dir>
   -->
-  <forcing_dir>/home/ash/Documents/GitHub_Repositories/OFP-Ikamoana/Ikamoana/data/SEAPODYM_data/run-test/</forcing_dir>
-  <seapodym_parameters>/home/ash/Documents/GitHub_Repositories/OFP-Ikamoana/Ikamoana/data/SEAPODYM_data/run-test/skj_CLT_e5_3_est.xml</seapodym_parameters>
+  <forcing_dir>/home/uash/Documents/GitHubWorkspace/OFP-Ikamoana/Ikamoana/data/SEAPODYM_data/run-test/</forcing_dir>
+  <seapodym_parameters>/home/uash/Documents/GitHubWorkspace/OFP-Ikamoana/Ikamoana/data/SEAPODYM_data/run-test/skj_CLT_e5_3_est.xml</seapodym_parameters>
 
   <kernels>CalcLonLatScalers IkAdvectionRK4 TaxisRK4 RandomWalkNonUniformDiffusion IkaDimMoveWithDiffusionReroll</kernels>
 
