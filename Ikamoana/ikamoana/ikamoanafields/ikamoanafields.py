@@ -893,6 +893,7 @@ class IkamoanaFields :
             remove_fisheries: List[Union[float,str,int]] = None,
             convertion_tab: Dict[str, Union[str,int,float]] = None,
 
+            from_habitat: xr.DataArray = None,
             evolve: bool = True, cohort_start: int = None,
             cohort_end: int = None, time_start: int = None, time_end: int = None,
             lat_min: int = None, lat_max: int = None, lon_min: int = None,
@@ -909,19 +910,27 @@ class IkamoanaFields :
             self.ikamoana_fields_structure.landmask_from_habitat,
             self.ikamoana_fields_structure.shallow_sea_to_ocean)
 
+        # TODO : vérifier qu'il n'y ai pas de manière plus propre de le
+        # faire. Par exemple en chargeant le ffeding_habitat lors de
+        # l'initialisation.
+        if from_habitat is not None:
+            use_already_computed_habitat = True
+            self.feeding_habitat=from_habitat
+        else:
+            use_already_computed_habitat = False
+            
         if evolve :
             taxis_lon, taxis_lat = self.computeEvolvingTaxis(
                 cohort_start=cohort_start, cohort_end=cohort_end, time_start=time_start,
                 time_end=time_end, lat_min=lat_min, lat_max=lat_max,
                 lon_min=lon_min, lon_max=lon_max, verbose=verbose,
-        # WARNING : will compute feeding habitat everytime.
-                use_already_computed_habitat=False)
+                use_already_computed_habitat=use_already_computed_habitat)
         else :
             taxis_lon, taxis_lat = self.computeTaxis(
                 cohort=cohort_start, time_start=time_start, time_end=time_end,
                 lat_min=lat_min, lat_max=lat_max, lon_min=lon_min, lon_max=lon_max,
-        # WARNING : will compute feeding habitat everytime.
-                use_already_computed_habitat=False, verbose=verbose)
+                use_already_computed_habitat=use_already_computed_habitat,
+                verbose=verbose)
 
         landmask = self.landmask(
             habitat_field=self.feeding_habitat, use_SEAPODYM_global_mask=not(hf_cond),

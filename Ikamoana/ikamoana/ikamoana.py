@@ -91,7 +91,7 @@ class IkaSim :
             self.forcing_vars.update({f:f})
         self.forcing_dims = {'lon':'lon', 'lat':'lat', 'time':'time'}
 
-    def generateForcingNEW(self, to_file=False):
+    def generateForcingNEW(self, from_habitat=None, to_file=False):
 
         data_structure = self.forcing_gen.feeding_habitat_structure.data_structure
         ages = data_structure.findCohortByLength(self.ika_params['start_length'])
@@ -113,6 +113,7 @@ class IkaSim :
             space_reso=None, skiprows=None, removeNoCatch=None, predict_effort=None,
             remove_fisheries=None, convertion_tab=None,
             # ----------------------------------------------------------
+            from_habitat=from_habitat,
             evolve=evolve,
             # NOTE : must select one cohort
             cohort_start= ages[0],

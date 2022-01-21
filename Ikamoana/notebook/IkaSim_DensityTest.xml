@@ -14,13 +14,13 @@
 
   <cohort_info length='21' ageing='1' start_filestem='skj_age'/>
 
-  <time start='2008-01-15' sim_time='90' dt='86400' output_dt='7'/>
+  <time start='2008-01-15' sim_time='125' dt='86400' output_dt='7'/>
 
   <domain>
     <lon>120 290</lon>
     <lat>-40 50</lat>
   </domain>
-
+  
   <!-- Leave empty for default value. Check fieldsdatastructure.py for default values. -->
   <forcing>
     <shallow_sea_to_ocean>False</shallow_sea_to_ocean>
@@ -32,5 +32,4 @@
     <taxis_scale>1</taxis_scale>
     <units>m_per_s</units>
   </forcing>
-
 </ika_params>
