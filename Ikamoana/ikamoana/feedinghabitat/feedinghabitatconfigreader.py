@@ -508,7 +508,7 @@ def loadFromXml(
         prefix += "\\" if "\\" in prefix else "/"
     else :
         prefix = dirname(xml_filepath) if root_directory is None else root_directory
-        print(prefix)
+
     root_directory = prefix + root.find('strdir').attrib['value']
     output_directory = root_directory + root.find('strdir_output').attrib['value']
     layers_number = int(root.find('nb_layer').attrib['value'])
