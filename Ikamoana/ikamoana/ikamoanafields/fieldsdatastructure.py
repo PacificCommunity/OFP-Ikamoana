@@ -1,6 +1,7 @@
 from typing import List, Union
 import xml.etree.ElementTree as ET
-from os.path import dirname
+import os
+#from os.path import dirname
 import numpy as np
 
 def tagReading(
@@ -64,18 +65,26 @@ class FieldsDataStructure :
         self.landmask_from_habitat = (tmp == 'True') or (tmp == 'true')
         """Specify if the landmask is based on the SEAPODYM mask used
         to compute feeding habitat or not."""
+        
+        tmp = tagReading(root,['forcing','correctEpiTempWithVld'], 'False')
+        self.correctEpiTempWithVld = (tmp == 'True') or (tmp == 'true')
+        """Correct the epipelagic layer (L1) using the vertical gradient.
+        See Also : FeedingHabitat.correctEpiTempWithVld()"""
 
 
         # SEAPODYM --------------------------------------------------- #
         tree = ET.parse(SEAPODYM_config_filepath)
         root = tree.getroot()
         
+        # TODO : verify that this implementation is working on both
+        # Linux and Windows.
         if root_directory is None :
-            prefix = dirname(SEAPODYM_config_filepath)
+            prefix = os.path.dirname(SEAPODYM_config_filepath)
             # Support windows paths using backslash ("\")
-            prefix += "\\" if "\\" in prefix else "/"
+            prefix = os.path.join(prefix, '')
         else :
-            prefix = dirname(SEAPODYM_config_filepath) if root_directory is None else root_directory
+            prefix = (os.path.dirname(SEAPODYM_config_filepath)
+                      if root_directory is None else root_directory)
         root_directory = prefix + root.find('strdir').attrib['value']
         sp_name = root.find('sp_name').text
         deltaT = float(root.find('deltaT').attrib["value"])

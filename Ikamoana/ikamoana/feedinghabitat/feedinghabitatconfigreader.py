@@ -35,7 +35,6 @@ from .. import dymfiles as df
 # Lesquelles seraient utilisées pour produire la structure de données
 # de l'habitat (ou bien d'autres modules tels qu'IKAMOANA).
 
-# TODO : Supprimer le champ layer_number s'il n'est plus utile.
 # WARNING : 0.000001 is added on forage layer to copy SEAPODYM behavior.
 
 def seapodymFieldConstructor(

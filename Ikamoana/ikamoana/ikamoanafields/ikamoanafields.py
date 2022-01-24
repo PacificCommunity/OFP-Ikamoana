@@ -134,6 +134,9 @@ class IkamoanaFields :
         self.feeding_habitat_structure = FeedingHabitat(
             self.ikamoana_fields_structure.SEAPODYM_config_filepath)
         
+        if self.ikamoana_fields_structure.correctEpiTempWithVld :
+            self.feeding_habitat_structure.correctEpiTempWithVld()
+        
         if (feeding_habitat is None) or isinstance(feeding_habitat,xr.DataArray) :
             self.feeding_habitat = feeding_habitat
         else :
@@ -444,7 +447,7 @@ class IkamoanaFields :
     def start_distribution(self, filepath: str) -> xr.DataArray :
         """Description"""
         
-        dist = fhcf.seapodymFieldConstructor(filepath, dym_varname='start')
+        dist = fhcf.seapodymFieldConstructor(filepath, dym_varname='start_dist')
         #dist = xr.apply_ufunc(np.nan_to_num,dist)
         
         # Clip dimensions to the same as the feeding habitats, but only

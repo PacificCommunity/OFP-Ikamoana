@@ -5,6 +5,7 @@ import numpy as np
 import ikamoana as ika
 from .ikafish import ikafish, behaviours
 import parcels as prcl
+import os
 
 # from ..ikamoana.ikamoanafields import IkamoanaFields
 # from .ikafish import behaviours, ikafish
@@ -22,76 +23,7 @@ class IkaSim :
         else:
             np.random.RandomState(self.ika_params['random_seed'])
 
-# TODO : This version of the generateForcing will be removed
-    def generateForcing(self, to_file=False):
-
-        data_structure = self.forcing_gen.feeding_habitat_structure.data_structure
-        ages = data_structure.findCohortByLength(self.ika_params['start_length'])
-        start = data_structure.findIndexByDatetime(self.ika_params['start_time'])[0]
-        end = data_structure.findIndexByDatetime(
-            self.ika_params['start_time']+ self.ika_params['T'])[0]
-        self.start_age = ages[0]
-
-        lonlims = self.ika_params['spatial_lims']['lonlim']
-        lonlims = data_structure.findCoordIndexByValue(lonlims, coord='lon')
-        #lonlims = [int(l) for l in lonlims]
-        # NOTE : Is equivalent to
-        lonlims = np.int32(lonlims)
-        latlims = self.ika_params['spatial_lims']['latlim']
-        latlims = data_structure.findCoordIndexByValue(latlims, coord='lat')
-        # latlims = [int(l) for l in latlims]
-        latlims = np.int32(latlims)
-
-        self.forcing = {}
-
-        if self.ika_params['ageing_cohort']:
-            self.forcing['Tx'], self.forcing['Ty'] = self.forcing_gen.computeEvolvingTaxis(
-                cohort_start=ages[0], time_start=start, time_end=end,
-                lon_min=lonlims[0], lon_max=lonlims[1], lat_min=latlims[1],
-                lat_max=latlims[0])
-        else:
-            self.forcing['Tx'], self.forcing['Ty'] = self.forcing_gen.computeTaxis(
-                cohort=ages, time_start=start, time_end=end, lon_min=lonlims[0],
-                lon_max=lonlims[1], lat_min=latlims[1], lat_max=latlims[0])
-
-        self.forcing['landmask'] = self.forcing_gen.landmask(
-            use_SEAPODYM_global_mask=True, field_output=True,
-            habitat_field=self.forcing_gen.feeding_habitat)
-
-        self.forcing['H'] = self.forcing_gen.feeding_habitat
-
-        if self.ika_params['start_filestem'] is not None:
-            print(self.ika_params['start_filestem'])
-            self.forcing['start'] = self.forcing_gen.start_distribution(
-                self.ika_params['start_filestem']+str(self.start_age)+'.dym')
-            print(self.ika_params['start_filestem']+str(self.start_age)+'.dym')
-
-        ### Mortality fields to do
-
-        self.forcing['U'], self.forcing['V'] = self.forcing_gen.current_forcing()
-
-        self.forcing['K'] = self.forcing_gen.diffusion(self.forcing_gen.feeding_habitat)
-
-        self.forcing['dK_dx'], self.forcing['dK_dy'] = self.forcing_gen.gradient(
-            self.forcing['K'], self.forcing_gen.landmask(
-                self.forcing_gen.feeding_habitat, lon_min=lonlims[0],
-                lon_max=lonlims[1], lat_min=latlims[1], lat_max=latlims[0]),
-            name='K')
-
-
-        if to_file:
-            for (var, forcing) in self.forcing.items():
-                forcing.to_netcdf(path='%s/%s_%s.nc' % (
-                    self.ika_params['forcing_dir'],
-                    self.ika_params['run_name'], var))
-
-        #Parcels will need a mapping of dimension coordinate names
-        self.forcing_vars = {}
-        for f in self.forcing:
-            self.forcing_vars.update({f:f})
-        self.forcing_dims = {'lon':'lon', 'lat':'lat', 'time':'time'}
-
-    def generateForcingNEW(self, from_habitat=None, to_file=False):
+    def generateForcing(self, from_habitat=None, to_file=False):
 
         data_structure = self.forcing_gen.feeding_habitat_structure.data_structure
         ages = data_structure.findCohortByLength(self.ika_params['start_length'])
@@ -139,31 +71,72 @@ class IkaSim :
         self.forcing_vars = dict([(i,i) for i in self.forcing.keys()])
         # Parcels will need a mapping of dimension coordinate names
         self.forcing_dims = {'time':'time', 'lat':'lat', 'lon':'lon'}
-        
-        # TODO : finish this part
-        # if to_file:
-        #     for (var, forcing) in self.forcing.items():
-        #         forcing.to_netcdf(path='%s/%s_%s.nc' % (
-        #             self.ika_params['forcing_dir'],
-        #             self.ika_params['run_name'], var))
 
-    def createFieldSet(self, from_disk: bool = False):
+        if to_file:
+            for (var, forcing) in self.forcing.items():
+                forcing.to_netcdf(
+                    path=os.path.join(self.ika_params['forcing_dir'],
+                                      self.ika_params['run_name']+'_'+var+'.nc'))
+            self.start_dist.to_netcdf(
+                os.path.join(self.ika_params['forcing_dir'],
+                             self.ika_params['run_name']+'_start_dist.nc'))
+            self.landmask.to_netcdf(
+                os.path.join(self.ika_params['forcing_dir'],
+                             self.ika_params['run_name']+'_landmask.nc'))
+            # TODO : Mortality is coming soon
+            # self.mortality.to_netcdf(
+            #     os.path.join(self.ika_params['forcing_dir'],
+            #                  self.ika_params['run_name']+'_mortality.nc'))
+
+    # TODO : Add mortality
+    def createFieldSet(self, from_disk: bool = False, variables: dict = None):
+        """[summary]
+
+        Parameters
+        ----------
+        from_disk : bool, optional
+            [description], by default False
+        variables : dict, optional
+            If None, names are automaticly created using `forcing_dir`
+            and `run_name`.
+            
+            Example : 
+                variables = {
+                    "dK_dx":"<run_name>_dK_dx.nc",
+                    "dK_dy":"<run_name>_dK_dy.nc",
+                    "H":"<run_name>_H.nc",
+                    "K":"<run_name>_K.nc",
+                    "landmask":"<run_name>_landmask.nc",
+                    "start_dist":"<run_name>_start_dist.nc",
+                    "Tx":"<run_name>_Tx.nc",
+                    "Ty":"<run_name>_Ty.nc",
+                    "U":"<run_name>_U.nc",
+                    "V":"<run_name>_V.nc"}
+        """
+
         if from_disk:
-            filestem = '%s/%s_*.nc' % (self.ika_params['forcing_dir'],
-                                       self.ika_params['run_name'])
+            if variables is None :
+                list_var = ["dK_dx", "dK_dy", "H", "K", "landmask", "start_dist",
+                            "Tx", "Ty", "U", "V"]
+                variables = {
+                    var: os.path.join(self.ika_params['forcing_dir'],
+                                      self.ika_params['run_name']+'_'+var+'.nc')
+                    for var in list_var}
+            else :
+                variables = {k: os.path.join(self.ika_params['forcing_dir'],v)
+                            for k, v in variables.items()}
             self.ocean = prcl.FieldSet.from_netcdf(
-                filestem, variables=self.forcing_vars,
-                dimensions=self.forcing.forcing_dims,
-                # NOTE : This argument is unexpected
-                # deferred_load=False
-            )
+                variables,
+                {k:k for k in variables.keys()},
+                {'time':'time', 'lat':'lat', 'lon':'lon'}
+                )
         else:
             self.ocean = prcl.FieldSet.from_xarray_dataset(
                 self.forcing, variables=self.forcing_vars,
                 dimensions=self.forcing_dims)
             self.ocean.add_field(prcl.Field.from_xarray(
                 self.landmask, name='landmask', dimensions=self.forcing_dims,
-                allow_time_extrapolation=True, interp_method='nearest',))
+                allow_time_extrapolation=True, interp_method='nearest'))
             self.start_dist = prcl.Field.from_xarray(
                 self.start_dist, name='start_dist', dimensions=self.forcing_dims)
 
@@ -248,6 +221,7 @@ class IkaSim :
         params['SEAPODYM_file'] = root.find('seapodym_parameters').text
         params['forcing_dir'] = root.find('forcing_dir').text
         params['random_seed'] = root.find('random_seed').text
+        # TODO : None should be remplaced by '' (empty string)
         if params['random_seed'] == 'None':
             params['random_seed'] = None
 
