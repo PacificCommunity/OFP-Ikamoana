@@ -1,0 +1,7 @@
+ikamoana.fisherieseffort.fisherieseffort module
+===============================================
+
+.. automodule:: ikamoana.fisherieseffort.fisherieseffort
+   :members:
+   :undoc-members:
+   :show-inheritance:

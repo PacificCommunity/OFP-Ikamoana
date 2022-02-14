@@ -1,0 +1,7 @@
+ikamoana.feedinghabitat.habitatdatastructure module
+===================================================
+
+.. automodule:: ikamoana.feedinghabitat.habitatdatastructure
+   :members:
+   :undoc-members:
+   :show-inheritance:
