@@ -1,0 +1,7 @@
+ikamoana.dymfiles.core.interpolation module
+===========================================
+
+.. automodule:: ikamoana.dymfiles.core.interpolation
+   :members:
+   :undoc-members:
+   :show-inheritance:

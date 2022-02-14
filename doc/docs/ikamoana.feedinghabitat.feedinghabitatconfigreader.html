@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ikamoana.feedinghabitat.feedinghabitatconfigreader module &mdash; IKAMOANA 0.1 documentation</title>
+      <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="ikamoana.feedinghabitat.habitatdatastructure module" href="ikamoana.feedinghabitat.habitatdatastructure.html" />
+    <link rel="prev" title="ikamoana.feedinghabitat.feedinghabitat module" href="ikamoana.feedinghabitat.feedinghabitat.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../index.html" class="icon icon-home"> IKAMOANA
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Table of Contents</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="ikamoana.html">ikamoana package</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="ikamoana.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="ikamoana.dymfiles.html">ikamoana.dymfiles package</a></li>
+<li class="toctree-l3 current"><a class="reference internal" href="ikamoana.feedinghabitat.html">ikamoana.feedinghabitat package</a><ul class="current">
+<li class="toctree-l4 current"><a class="reference internal" href="ikamoana.feedinghabitat.html#submodules">Submodules</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ikamoana.feedinghabitat.html#module-ikamoana.feedinghabitat">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="ikamoana.fisherieseffort.html">ikamoana.fisherieseffort package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ikamoana.ikafish.html">ikamoana.ikafish package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ikamoana.ikamoanafields.html">ikamoana.ikamoanafields package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ikamoana.utils.html">ikamoana.utils package</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="ikamoana.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ikamoana.html#module-ikamoana">Module contents</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">IKAMOANA</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="ikamoana.html">ikamoana package</a> &raquo;</li>
+          <li><a href="ikamoana.feedinghabitat.html">ikamoana.feedinghabitat package</a> &raquo;</li>
+      <li>ikamoana.feedinghabitat.feedinghabitatconfigreader module</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/docs/ikamoana.feedinghabitat.feedinghabitatconfigreader.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <div class="section" id="module-ikamoana.feedinghabitat.feedinghabitatconfigreader">
+<span id="ikamoana-feedinghabitat-feedinghabitatconfigreader-module"></span><h1>ikamoana.feedinghabitat.feedinghabitatconfigreader module<a class="headerlink" href="#module-ikamoana.feedinghabitat.feedinghabitatconfigreader" title="Permalink to this headline"></a></h1>
+<p>This module is used by the feedingHabitat module to setup all variables
+and parameters. It use a XML configuration file that link to all the
+netCDF or DYM files used to compute de feeding habitat.
+It also compute the day length in the area using the PISCES method.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>0.000001 is automatically added on forage layer to copy SEAPODYM behavior.</p>
+</div>
+<div class="admonition seealso">
+<p class="admonition-title">See also</p>
+<dl class="simple">
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">FeedingHabitat</span></code></dt><dd><p>class used to compute feeding habitat.</p>
+</dd>
+</dl>
+</div>
+<p class="rubric">Notes</p>
+<dl class="footnote brackets">
+<dt class="label" id="id1"><span class="brackets"><a class="fn-backref" href="#id2">1</a></span></dt>
+<dd><p>E. Maier-Reimer (GBC 1993)
+Day length calculation.</p>
+</dd>
+</dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="ikamoana.feedinghabitat.feedinghabitatconfigreader.loadFromXml">
+<span class="sig-prename descclassname"><span class="pre">ikamoana.feedinghabitat.feedinghabitatconfigreader.</span></span><span class="sig-name descname"><span class="pre">loadFromXml</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">xml_filepath</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">root_directory</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">days_length_float_32</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span></span></span><a class="headerlink" href="#ikamoana.feedinghabitat.feedinghabitatconfigreader.loadFromXml" title="Permalink to this definition"></a></dt>
+<dd><p>This is the main function used by the feedingHabitat module. It is
+used to read the XML configuration file and load all variables and
+parameters in the main class and also compute the day length <a class="footnote-reference brackets" href="#id1" id="id2">1</a>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>xml_filepath</strong> (<em>str</em>) – The filepath to the FeedingHabitat XML configuration file.</p></li>
+<li><p><strong>root_directory</strong> (<em>str</em><em>, </em><em>optional</em>) – If the configuration file is not in the root of the working
+directory, this directory path must be specified.</p></li>
+<li><p><strong>days_length_float_32</strong> (<em>bool</em><em>, </em><em>optional</em>) – Specify if the day length must be convert from float 64 to
+float32.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A dictionary containing all needed data by the FeedingHabitat
+constructor. Which are :
+- root_directory : str
+- output_directory : str
+- layers_number : int
+- cohorts_number : int
+- partial_oxygen_time_axis : bool
+- global_mask : dict
+- coords : xr.DataArray.coords
+- variables_dictionary : dict
+- parameters_dictionary : dict
+- species_dictionary : dict</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>dict</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="ikamoana.feedinghabitat.feedinghabitat.html" class="btn btn-neutral float-left" title="ikamoana.feedinghabitat.feedinghabitat module" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="ikamoana.feedinghabitat.habitatdatastructure.html" class="btn btn-neutral float-right" title="ikamoana.feedinghabitat.habitatdatastructure module" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright ....</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

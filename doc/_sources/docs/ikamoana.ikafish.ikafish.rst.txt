@@ -1,0 +1,7 @@
+ikamoana.ikafish.ikafish module
+===============================
+
+.. automodule:: ikamoana.ikafish.ikafish
+   :members:
+   :undoc-members:
+   :show-inheritance:

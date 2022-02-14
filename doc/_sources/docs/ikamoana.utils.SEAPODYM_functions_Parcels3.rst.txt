@@ -1,0 +1,7 @@
+ikamoana.utils.SEAPODYM\_functions\_Parcels3 module
+===================================================
+
+.. automodule:: ikamoana.utils.SEAPODYM_functions_Parcels3
+   :members:
+   :undoc-members:
+   :show-inheritance:

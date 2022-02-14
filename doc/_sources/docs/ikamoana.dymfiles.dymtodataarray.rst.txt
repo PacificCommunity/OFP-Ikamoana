@@ -1,0 +1,7 @@
+ikamoana.dymfiles.dymtodataarray module
+=======================================
+
+.. automodule:: ikamoana.dymfiles.dymtodataarray
+   :members:
+   :undoc-members:
+   :show-inheritance:
