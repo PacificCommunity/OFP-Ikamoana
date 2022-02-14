@@ -157,7 +157,6 @@ class IkaSim :
                 os.path.join(self.ika_params['forcing_dir'],
                              self.ika_params['run_name']+'_mortality.nc'))
 
-    # TODO : Add mortality
     def createFieldSet(self, from_disk: bool = False, variables: dict = None):
         """[summary]
 
@@ -203,12 +202,15 @@ class IkaSim :
         else:
             self.ocean = prcl.FieldSet.from_xarray_dataset(
                 self.forcing, variables=self.forcing_vars,
-                dimensions=self.forcing_dims)
+                dimensions=self.forcing_dims, allow_time_extrapolation=True)
             self.ocean.add_field(prcl.Field.from_xarray(
                 self.landmask, name='landmask', dimensions=self.forcing_dims,
                 allow_time_extrapolation=True, interp_method='nearest'))
-            self.start_distribution = prcl.Field.from_xarray(
-                self.start_distribution, name='start_distribution', dimensions=self.forcing_dims)
+            if self.ika_params['start_filestem'] is not None:
+                self.start_coords = self.start_distribution.coords
+                self.start_distribution = prcl.Field.from_xarray(
+                    self.start_distribution, name='start_distribution',
+                    dimensions=self.forcing_dims, interp_method='nearest')
 
         #Add necessary field constants
         #(constants easily accessed by particles during kernel execution)
@@ -236,9 +238,14 @@ class IkaSim :
         else:
             if self.start_distribution is None :
                 raise ValueError('No starting distribution field in ocean fieldset!')
-            self.fish = prcl.ParticleSet.from_field(
-                fieldset=self.ocean, start_field=self.start_distribution,
-                time=self.ika_params['start_time'], size=n_fish, pclass=pclass)
+            plon, plat = self.startDistPositions(n_fish)
+            self.fish = prcl.ParticleSet.from_list(
+                fieldset=self.ocean, lon=plon,
+                time=self.ika_params['start_time'], lat=plat, pclass=pclass)
+            # NOTE : previous method created interpolation errors
+            # self.fish = prcl.ParticleSet.from_field(
+            #     fieldset=self.ocean, start_field=self.start_dist,
+            #     time=self.ika_params['start_time'], size=n_fish, pclass=pclass)
 
         #Initialise fish
         cohort_dt = self.forcing_gen.feeding_habitat_structure.data_structure.\
@@ -255,12 +262,18 @@ class IkaSim :
         the density distribution saved in self.start_dist. Includes option
         for scaling density by grid cell size (default true)."""
 
-        self.start_dist.data = self.start_dist.data[0,:,:]
+        # TODO : verify that this is a the desired behaviour
+        self.start_distribution.data = self.start_distribution.data[0,:,:]
+        
+        data = self.start_distribution.data
+        grid = self.start_distribution.grid
+        
         #Assuming regular grid
-        lonwidth = (self.start_dist.grid.lon[1] - self.start_dist.grid.lon[0]) / 2
-        latwidth = (self.start_dist.grid.lat[1] - self.start_dist.grid.lat[0]) / 2
+        lonwidth = (grid.lon[1] - grid.lon[0]) / 2
+        latwidth = (grid.lat[1] - grid.lat[0]) / 2
+        
         # For distributions from a density on a spherical grid, we need to
-        #rescale to a flat mesh
+        # rescale to a flat mesh
         def cell_area(lat,dx,dy):
             R = 6378.1
             Phi1 = lat*np.pi/180.0
@@ -270,9 +283,9 @@ class IkaSim :
             return S
 
         if area_scale:
-            for l in range(len(self.start_dist.grid.lat)):
-                area = cell_area(self.start_dist.grid.lat[l],lonwidth,latwidth)
-                self.start_dist.data[l,:] *= area
+            for l in range(len(grid.lat)):
+                area = cell_area(grid.lat[l],lonwidth,latwidth)
+                data[l,:] *= area
 
         def add_jitter(pos, width, min, max):
             value = pos + np.random.uniform(-width, width)
@@ -280,14 +293,15 @@ class IkaSim :
                 value = pos + np.random.uniform(-width, width)
             return value
 
-        p = np.reshape(self.start_dist.data, (1, self.start_dist.data.size))
-        inds = np.random.choice(self.start_dist.data.size, N, replace=True, p=p[0] / np.sum(p))
-        lat, lon = np.unravel_index(inds, self.start_dist.data.shape)
+        p = np.reshape(data, (1, data.size))
+        inds = np.random.choice(data.size, N, replace=True, p=p[0] / np.sum(p))
+        lat, lon = np.unravel_index(inds, data.shape)
         lon = self.ocean.U.grid.lon[lon]
         lat = self.ocean.U.grid.lat[lat]
+        
         for i in range(lon.size):
-            lon[i] = add_jitter(lon[i], lonwidth, self.start_dist.grid.lon[0], self.start_dist.grid.lon[-1])
-            lat[i] = add_jitter(lat[i], latwidth, self.start_dist.grid.lat[0], self.start_dist.grid.lat[-1])
+            lon[i] = add_jitter(lon[i], lonwidth, grid.lon[0], grid.lon[-1])
+            lat[i] = add_jitter(lat[i], latwidth, grid.lat[0], grid.lat[-1])
 
         return lon, lat
 
@@ -297,8 +311,8 @@ class IkaSim :
         Method replicates Seapodym biomass density ouputs, returning as
         an xarray dataarray"""
         
-        lons = self.start_dist.grid.lon
-        lats = self.start_dist.grid.lat
+        lons = self.start_distribution.grid.lon
+        lats = self.start_distribution.grid.lat
         #this is very slow with using JIT to compile to C
         @jit(nopython=True)
         def calc_D(lons, lats, grid_lon, grid_lat, D):

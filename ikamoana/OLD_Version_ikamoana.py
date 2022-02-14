@@ -1,14 +1,14 @@
 import xml.etree.ElementTree as ET
 
-import xarray as xr
 import numpy as np
-from numba import jit
-import ikamoana as ika
-from .ikafish import ikafish, behaviours
 import parcels as prcl
+import xarray as xr
+from numba import jit
 
-# from ..ikamoana.ikamoanafields import IkamoanaFields
-# from .ikafish import behaviours, ikafish
+import ikamoana as ika
+
+from .ikafish import behaviours, ikafish
+
 
 class IkaSim :
 
@@ -24,76 +24,55 @@ class IkaSim :
         else:
             np.random.RandomState(self.ika_params['random_seed'])
 
-# TODO : This version of the generateForcing will be removed
-    def generateForcing(self, to_file=False):
+# -------------------------------------------------------------------- #
 
-        data_structure = self.forcing_gen.feeding_habitat_structure.data_structure
-        ages = data_structure.findCohortByLength(self.ika_params['start_length'])
-        start = data_structure.findIndexByDatetime(self.ika_params['start_time'])[0]
-        end = data_structure.findIndexByDatetime(
-            self.ika_params['start_time']+ self.ika_params['T'])[0]
-        self.start_age = ages[0]
+    def _readParams(self, xml_filepath: str) -> dict :
+        """Reads the parameters from a XML parameter file and stores
+        them in a dictionary."""
 
-        lonlims = self.ika_params['spatial_lims']['lonlim']
-        lonlims = data_structure.findCoordIndexByValue(lonlims, coord='lon')
-        #lonlims = [int(l) for l in lonlims]
-        # NOTE : Is equivalent to
-        lonlims = np.int32(lonlims)
-        latlims = self.ika_params['spatial_lims']['latlim']
-        latlims = data_structure.findCoordIndexByValue(latlims, coord='lat')
-        # latlims = [int(l) for l in latlims]
-        latlims = np.int32(latlims)
+        tree = ET.parse(xml_filepath)
+        root = tree.getroot()
+        params = {}
 
-        self.forcing = {}
+        params['run_name'] = root.find('run_name').text
+        params['random_seed'] = root.find('random_seed').text
+        if params['random_seed'] == 'None':
+            params['random_seed'] = None
 
-        if self.ika_params['ageing_cohort']:
-            self.forcing['Tx'], self.forcing['Ty'] = self.forcing_gen.computeEvolvingTaxis(
-                cohort_start=ages[0], time_start=start, time_end=end,
-                lon_min=lonlims[0], lon_max=lonlims[1], lat_min=latlims[1],
-                lat_max=latlims[0])
-        else:
-            self.forcing['Tx'], self.forcing['Ty'] = self.forcing_gen.computeTaxis(
-                cohort=ages, time_start=start, time_end=end, lon_min=lonlims[0],
-                lon_max=lonlims[1], lat_min=latlims[1], lat_max=latlims[0])
+        
+        params['SEAPODYM_file'] = root.find('seapodym_parameters').text
+        params['forcing_dir'] = root.find('forcing_dir').text
+    
+        cohort = root.find('cohort_info')
+        params['start_length'] = float(cohort.attrib['length'])
+        params['ageing_cohort'] = int(cohort.attrib['ageing']) == 1
+        params['start_filestem'] = (
+            params['forcing_dir']
+            + cohort.attrib['start_filestem'] if 'start_filestem' in cohort.attrib else None)
+        
+        
+        time = root.find('time')
+        params['start_time'] = np.datetime64(time.attrib['start'])
+        params['T'] = int(time.attrib['sim_time'])
+        params['dt'] = int(time.attrib['dt'])*86400
+        params['output_dt'] = int(time.attrib['output_dt'])*86400
 
-        self.forcing['landmask'] = self.forcing_gen.landmask(
-            use_SEAPODYM_global_mask=True, field_output=True,
-            habitat_field=self.forcing_gen.feeding_habitat)
+        domain = root.find('domain')
+        params['spatial_lims'] = {
+            'lonlim': np.float32(domain.find('lon').text.split())[:2],
+            'latlim': np.float32(domain.find('lat').text.split())[:2],
+        }
 
-        self.forcing['H'] = self.forcing_gen.feeding_habitat
+        params['kernels'] = root.find('kernels').text.split()
+    
+        return params
 
-        if self.ika_params['start_filestem'] is not None:
-            print(self.ika_params['start_filestem'])
-            self.forcing['start'] = self.forcing_gen.start_distribution(
-                self.ika_params['start_filestem']+str(self.start_age)+'.dym')
-            print(self.ika_params['start_filestem']+str(self.start_age)+'.dym')
+    def _setConstant(self, name, val):
+        self.ocean.add_constant(name, val)
 
-        ### Mortality fields to do
+# -------------------------------------------------------------------- #
 
-        self.forcing['U'], self.forcing['V'] = self.forcing_gen.current_forcing()
-
-        self.forcing['K'] = self.forcing_gen.diffusion(self.forcing_gen.feeding_habitat)
-
-        self.forcing['dK_dx'], self.forcing['dK_dy'] = self.forcing_gen.gradient(
-            self.forcing['K'], self.forcing_gen.landmask(
-                self.forcing_gen.feeding_habitat, lon_min=lonlims[0],
-                lon_max=lonlims[1], lat_min=latlims[1], lat_max=latlims[0]),
-            name='K')
-
-
-        if to_file:
-            for (var, forcing) in self.forcing.items():
-                forcing.to_netcdf(path='%s/%s_%s.nc' % (
-                    self.ika_params['forcing_dir'],
-                    self.ika_params['run_name'], var))
-
-        #Parcels will need a mapping of dimension coordinate names
-        self.forcing_vars = {}
-        for f in self.forcing:
-            self.forcing_vars.update({f:f})
-        self.forcing_dims = {'lon':'lon', 'lat':'lat', 'time':'time'}
-
-    def generateForcingNEW(self, from_habitat=None, to_file=False):
+    def generateForcing(self, from_habitat=None, to_file=False):
 
         data_structure = self.forcing_gen.feeding_habitat_structure.data_structure
         ages = data_structure.findCohortByLength(self.ika_params['start_length'])
@@ -143,13 +122,6 @@ class IkaSim :
         # Parcels will need a mapping of dimension coordinate names
         self.forcing_dims = {'time':'time', 'lat':'lat', 'lon':'lon'}
 
-        # TODO : finish this part
-        # if to_file:
-        #     for (var, forcing) in self.forcing.items():
-        #         forcing.to_netcdf(path='%s/%s_%s.nc' % (
-        #             self.ika_params['forcing_dir'],
-        #             self.ika_params['run_name'], var))
-
     def createFieldSet(self, from_disk: bool = False):
         if from_disk:
             filestem = '%s/%s_*.nc' % (self.ika_params['forcing_dir'],
@@ -166,15 +138,15 @@ class IkaSim :
                 dimensions=self.forcing_dims, allow_time_extrapolation=True)
             self.ocean.add_field(prcl.Field.from_xarray(
                 self.landmask, name='landmask', dimensions=self.forcing_dims,
-                allow_time_extrapolation=True, interp_method='nearest',))
+                allow_time_extrapolation=True, interp_method='nearest'))
             if self.ika_params['start_filestem'] is not None:
                 self.start_coords = self.start_dist.coords
                 self.start_dist = prcl.Field.from_xarray(
                     self.start_dist, name='start_dist',
                     dimensions=self.forcing_dims, interp_method='nearest')
 
-        #Add necessary field constants
-        #(constants easily accessed by particles during kernel execution)
+        # Add necessary field constants
+        # (constants easily accessed by particles during kernel execution)
         data_structure = self.forcing_gen.feeding_habitat_structure.data_structure
         if 'NaturalMortality' in self.ika_params['kernels']:
             N_params = self.forcing_gen.readMortalityXML(self.ika_params['SEAPODYM_file'])
@@ -186,12 +158,6 @@ class IkaSim :
             self._setConstant('cohort_dt',
                               data_structure.parameters_dictionary['deltaT']*24*60*60)
 
-    def _setConstant(self, name, val):
-        self.ocean.add_constant(name, val)
-
-# NOTE : If there is a possibility to start a simulation without start
-# argument, maybe it should be switch to optional :
-#   start: np.ndarray = None
     def initialiseFishParticles(
             self,start,n_fish=10, pclass:prcl.JITParticle=prcl.JITParticle):
 
@@ -209,12 +175,10 @@ class IkaSim :
             self.fish = prcl.ParticleSet.from_list(
                 fieldset=self.ocean, lon=plon,
                 time=self.ika_params['start_time'], lat=plat, pclass=pclass)
-            #Note previous method created interpolation errors
-            #self.fish = prcl.ParticleSet.from_field(
-            #    fieldset=self.ocean, start_field=self.start_dist,
-            #    time=self.ika_params['start_time'], size=n_fish, pclass=pclass)
-                # fieldset=self.ocean, start_field=self.ocean.start,
-                # time=None, size=n_fish, pclass=pclass)
+            # NOTE : previous method created interpolation errors
+            # self.fish = prcl.ParticleSet.from_field(
+            #     fieldset=self.ocean, start_field=self.start_dist,
+            #     time=self.ika_params['start_time'], size=n_fish, pclass=pclass)
 
 
         #Initialise fish
@@ -302,9 +266,6 @@ class IkaSim :
                             dims=('time','lat','lon'))
         return PDensity
 
-
-    # NOTE : Arguments names may be more explicite ? Otherwise a good
-    # documentation is needed.
     def runKernels(self, T, pfile_suffix='', verbose=True):
         pfile = self.fish.ParticleFile(
             name=self.ika_params['run_name']+pfile_suffix+'.nc',
@@ -323,46 +284,3 @@ class IkaSim :
                 prcl.ErrorCode.ErrorOutOfBounds:ika.ikafish.behaviours.KillFish},
             verbose_progress=verbose)
 
-    def _readParams(self, xml_filepath: str) -> dict :
-        """Reads the parameters from a XML parameter file and stores
-        them in a dictionary."""
-
-        tree = ET.parse(xml_filepath)
-        root = tree.getroot()
-        params = {}
-
-        params['run_name'] = root.find('run_name').text
-        params['SEAPODYM_file'] = root.find('seapodym_parameters').text
-        params['forcing_dir'] = root.find('forcing_dir').text
-        params['random_seed'] = root.find('random_seed').text
-        if params['random_seed'] == 'None':
-            params['random_seed'] = None
-
-        cohort = root.find('cohort_info')
-        params['start_length'] = float(cohort.attrib['length'])
-        #params['ageing_cohort'] = True if int(cohort.attrib['ageing']) == 1 else False
-        # NOTE : Is equivalent to
-        params['ageing_cohort'] = int(cohort.attrib['ageing']) == 1
-        params['start_filestem'] = (
-            params['forcing_dir']
-            + cohort.attrib['start_filestem'] if 'start_filestem' in cohort.attrib else None)
-
-        time = root.find('time')
-        params['start_time'] = np.datetime64(time.attrib['start'])
-        params['T'] = int(time.attrib['sim_time'])
-        params['dt'] = int(time.attrib['dt'])*86400
-        params['output_dt'] = int(time.attrib['output_dt'])*86400
-
-        domain = root.find('domain')
-        params['spatial_lims'] = {
-            # 'lonlim': np.float32([domain.find('lon').text.split()[0],
-            #                       domain.find('lon').text.split()[1]]),
-            # 'latlim': np.float32([domain.find('lat').text.split()[0],
-            #                       domain.find('lat').text.split()[1]])}
-            # NOTE : Is equivalent to
-            'lonlim': np.float32(domain.find('lon').text.split())[:2],
-            'latlim': np.float32(domain.find('lat').text.split())[:2],
-        }
-
-        params['kernels'] = root.find('kernels').text.split()
-        return params
