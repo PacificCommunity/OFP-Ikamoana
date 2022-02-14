@@ -1,0 +1,7 @@
+ikamoana.utils.feedinghabitatutils module
+=========================================
+
+.. automodule:: ikamoana.utils.feedinghabitatutils
+   :members:
+   :undoc-members:
+   :show-inheritance:

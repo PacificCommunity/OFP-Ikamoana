@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ikamoana.dymfiles.dymtodataarray module &mdash; IKAMOANA 0.1 documentation</title>
+      <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="ikamoana.feedinghabitat package" href="ikamoana.feedinghabitat.html" />
+    <link rel="prev" title="ikamoana.dymfiles.core.utilities module" href="ikamoana.dymfiles.core.utilities.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../index.html" class="icon icon-home"> IKAMOANA
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Table of Contents</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="ikamoana.html">ikamoana package</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="ikamoana.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l3 current"><a class="reference internal" href="ikamoana.dymfiles.html">ikamoana.dymfiles package</a><ul class="current">
+<li class="toctree-l4"><a class="reference internal" href="ikamoana.dymfiles.html#subpackages">Subpackages</a></li>
+<li class="toctree-l4 current"><a class="reference internal" href="ikamoana.dymfiles.html#submodules">Submodules</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ikamoana.dymfiles.html#module-ikamoana.dymfiles">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="ikamoana.feedinghabitat.html">ikamoana.feedinghabitat package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ikamoana.fisherieseffort.html">ikamoana.fisherieseffort package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ikamoana.ikafish.html">ikamoana.ikafish package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ikamoana.ikamoanafields.html">ikamoana.ikamoanafields package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ikamoana.utils.html">ikamoana.utils package</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="ikamoana.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ikamoana.html#module-ikamoana">Module contents</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">IKAMOANA</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="ikamoana.html">ikamoana package</a> &raquo;</li>
+          <li><a href="ikamoana.dymfiles.html">ikamoana.dymfiles package</a> &raquo;</li>
+      <li>ikamoana.dymfiles.dymtodataarray module</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/docs/ikamoana.dymfiles.dymtodataarray.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <div class="section" id="module-ikamoana.dymfiles.dymtodataarray">
+<span id="ikamoana-dymfiles-dymtodataarray-module"></span><h1>ikamoana.dymfiles.dymtodataarray module<a class="headerlink" href="#module-ikamoana.dymfiles.dymtodataarray" title="Permalink to this headline"></a></h1>
+<p>This module generate xarray.DataArray from DYM files.</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="ikamoana.dymfiles.dymtodataarray.dym2ToDataArray">
+<span class="sig-prename descclassname"><span class="pre">ikamoana.dymfiles.dymtodataarray.</span></span><span class="sig-name descname"><span class="pre">dym2ToDataArray</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">infilepath</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">varname</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">attributs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">dict</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">xarray.core.dataarray.DataArray</span></span></span><a class="headerlink" href="#ikamoana.dymfiles.dymtodataarray.dym2ToDataArray" title="Permalink to this definition"></a></dt>
+<dd><p>Generate a <cite>xarray.DataArray</cite> from the DYM file which the filepath
+is <cite>infile</cite>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>infilepath</strong> (<em>str</em>) – The path to the DYM file.</p></li>
+<li><p><strong>varname</strong> (<em>str</em>) – The name of the generated DataArray.</p></li>
+<li><p><strong>attributs</strong> (<em>dict</em><em>, </em><em>optional</em>) – Attributs to add to the generated DataArray, by default None.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The DataArray generated from the DYM file.</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>xarray.DataArray</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="ikamoana.dymfiles.core.utilities.html" class="btn btn-neutral float-left" title="ikamoana.dymfiles.core.utilities module" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="ikamoana.feedinghabitat.html" class="btn btn-neutral float-right" title="ikamoana.feedinghabitat package" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright ....</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

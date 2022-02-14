@@ -1,0 +1,23 @@
+ikamoana.dymfiles.core package
+==============================
+
+Submodules
+----------
+
+.. toctree::
+   :maxdepth: 4
+
+   ikamoana.dymfiles.core.dates
+   ikamoana.dymfiles.core.dym
+   ikamoana.dymfiles.core.dym2
+   ikamoana.dymfiles.core.interpolation
+   ikamoana.dymfiles.core.netcdf
+   ikamoana.dymfiles.core.utilities
+
+Module contents
+---------------
+
+.. automodule:: ikamoana.dymfiles.core
+   :members:
+   :undoc-members:
+   :show-inheritance:

@@ -1,0 +1,18 @@
+ikamoana.fisherieseffort package
+================================
+
+Submodules
+----------
+
+.. toctree::
+   :maxdepth: 4
+
+   ikamoana.fisherieseffort.fisherieseffort
+
+Module contents
+---------------
+
+.. automodule:: ikamoana.fisherieseffort
+   :members:
+   :undoc-members:
+   :show-inheritance:
