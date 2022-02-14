@@ -4,6 +4,7 @@ import xml.etree.ElementTree as ET
 import numpy as np
 import parcels as prcl
 import xarray as xr
+from numba import jit
 
 from .ikafish import behaviours, ikafish
 from .ikamoanafields import IkamoanaFields
@@ -179,7 +180,8 @@ class IkaSim :
                     "Tx":"<run_name>_Tx.nc",
                     "Ty":"<run_name>_Ty.nc",
                     "U":"<run_name>_U.nc",
-                    "V":"<run_name>_V.nc"}
+                    "V":"<run_name>_V.nc",
+                    "mortality":"<run_name>_mortality.nc"}
         """
 
         if from_disk:
@@ -221,11 +223,8 @@ class IkaSim :
             self._setConstant('cohort_dt',
                               data_structure.parameters_dictionary['deltaT']*24*60*60)
 
-# NOTE : If there is a possibility to start a simulation without start
-# argument, maybe it should be switch to optional :
-#   start: np.ndarray = None
     def initialiseFishParticles(
-            self,start,n_fish=10, pclass:prcl.JITParticle=prcl.JITParticle):
+            self, start, n_fish=10, pclass:prcl.JITParticle=prcl.JITParticle):
 
         if isinstance(start, np.ndarray) :
             if start.shape[1] != n_fish :
@@ -240,9 +239,6 @@ class IkaSim :
             self.fish = prcl.ParticleSet.from_field(
                 fieldset=self.ocean, start_field=self.start_distribution,
                 time=self.ika_params['start_time'], size=n_fish, pclass=pclass)
-                # fieldset=self.ocean, start_field=self.ocean.start,
-                # time=None, size=n_fish, pclass=pclass)
-
 
         #Initialise fish
         cohort_dt = self.forcing_gen.feeding_habitat_structure.data_structure.\
@@ -254,8 +250,81 @@ class IkaSim :
 
         self._setConstant('cohort_dt', cohort_dt)
 
-# NOTE : Arguments names may be more explicite (T) ? Uppercases are
-# usualy for constants or classes.
+    def startDistPositions(self, N, area_scale=True):
+        """Simple function returning random particle start positions using
+        the density distribution saved in self.start_dist. Includes option
+        for scaling density by grid cell size (default true)."""
+
+        self.start_dist.data = self.start_dist.data[0,:,:]
+        #Assuming regular grid
+        lonwidth = (self.start_dist.grid.lon[1] - self.start_dist.grid.lon[0]) / 2
+        latwidth = (self.start_dist.grid.lat[1] - self.start_dist.grid.lat[0]) / 2
+        # For distributions from a density on a spherical grid, we need to
+        #rescale to a flat mesh
+        def cell_area(lat,dx,dy):
+            R = 6378.1
+            Phi1 = lat*np.pi/180.0
+            Phi2 = (lat+dy)*np.pi/180.0
+            dx_radian = (dx)*np.pi/180
+            S = R*R*dx_radian*(np.sin(Phi2)-np.sin(Phi1))
+            return S
+
+        if area_scale:
+            for l in range(len(self.start_dist.grid.lat)):
+                area = cell_area(self.start_dist.grid.lat[l],lonwidth,latwidth)
+                self.start_dist.data[l,:] *= area
+
+        def add_jitter(pos, width, min, max):
+            value = pos + np.random.uniform(-width, width)
+            while not (min <= value <= max):
+                value = pos + np.random.uniform(-width, width)
+            return value
+
+        p = np.reshape(self.start_dist.data, (1, self.start_dist.data.size))
+        inds = np.random.choice(self.start_dist.data.size, N, replace=True, p=p[0] / np.sum(p))
+        lat, lon = np.unravel_index(inds, self.start_dist.data.shape)
+        lon = self.ocean.U.grid.lon[lon]
+        lat = self.ocean.U.grid.lat[lat]
+        for i in range(lon.size):
+            lon[i] = add_jitter(lon[i], lonwidth, self.start_dist.grid.lon[0], self.start_dist.grid.lon[-1])
+            lat[i] = add_jitter(lat[i], latwidth, self.start_dist.grid.lat[0], self.start_dist.grid.lat[-1])
+
+        return lon, lat
+
+    def fishDensity(self):
+        """Function calculating particle density at current time, using
+        the same grid resolution given by the start field coordinates.
+        Method replicates Seapodym biomass density ouputs, returning as
+        an xarray dataarray"""
+        
+        lons = self.start_dist.grid.lon
+        lats = self.start_dist.grid.lat
+        #this is very slow with using JIT to compile to C
+        @jit(nopython=True)
+        def calc_D(lons, lats, grid_lon, grid_lat, D):
+            for i in np.arange(1,len(grid_lon)):
+                for j in np.arange(1,len(grid_lat)):
+                    x = np.logical_and(lons>=grid_lon[i-1], lons<grid_lon[i])
+                    y= np.logical_and(lats>=grid_lat[j-1], lats<grid_lat[j])
+                    idx = np.logical_and(x, y)
+                    D[j-1,i-1] = np.sum(idx)
+            return(D)
+
+        D = np.zeros((len(lats), len(lons)))
+        Density = calc_D(np.array([f.lon for f in self.fish]),
+                      np.array([f.lat for f in self.fish]),
+                      lons-1, lats-1, D)
+
+        Density = Density[np.newaxis,:,:]
+        density_coords = {'time': [np.array(self.ocean.time_origin.fulltime(self.fish.time[0]),dtype=np.datetime64)],
+                          'lat': self.start_coords['lat'].data,
+                          'lon': self.start_coords['lon'].data}
+        PDensity = xr.DataArray(name = "Pdensity",
+                            data = Density,
+                            coords = density_coords,
+                            dims=('time','lat','lon'))
+        return PDensity
+
     def runKernels(self, T, pfile_suffix='', verbose=True):
         pfile = self.fish.ParticleFile(
             name=self.ika_params['run_name']+pfile_suffix+'.nc',
