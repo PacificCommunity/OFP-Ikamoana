@@ -61,7 +61,9 @@ class IkamoanaFieldsDataStructure :
         self.sig_scale=float(tagReading(root,['forcing','sig_scale'],1))
         self.c_scale=float(tagReading(root,['forcing','c_scale'],1))
         self.taxis_scale=float(tagReading(root,['forcing','taxis_scale'],1))
+        
         self.units=tagReading(root,['forcing','units'],'m_per_s')
+        """only `m_per_s` and `nm_per_timestep` are supported"""
         
         tmp = tagReading(root,['forcing','shallow_sea_to_ocean'], 'False')
         self.shallow_sea_to_ocean = (tmp == 'True') or (tmp == 'true')

@@ -30,7 +30,7 @@
   </domain>
 
   <cohort_info>
-    <start_length>21</start_length>
+    <start_length>21.83</start_length>
     <ageing>True</ageing>
     <start_filestem>skj_age</start_filestem>
   </cohort_info>
@@ -74,6 +74,7 @@
     <diffusion_scale>1</diffusion_scale>
     <taxis_scale>1</taxis_scale>
     <sig_scale>1</sig_scale>
+    <!-- Supported : {m_per_s, nm_per_timestep}, Default : m_per_s -->
     <units>m_per_s</units>
     <c_scale>1</c_scale>
   </forcing>

@@ -220,7 +220,7 @@ class IkamoanaFields :
         
         diffusion = core.diffusion(self.ikamoana_fields_structure,
                                    self.feeding_habitat_structure.data_structure,
-                                   self.feeding_habitat)
+                                   self.feeding_habitat, landmask)
         grad_diff_lon, grad_diff_lat = core.gradient(diffusion, landmask)
         
         return diffusion, grad_diff_lon, grad_diff_lat

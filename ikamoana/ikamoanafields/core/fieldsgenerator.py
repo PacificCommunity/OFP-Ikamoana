@@ -9,6 +9,7 @@ from parcels.tools.converters import Geographic, GeographicPolar
 from ...feedinghabitat.habitatdatastructure import HabitatDataStructure
 from ...fisherieseffort import fisherieseffort
 from ..core import IkamoanaFieldsDataStructure
+from ...utils import latitudeDirection
 
 
 def landmask(
@@ -106,8 +107,8 @@ def landmask(
 
         if habitat_f.shape != lmeso_f.shape :
             raise ValueError("Habitat {} and forage_lmeso {} must have the"
-                                " same dimension.".format(habitat_f.shape,
-                                                        lmeso_f.shape))
+                             " same dimension.".format(habitat_f.shape,
+                                                       lmeso_f.shape))
 
         landmask = np.zeros_like(habitat_f)
         if not shallow_sea_to_ocean :
@@ -125,8 +126,8 @@ def landmask(
     if field_output :
         if habitat_field is None :
             raise ValueError("If field_output is True you must passe a "
-                                "habitat_field. Otherwise the time coordinate"
-                                " length can't be calculated.")
+                             "habitat_field. Otherwise the time coordinate "
+                             "length can't be calculated.")
         landmask = np.tile(landmask[np.newaxis],
                             (habitat_field.time.size, 1, 1))
         coords['time'] = habitat_field.time
@@ -134,8 +135,40 @@ def landmask(
     else :
         dimensions = ('lat', 'lon')
 
-    return xr.DataArray(data=landmask, name='landmask', coords=coords,
-                        dims=dimensions)
+    landmask = latitudeDirection(
+        xr.DataArray(data=landmask, name='landmask', coords=coords, dims=dimensions),
+        south_to_north=True)
+    return landmask
+
+def _getCellEdgeSizes(field) :
+    """Calculate the size (in kilometers) of each cells of a grid
+    defined by latitude and longitudes coordinates. Copy of the
+    `Parcels.Field.calc_cell_edge_sizes` function in Parcels. Avoid the
+    convertion of DataArray into `Parcels.Field`.
+
+    Returns
+    -------
+    Tuple
+        (x : longitude edge size, y : latitude edge size)
+    """
+
+    field_grid = parcels.grid.RectilinearZGrid(
+        field.lon.data, field.lat.data,
+        depth=None, time=None, time_origin=None,
+        mesh='spherical') # In degrees
+
+    field_grid.cell_edge_sizes['x'] = np.zeros((field_grid.ydim, field_grid.xdim), dtype=np.float32)
+    field_grid.cell_edge_sizes['y'] = np.zeros((field_grid.ydim, field_grid.xdim), dtype=np.float32)
+
+    x_conv = GeographicPolar()
+    y_conv = Geographic()
+
+    for y, (lat, dlat) in enumerate(zip(field_grid.lat, np.gradient(field_grid.lat))):
+        for x, (lon, dlon) in enumerate(zip(field_grid.lon, np.gradient(field_grid.lon))):
+            field_grid.cell_edge_sizes['x'][y, x] = x_conv.to_source(dlon, lon, lat, field_grid.depth[0])
+            field_grid.cell_edge_sizes['y'][y, x] = y_conv.to_source(dlat, lon, lat, field_grid.depth[0])
+
+    return field_grid.cell_edge_sizes['x'], field_grid.cell_edge_sizes['y']
 
 def gradient(
         field: xr.DataArray, landmask: xr.DataArray, name: str = None
@@ -177,35 +210,10 @@ def gradient(
     ## WARNING : To have the same behavior as original gradient function,
     # latitude must be south-north rather than north-south.
 
-    flip_lat = field.lat[0] > field.lat[-1]
-    if flip_lat :
-        field = field.reindex(lat=field.lat[::-1])
-    if landmask.lat[0] > landmask.lat[-1] :
-        landmask = landmask.reindex(lat=landmask.lat[::-1])
+    field = latitudeDirection(field, south_to_north=True)
+    landmask = latitudeDirection(landmask, south_to_north=True)
 
-    def getCellEdgeSizes(field) :
-        """Copy of the Field.calc_cell_edge_sizes() function in Parcels.
-        Avoid the convertion of DataArray into Field."""
-
-        field_grid = parcels.grid.RectilinearZGrid(
-            field.lon.data, field.lat.data,
-            depth=None, time=None, time_origin=None,
-            mesh='spherical') # In degrees
-
-        field_grid.cell_edge_sizes['x'] = np.zeros((field_grid.ydim, field_grid.xdim), dtype=np.float32)
-        field_grid.cell_edge_sizes['y'] = np.zeros((field_grid.ydim, field_grid.xdim), dtype=np.float32)
-
-        x_conv = GeographicPolar()
-        y_conv = Geographic()
-
-        for y, (lat, dlat) in enumerate(zip(field_grid.lat, np.gradient(field_grid.lat))):
-            for x, (lon, dlon) in enumerate(zip(field_grid.lon, np.gradient(field_grid.lon))):
-                field_grid.cell_edge_sizes['x'][y, x] = x_conv.to_source(dlon, lon, lat, field_grid.depth[0])
-                field_grid.cell_edge_sizes['y'][y, x] = y_conv.to_source(dlat, lon, lat, field_grid.depth[0])
-
-        return field_grid.cell_edge_sizes['x'], field_grid.cell_edge_sizes['y']
-
-    dlon, dlat = getCellEdgeSizes(field)
+    dlon, dlat = _getCellEdgeSizes(field)
 
     nlat = field.lat.size
     nlon = field.lon.size
@@ -243,9 +251,9 @@ def gradient(
             dVdlon[t,lat,0] = (data[t,lat,1] - data[t,lat,0]) / dlon[lat,-1]
             dVdlon[t,lat,-1] = (data[t,lat,-1] - data[t,lat,-2]) / dlon[lat,-1]
 
-    if flip_lat :
-        field = field = field.reindex(lat=field.lat[::-1])
-
+    if field.name is None :
+        field.name = 'Unnamed_DataArray'
+    
     return (
         xr.DataArray(
             name="Gradient_longitude_"+(field.name if name is None else name),
@@ -253,8 +261,7 @@ def gradient(
             attrs=field.attrs),
         xr.DataArray(
             name="Gradient_latitude_"+(field.name if name is None else name),
-            data=np.flip(dVdlat, axis=1) if flip_lat else dVdlat,
-            coords=field.coords, dims=('time','lat','lon'),
+            data=dVdlat, coords=field.coords, dims=('time','lat','lon'),
             attrs=field.attrs))
     
 def taxis(
@@ -287,8 +294,7 @@ def taxis(
     def vMax(length : float) -> float :
         """Return the maximum velocity of a fish with a given length."""
 
-        return (ika_structure.vmax_a
-                * np.power(length, ika_structure.vmax_b))
+        return (ika_structure.vmax_a * np.power(length, ika_structure.vmax_b))
 
     def argumentCheck(array) :
         if array.attrs.get('cohort_start') is not None :
@@ -304,10 +310,10 @@ def taxis(
     is_evolving, age = argumentCheck(dHdlon)
     Tlon = np.zeros(dHdlon.data.shape, dtype=np.float32)
     Tlat = np.zeros(dHdlat.data.shape, dtype=np.float32)
-    lat_tile_transpose_cos = np.cos(
-        np.tile(dHdlon.lat.data, (dHdlon.lon.size, 1)).T
-        * np.pi/180)
-    factor = ika_structure.taxis_scale * 250 * 1.852 * 15
+    latitude_correction = np.tile(dHdlon.lat.data, (dHdlon.lon.size, 1)).T
+    latitude_correction = np.cos(latitude_correction * np.pi/180)
+    # factor = ika_structure.taxis_scale * 250 * 1.852 * 15
+    factor = ika_structure.taxis_scale * 1852 * 120
     f_length = fh_structure.findLengthByCohort
 
     for t in range(dHdlon.time.size):
@@ -315,12 +321,9 @@ def taxis(
         # Convert cm to meter (/100) : See original function
         t_length = f_length(t_age) / 100
 
-        Tlon[t,:,:] = (vMax(t_length)
-                        * dHdlon.data[t,:,:]
-                        * factor * lat_tile_transpose_cos)
-        Tlat[t,:,:] = (vMax(t_length)
-                        * dHdlat.data[t,:,:]
-                        * factor)
+        Tlon[t,:,:] = (vMax(t_length) * dHdlon.data[t,:,:] * factor
+                       * latitude_correction)
+        Tlat[t,:,:] = (vMax(t_length) * dHdlat.data[t,:,:] * factor)
 
     if ika_structure.units == 'nm_per_timestep':
         Tlon *= (16/1852)
@@ -340,11 +343,14 @@ def taxis(
     
 def diffusion(
         ika_structure: IkamoanaFieldsDataStructure,
-        fh_structure: HabitatDataStructure, 
-        habitat: xr.DataArray, name: str = None
+        fh_structure: HabitatDataStructure, habitat: xr.DataArray,
+        landmask: xr.DataArray = None, name: str = None,
         ) -> xr.DataArray :
     """Computes the diffusion field (K) based on the feeding `habitat`.
     See the SEAPODYM User's Manual, page 32, Active Random Movement.
+    
+    See also SEAPODYM code :
+    `Calpop_recompute_coefs.cpp` line 272, function `Recomp_DEF_UV_coef`
 
     Parameters
     ----------
@@ -375,6 +381,7 @@ def diffusion(
             raise ValueError("Fields must contain either 'cohort_start' or 'Cohort number'")
         return is_evolving, age
 
+    habitat = latitudeDirection(habitat, south_to_north=True)
     is_evolving, age = argumentCheck(habitat)
     timestep = ika_structure.timestep
 
@@ -391,21 +398,30 @@ def diffusion(
         t_length = f_length(t_age) / 100 # Convert into meter
 
         if ika_structure.units == 'nm_per_timestep':
-            Dmax = (t_length*(timestep/1852))**2 / 4
-        else:
-            Dmax = (t_length**2 / 4) * timestep
+            Dmax = (t_length*timestep/1852)**2 / 4
+        elif ika_structure.units == 'm_per_s':
+            Dmax = (t_length**2 * timestep) / 4
+        else :
+            raise ValueError(("Ikamoana units must be either 'nm_per_timestep' "
+                             "or 'm_per_s'. Not {}").format(ika_structure.units))
         sig_D = ika_structure.sigma_K * Dmax
 
         ## VECTORIZED
         K[t,:,:] = (
             ika_structure.sig_scale
             * sig_D
-            * (1 - ika_structure.c_scale
-                * ika_structure.c
-                * np.power(Hdata[t,:,:], ika_structure.P))
-            * ika_structure.diffusion_scale
-            + ika_structure.diffusion_boost
+            * (1 - ika_structure.c_scale * ika_structure.c
+               * np.power(Hdata[t,:,:], ika_structure.P))
+            * ika_structure.diffusion_scale + ika_structure.diffusion_boost
         )
+
+
+    if landmask is not None :
+        landmask = latitudeDirection(landmask, south_to_north=True)
+        K = np.where(landmask != 1, K, np.NaN)
+
+    if habitat.name is None :
+        habitat.name = 'Unnamed_DataArray'
 
     return xr.DataArray(
         data=K, name="K_"+(habitat.name if name is None else name),

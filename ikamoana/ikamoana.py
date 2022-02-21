@@ -98,7 +98,7 @@ class IkaSim :
 
 # -------------------------------------------------------------------- #
 
-    def generateForcing(self, from_habitat=None, to_file=False):
+    def generateForcing(self, from_habitat: xr.DataArray = None, to_file=False):
 
         data_structure = self.forcing_gen.feeding_habitat_structure.data_structure
         ages = data_structure.findCohortByLength(self.ika_params['start_length'])
