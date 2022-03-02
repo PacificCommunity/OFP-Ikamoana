@@ -2,13 +2,11 @@ import warnings
 from typing import Dict, Tuple, Union
 
 import numpy as np
-import parcels
 import xarray as xr
-from parcels.tools.converters import Geographic, GeographicPolar
 
 from ...feedinghabitat.habitatdatastructure import HabitatDataStructure
 from ...fisherieseffort import fisherieseffort
-from ...utils import latitudeDirection
+from ...utils import getCellEdgeSizes, latitudeDirection
 from ..core import IkamoanaFieldsDataStructure
 
 
@@ -140,39 +138,6 @@ def landmask(
         south_to_north=True)
     return landmask
 
-def _getCellEdgeSizes(field) :
-    """Calculate the size (in kilometers) of each cells of a grid
-    defined by latitude and longitudes coordinates. Copy of the
-    `Parcels.Field.calc_cell_edge_sizes` function in Parcels. Avoid the
-    convertion of DataArray into `Parcels.Field`.
-    
-    It already take into account the latitude correction for narrower
-    grid cells closer to the poles.
-
-    Returns
-    -------
-    Tuple
-        (x : longitude edge size, y : latitude edge size)
-    """
-
-    field_grid = parcels.grid.RectilinearZGrid(
-        field.lon.data, field.lat.data,
-        depth=None, time=None, time_origin=None,
-        mesh='spherical') # In degrees
-
-    field_grid.cell_edge_sizes['x'] = np.zeros((field_grid.ydim, field_grid.xdim), dtype=np.float32)
-    field_grid.cell_edge_sizes['y'] = np.zeros((field_grid.ydim, field_grid.xdim), dtype=np.float32)
-
-    x_conv = GeographicPolar()
-    y_conv = Geographic()
-
-    for y, (lat, dlat) in enumerate(zip(field_grid.lat, np.gradient(field_grid.lat))):
-        for x, (lon, dlon) in enumerate(zip(field_grid.lon, np.gradient(field_grid.lon))):
-            field_grid.cell_edge_sizes['x'][y, x] = x_conv.to_source(dlon, lon, lat, field_grid.depth[0])
-            field_grid.cell_edge_sizes['y'][y, x] = y_conv.to_source(dlat, lon, lat, field_grid.depth[0])
-
-    return field_grid.cell_edge_sizes['x'], field_grid.cell_edge_sizes['y']
-
 def gradient(
         field: xr.DataArray, landmask: xr.DataArray, name: str = None
         ) -> Tuple[xr.DataArray,xr.DataArray]:
@@ -216,7 +181,7 @@ def gradient(
     field = latitudeDirection(field, south_to_north=True)
     landmask = latitudeDirection(landmask, south_to_north=True)
 
-    dlon, dlat = _getCellEdgeSizes(field)
+    dlon, dlat = getCellEdgeSizes(field)
 
     nlat = field.lat.size
     nlon = field.lon.size
@@ -312,22 +277,19 @@ def taxis(
     is_evolving, age = argumentCheck(dHdlon)
     Tlon = np.zeros(dHdlon.data.shape, dtype=np.float32)
     Tlat = np.zeros(dHdlat.data.shape, dtype=np.float32)
-    # latitude_correction = np.tile(dHdlon.lat.data, (dHdlon.lon.size, 1)).T
-    # latitude_correction = np.cos(latitude_correction * np.pi/180)
     f_length = fh_structure.findLengthByCohort
 
     # TODO : remove
-    dx, dy = _getCellEdgeSizes(dHdlon)
+    dx, dy = getCellEdgeSizes(dHdlon)
     timestep = ika_structure.timestep
     
     for t in range(dHdlon.time.size):
         t_age = age[t] if is_evolving else age
         t_length = f_length(t_age) / 100 # Convert cm to meter
 
-        ## NOTE : Latitude correction  isn't necessary ? We use _getCellEdgeSizes
-        # to compute dx and dy which use function GeographicPolar.
-        # Tlon[t,:,:] = (vMax(t_length) * dHdlon.data[t,:,:] * factor * latitude_correction)
-        # Tlat[t,:,:] = (vMax(t_length) * dHdlat.data[t,:,:] * factor)
+        ## NOTE : We use _getCellEdgeSizes function to compute dx and dy.
+        # This function use GeographicPolar function from Parcels. The latitude correction has 
+        # already been applied..
         Tlon[t,:,:] = vMax(t_length) * dx * dHdlon.data[t,:,:] 
         Tlat[t,:,:] = vMax(t_length) * dy * dHdlat.data[t,:,:] 
 
@@ -440,7 +402,7 @@ def diffusion(
     diffusion_y = np.zeros_like(habitat_data)
     f_length = fh_structure.findLengthByCohort
     dHdx, dHdy = gradient(habitat,landmask)
-    dx, dy = _getCellEdgeSizes(habitat)
+    dx, dy = getCellEdgeSizes(habitat)
     lmax = f_length(-1) / 100
     Vmax_diff = 1.25
     

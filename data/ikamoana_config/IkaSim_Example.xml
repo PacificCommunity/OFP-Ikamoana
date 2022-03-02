@@ -32,7 +32,8 @@
   <cohort_info>
     <start_length>21.83</start_length>
     <ageing>True</ageing>
-    <start_filestem>skj_age</start_filestem>
+    <!-- If no file_extension is passed, default will be "nc" -->
+    <start_filestem file_extension="dym">skj_age</start_filestem>
   </cohort_info>
 
   <mortality>
