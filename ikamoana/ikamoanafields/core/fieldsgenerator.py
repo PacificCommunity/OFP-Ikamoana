@@ -8,8 +8,8 @@ from parcels.tools.converters import Geographic, GeographicPolar
 
 from ...feedinghabitat.habitatdatastructure import HabitatDataStructure
 from ...fisherieseffort import fisherieseffort
-from ..core import IkamoanaFieldsDataStructure
 from ...utils import latitudeDirection
+from ..core import IkamoanaFieldsDataStructure
 
 
 def landmask(
@@ -145,6 +145,9 @@ def _getCellEdgeSizes(field) :
     defined by latitude and longitudes coordinates. Copy of the
     `Parcels.Field.calc_cell_edge_sizes` function in Parcels. Avoid the
     convertion of DataArray into `Parcels.Field`.
+    
+    It already take into account the latitude correction for narrower
+    grid cells closer to the poles.
 
     Returns
     -------
@@ -224,7 +227,6 @@ def gradient(
     dVdlat = np.zeros(data.shape, dtype=np.float32)
 
     ## NOTE : Parallelised execution may help to do it faster.
-    # - I think it can also be vectorized.
     # - Uses of Numba prange() over time axis ?
     for t in range(field.time.size):
         for lon in range(1, nlon-1):
@@ -310,64 +312,114 @@ def taxis(
     is_evolving, age = argumentCheck(dHdlon)
     Tlon = np.zeros(dHdlon.data.shape, dtype=np.float32)
     Tlat = np.zeros(dHdlat.data.shape, dtype=np.float32)
-    latitude_correction = np.tile(dHdlon.lat.data, (dHdlon.lon.size, 1)).T
-    latitude_correction = np.cos(latitude_correction * np.pi/180)
-    # factor = ika_structure.taxis_scale * 250 * 1.852 * 15
-    factor = ika_structure.taxis_scale * 1852 * 120
+    # latitude_correction = np.tile(dHdlon.lat.data, (dHdlon.lon.size, 1)).T
+    # latitude_correction = np.cos(latitude_correction * np.pi/180)
     f_length = fh_structure.findLengthByCohort
 
+    # TODO : remove
+    dx, dy = _getCellEdgeSizes(dHdlon)
+    timestep = ika_structure.timestep
+    
     for t in range(dHdlon.time.size):
         t_age = age[t] if is_evolving else age
-        # Convert cm to meter (/100) : See original function
-        t_length = f_length(t_age) / 100
+        t_length = f_length(t_age) / 100 # Convert cm to meter
 
-        Tlon[t,:,:] = (vMax(t_length) * dHdlon.data[t,:,:] * factor
-                       * latitude_correction)
-        Tlat[t,:,:] = (vMax(t_length) * dHdlat.data[t,:,:] * factor)
+        ## NOTE : Latitude correction  isn't necessary ? We use _getCellEdgeSizes
+        # to compute dx and dy which use function GeographicPolar.
+        # Tlon[t,:,:] = (vMax(t_length) * dHdlon.data[t,:,:] * factor * latitude_correction)
+        # Tlat[t,:,:] = (vMax(t_length) * dHdlat.data[t,:,:] * factor)
+        Tlon[t,:,:] = vMax(t_length) * dx * dHdlon.data[t,:,:] 
+        Tlat[t,:,:] = vMax(t_length) * dy * dHdlat.data[t,:,:] 
 
-    if ika_structure.units == 'nm_per_timestep':
-        Tlon *= (16/1852)
-        Tlat *= (16/1852)
-    ## NOTE :       (timestep/1852) * (1000*1.852*60) * 1/timestep
-    #           <=> (250*1.852*15) * (16/1852)
-
+    taxis_attrs = {**dHdlat.attrs, "units":"m².s⁻¹"}
+    # if ika_structure.units == 'nm_per_timestep':
+    #     Tlon *= timestep / 1852
+    #     Tlat *= timestep / 1852
+    #     taxis_attrs["units"] = "nmi².dt⁻¹"
+        
     return (
         xr.DataArray(
             name="Taxis_longitude_"+(dHdlon.name if name is None else name),
             data=Tlon, coords=dHdlon.coords, dims=('time','lat','lon'),
-            attrs=dHdlon.attrs),
+            attrs=taxis_attrs),
         xr.DataArray(
             name="Taxis_latitude_"+(dHdlat.name if name is None else name),
             data=Tlat, coords=dHdlat.coords, dims=('time','lat','lon'),
-            attrs=dHdlat.attrs))
+            attrs=taxis_attrs))
+
+def _diffusionCorrection(
+        diffusion, dHdx, dHdy, dx, dy, current_u=None, current_v=None,
+        vertical_movement=True) :
+    """Copy the SEAPODYM behaviour. Correction by rho + vertical_movement
+    which include currents magnitude.
+    Currents and diffusion units must be m².s⁻¹.
+    """
+    
+    rho = 0.99
+    rho_x = 1.0 - rho * np.abs(dHdx) * dx
+    rho_y = 1.0 - rho * np.abs(dHdy) * dy
+    if (vertical_movement) :
+        if current_u is None or current_v is None :
+            raise ValueError("If vertical_movement is True, you must specify "
+                             "currents fields (current_u, current_v)")
+        #correction of rho by passive advection
+        currents_magnitude = np.sqrt(current_u**2 + current_v**2)
+        # TODO: this was used in SEAPODYM with nmi.dt, use carefully
+        # fV = 1.0 - currents_magnitude/(500.0*dt/30.0+currents_magnitude)
+        # We transformed 500 nm.dt into m.s
+        fV = 1.0 - currents_magnitude/((926/2592)+currents_magnitude)
+        rho_x = rho_x * fV
+        rho_y = rho_y * fV
+        
+    
+    ## NOTE : Latitude correction isn't necessary ? We use _getCellEdgeSizes
+        # to compute dx and dy which use function GeographicPolar.
+        # parcels.tools.converters.GeographicPolar :
+        # Unit converter from geometric to geographic coordinates (m to degree)
+        # with a correction to account for narrower grid cells closer to the poles.
+    # latitude_correction = np.tile(dHdx.lat.data, (dHdx.lon.size, 1)).T
+    # latitude_correction = np.cos(latitude_correction * np.pi/180)
+    diffusion_x = rho_x * diffusion # * latitude_correction
+    diffusion_y = rho_y * diffusion 
+       
+    return diffusion_x, diffusion_y
     
 def diffusion(
         ika_structure: IkamoanaFieldsDataStructure,
         fh_structure: HabitatDataStructure, habitat: xr.DataArray,
-        landmask: xr.DataArray = None, name: str = None,
-        ) -> xr.DataArray :
+        current_u: xr.DataArray = None, current_v: xr.DataArray = None,
+        landmask: xr.DataArray = None, name: str = None
+        ) -> Tuple[xr.DataArray,xr.DataArray] :
+    
     """Computes the diffusion field (K) based on the feeding `habitat`.
     See the SEAPODYM User's Manual, page 32, Active Random Movement.
     
     See also SEAPODYM code :
-    `Calpop_recompute_coefs.cpp` line 272, function `Recomp_DEF_UV_coef`
+    `dv_caldia.cpp` line 57, function `precaldia_comp`
+
 
     Parameters
     ----------
     ika_structure : IkamoanaFieldsDataStructure
         Ikamoana data structure that contains parameters.
     fh_structure : HabitatDataStructure
-        SEAPODYM data structure that contains fields and parameters
+        SEAPODYM data structure that contains fields and parameters.
     habitat : xr.DataArray
         The feeding habitat used to compute the diffusion field.
+    current_u : xr.DataArray, optional
+        Current field along longitude.
+    current_v : xr.DataArray, optional
+        Current field along latitude.
+    landmask : xr.DataArray, optional
+        Mask describing land and ocean cells.
     name : str, optional
         Specify the name of the returned DataArrays.
         Syntax is : K_`name`.
 
     Returns
     -------
-    xr.DataArray
-        The diffusion field.
+    Tuple[xr.DataArray,xr.DataArray]
+        The diffusion fields : Kx, Ky
     """
 
     def argumentCheck(array) :
@@ -383,49 +435,53 @@ def diffusion(
 
     habitat = latitudeDirection(habitat, south_to_north=True)
     is_evolving, age = argumentCheck(habitat)
-    timestep = ika_structure.timestep
-
-    end = habitat.time.size
-    ## TODO : How do we manage NaN values ?
-    # Hdata = habitat.data
-    Hdata = np.nan_to_num(habitat.data)
-    K = np.zeros_like(Hdata)
+    habitat_data = np.nan_to_num(habitat.data)
+    diffusion_x = np.zeros_like(habitat_data)
+    diffusion_y = np.zeros_like(habitat_data)
     f_length = fh_structure.findLengthByCohort
-
-    for t in range(end):
+    dHdx, dHdy = gradient(habitat,landmask)
+    dx, dy = _getCellEdgeSizes(habitat)
+    lmax = f_length(-1) / 100
+    Vmax_diff = 1.25
+    
+    for t in range(habitat.time.size):
 
         t_age = age[t] if is_evolving else age
         t_length = f_length(t_age) / 100 # Convert into meter
-
-        if ika_structure.units == 'nm_per_timestep':
-            Dmax = (t_length*timestep/1852)**2 / 4
-        elif ika_structure.units == 'm_per_s':
-            Dmax = (t_length**2 * timestep) / 4
-        else :
-            raise ValueError(("Ikamoana units must be either 'nm_per_timestep' "
-                             "or 'm_per_s'. Not {}").format(ika_structure.units))
-        sig_D = ika_structure.sigma_K * Dmax
+        d_speed  = Vmax_diff-0.25*t_length/lmax # fixed, given in 'body length' units
+        d_inf = (d_speed*t_length)**2 / 4
+        d_max = ika_structure.sigma_K * d_inf
 
         ## VECTORIZED
-        K[t,:,:] = (
+        diffusion = (
             ika_structure.sig_scale
-            * sig_D
+            * d_max
             * (1 - ika_structure.c_scale * ika_structure.c
-               * np.power(Hdata[t,:,:], ika_structure.P))
+               * np.power(habitat_data[t,:,:], ika_structure.P))
             * ika_structure.diffusion_scale + ika_structure.diffusion_boost
         )
-
-
+        
+        diffusion_x[t,:,:], diffusion_y[t,:,:] = _diffusionCorrection(
+            diffusion, dHdx[t,:,:], dHdy[t,:,:], dx, dy, current_u[t,:,:],
+            current_v[t,:,:], ika_structure.vertical_movement)
+        
     if landmask is not None :
         landmask = latitudeDirection(landmask, south_to_north=True)
-        K = np.where(landmask != 1, K, np.NaN)
+        diffusion_x = np.where(landmask != 1, diffusion_x, np.NaN)
+        diffusion_y = np.where(landmask != 1, diffusion_y, np.NaN)
 
-    if habitat.name is None :
-        habitat.name = 'Unnamed_DataArray'
-
-    return xr.DataArray(
-        data=K, name="K_"+(habitat.name if name is None else name),
-        coords=habitat.coords, dims=("time","lat","lon"), attrs=habitat.attrs)
+    if (habitat.name is None) and name is None :
+        name = 'Unnamed_DataArray'
+    
+    diffusion_attrs = {**habitat.attrs, "units":"m².s⁻¹"}
+        
+    return (
+        xr.DataArray(
+            data=diffusion_x, name="Kx_"+(habitat.name if name is None else name),
+            coords=habitat.coords, dims=("time","lat","lon"), attrs=diffusion_attrs),
+        xr.DataArray(
+            data=diffusion_y, name="Ky_"+(habitat.name if name is None else name),
+            coords=habitat.coords, dims=("time","lat","lon"), attrs=diffusion_attrs))
     
 def fishingMortality(
         fh_structure: HabitatDataStructure, effort_ds: xr.Dataset,
@@ -553,13 +609,5 @@ def fishingMortality(
     fishing_mortality_ds.attrs["Fisheries"] = list(fishing_mortality.keys())
 
     return fisherieseffort.sumDataSet(fishing_mortality_ds, name="Mortality")
-
-
-
-
-
-
-
-
 
 

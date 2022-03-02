@@ -133,12 +133,21 @@ def IkAdvectionRK4(particle, fieldset, time):
 def TaxisRK4(particle, fieldset, time):
     u1 = fieldset.Tx[time, particle.depth, particle.lat, particle.lon]
     v1 = fieldset.Ty[time, particle.depth, particle.lat, particle.lon]
-    lon1, lat1 = (particle.lon + u1*.5, particle.lat + v1*.5)
-    u2, v2 = (fieldset.Tx[time + .5 * particle.dt, particle.depth, lat1, lon1], fieldset.Ty[time + .5 * particle.dt, particle.depth, lat1, lon1])
-    lon2, lat2 = (particle.lon + u2*.5, particle.lat + v2*.5)
-    u3, v3 = (fieldset.Tx[time + .5 * particle.dt, particle.depth, lat2, lon2], fieldset.Ty[time + .5 * particle.dt, particle.depth, lat2, lon2])
-    lon3, lat3 = (particle.lon + u3, particle.lat + v3)
-    u4, v4 = (fieldset.Tx[time + particle.dt, particle.depth, lat3, lon3], fieldset.Ty[time + particle.dt, particle.depth, lat3, lon3])
+    lon1 = particle.lon + u1*.5
+    lat1 = particle.lat + v1*.5
+    
+    u2 = fieldset.Tx[time + .5 * particle.dt, particle.depth, lat1, lon1]
+    v2 = fieldset.Ty[time + .5 * particle.dt, particle.depth, lat1, lon1]
+    lon2 = particle.lon + u2*.5
+    lat2 = particle.lat + v2*.5
+    
+    u3 = fieldset.Tx[time + .5 * particle.dt, particle.depth, lat2, lon2]
+    v3 = fieldset.Ty[time + .5 * particle.dt, particle.depth, lat2, lon2]
+    lon3 = particle.lon + u3
+    lat3 = particle.lat + v3
+    
+    u4 = fieldset.Tx[time + particle.dt, particle.depth, lat3, lon3]
+    v4 = fieldset.Ty[time + particle.dt, particle.depth, lat3, lon3]
     particle.Tx = (u1 + 2*u2 + 2*u3 + u4) / 6. * f_lon
     particle.Ty = (v1 + 2*v2 + 2*v3 + v4) / 6. * f_lat
     tx = particle.Tx
@@ -148,14 +157,16 @@ def RandomWalkNonUniformDiffusion(particle, fieldset, time):
     r_var = 1/3.
     Rx = ParcelsRandom.uniform(-1., 1.)
     Ry = ParcelsRandom.uniform(-1., 1.)
-    dKdx, dKdy = (fieldset.dK_dx[time, particle.depth, particle.lat, particle.lon], fieldset.dK_dy[time, particle.depth, particle.lat, particle.lon])
-    k = fieldset.K[time, particle.depth, particle.lat, particle.lon]
-    Rx_component = math.sqrt(2 * k * particle.dt / r_var)
-    Ry_component = math.sqrt(2 * k * particle.dt / r_var)
-    CorrectionX = dKdx * f_lon
-    CorrectionY = dKdy * f_lat
-    Dx = Rx * Rx_component * f_lon /particle.dt
-    Dy = Ry * Ry_component * f_lat /particle.dt
+    dKxdx = fieldset.dKx_dx[time, particle.depth, particle.lat, particle.lon]
+    dKydy = fieldset.dKy_dy[time, particle.depth, particle.lat, particle.lon]
+    kx = fieldset.Kx[time, particle.depth, particle.lat, particle.lon]
+    ky = fieldset.Ky[time, particle.depth, particle.lat, particle.lon]
+    Rx_component = math.sqrt(2 * kx * particle.dt / r_var)
+    Ry_component = math.sqrt(2 * ky * particle.dt / r_var)
+    CorrectionX = dKxdx * f_lon
+    CorrectionY = dKydy * f_lat
+    Dx = Rx * Rx_component * f_lon / particle.dt
+    Dy = Ry * Ry_component * f_lat / particle.dt
     Cx = CorrectionX
     Cy = CorrectionY
     particle.Cx = Cx
@@ -171,9 +182,11 @@ def FishingMortality(particle, fieldset, time):
     particle.Fmor = Fmor
 
 def NaturalMortality(particle, fieldset, time):
-    Mnat = fieldset.MPmax*math.exp(-fieldset.MPexp*particle.age_class) + fieldset.MSmax*math.pow(particle.age_class, fieldset.MSslope)
-    Mvar = Mnat * math.pow(1 - fieldset.Mrange, 1-fieldset.H[time, particle.depth, particle.lat, particle.lon]/2)
-    Nmor = (Mvar * (particle.dt / fieldset.SEAPODYM_dt))
+    Mnat = (fieldset.MPmax * math.exp(-fieldset.MPexp*particle.age_class)
+            + fieldset.MSmax * math.pow(particle.age_class, fieldset.MSslope))
+    Mvar = Mnat * math.pow(1 - fieldset.Mrange,
+                           1 - fieldset.H[time, particle.depth, particle.lat, particle.lon] / 2)
+    Nmor = Mvar * (particle.dt / fieldset.SEAPODYM_dt)
     particle.Nmor = Nmor
 
 def UpdateSurvivalProbNOnly(particle, fieldset, time):
@@ -183,8 +196,8 @@ def UpdateSurvivalProbNOnly(particle, fieldset, time):
 
 def UpdateSurvivalProb(particle, fieldset, time):
     depletion = particle.SurvProb - particle.SurvProb * math.exp(-(Fmor + Nmor))
-    particle.depletionF = depletion*Fmor/(Fmor+Nmor)
-    particle.depletionN = depletion*Nmor/(Fmor+Nmor)
+    particle.depletionF = depletion*Fmor / (Fmor+Nmor)
+    particle.depletionN = depletion*Nmor / (Fmor+Nmor)
     particle.SurvProb -= depletion
     particle.CapProb += particle.depletionF
 

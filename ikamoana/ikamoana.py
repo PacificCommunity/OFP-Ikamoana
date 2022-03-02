@@ -170,10 +170,11 @@ class IkaSim :
             
             Example : 
                 variables = {
-                    "dK_dx":"<run_name>_dK_dx.nc",
-                    "dK_dy":"<run_name>_dK_dy.nc",
+                    "dKx_dx":"<run_name>_dKx_dx.nc",
+                    "dKy_dy":"<run_name>_dKy_dy.nc",
                     "H":"<run_name>_H.nc",
-                    "K":"<run_name>_K.nc",
+                    "Kx":"<run_name>_Kx.nc",
+                    "Ky":"<run_name>_Ky.nc",
                     "landmask":"<run_name>_landmask.nc",
                     "start_distribution":"<run_name>start_distribution.nc",
                     "Tx":"<run_name>_Tx.nc",
@@ -185,8 +186,8 @@ class IkaSim :
 
         if from_disk:
             if variables is None :
-                list_var = ["dK_dx", "dK_dy", "H", "K", "landmask", "mortality",
-                            "start_distribution", "Tx", "Ty", "U", "V"]
+                list_var = ["dKx_dx", "dKy_dy", "H", "Kx", "Ky", "landmask",
+                            "mortality", "start_distribution", "Tx", "Ty", "U", "V"]
                 variables = {
                     var: os.path.join(self.ika_params['forcing_dir'],
                                       self.ika_params['run_name']+'_'+var+'.nc')

@@ -81,6 +81,11 @@ class IkamoanaFieldsDataStructure :
         self.indonesian_filter = (tmp == 'True') or (tmp == 'true')
         """Apply the indonesian filter.
         See Also : FeedingHabitat.indonesianFilter()"""
+        
+        tmp = tagReading(root,['forcing','vertical_movement'], 'False')
+        self.vertical_movement = (tmp == 'True') or (tmp == 'true')
+        """Correction of rho by passive advection. Maybe temporary."""
+        
 
     def _readMortality(self, root: ET.Element) :
         iter_fisheries = root.find("mortality").find(
