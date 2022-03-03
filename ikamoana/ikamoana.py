@@ -25,6 +25,8 @@ class IkaSim :
 
 # -------------------------------------------------------------------- #
 
+# TODO : DocString can be used on variables too. It can be useful to
+# fully understand each parameter.
     def _readParams(self, xml_filepath: str) -> dict :
         """Reads the parameters from a XML parameter file and stores
         them in a dictionary."""
@@ -62,8 +64,12 @@ class IkaSim :
         
         time = domain.find('time')
         params['start_time'] = np.datetime64(time.find('start').text)
+        # T in days ?
         params['T'] = int(time.find('sim_time').text)
+        # TODO : Is it a repetition of the SEAPODYM deltaT ?
+        # dt in days before conversion in seconds ?
         params['dt'] = int(time.find('dt').text)*86400
+        # output_dt in days before conversion in seconds ?
         params['output_dt'] = int(time.find('output_dt').text)*86400
 
         params['spatial_lims'] = {
@@ -99,6 +105,7 @@ class IkaSim :
 
 # -------------------------------------------------------------------- #
 
+# TODO : to_file : None | True | nom_de_run
     def generateForcing(self, from_habitat: xr.DataArray = None, to_file=False):
 
         data_structure = self.forcing_gen.feeding_habitat_structure.data_structure
@@ -137,6 +144,7 @@ class IkaSim :
 
         if to_file:
             for (var, forcing) in self.forcing.items():
+                forcing.name=var
                 forcing.to_netcdf(
                     path=os.path.join(self.ika_params['forcing_dir'],
                                       self.ika_params['run_name']+'_'+var+'.nc'))
@@ -145,8 +153,10 @@ class IkaSim :
                              self.ika_params['run_name']+'_start_distribution.nc'))
 
 
-## TODO : Take into account case when there is no start_distribution
-    def createFieldSet(self, from_disk: bool = False, variables: dict = None):
+# TODO : comment éviter l'utilisation de allow_time_extrapolation=True ?
+    def createFieldSet(
+            self, from_disk: bool = False, variables: dict = None,
+            landmask_interp_methode: str = 'nearest'):
         """[summary]
 
         Parameters
@@ -188,42 +198,45 @@ class IkaSim :
             else :
                 variables = {k: os.path.join(self.ika_params['forcing_dir'],v)
                             for k, v in variables.items()}
+                
             if self.ika_params['start_filestem'] is not None:
-                start_dist = xr.load_dataarray(variables.pop("start_distribution"))
-                self.start_coords = start_dist.coords
-                self.start_distribution = prcl.Field.from_xarray(
-                    start_dist, name='start_distribution',
-                    dimensions=self.forcing_dims, interp_method='nearest')
+                self.start_distribution = xr.load_dataarray(
+                    variables.pop("start_distribution"))
+
             self.ocean = prcl.FieldSet.from_netcdf(
                 variables, {k:k for k in variables.keys()},
-                {'time':'time', 'lat':'lat', 'lon':'lon'})
+                {'time':'time', 'lat':'lat', 'lon':'lon'},
+                allow_time_extrapolation=True)
+            
         else:
             dict_fields = {}
             landmask = self.forcing.pop("landmask")
             for k, v in self.forcing.items() :
-                dict_fields[k] = prcl.Field.from_xarray(v, k, self.forcing_dims)
-            self.ocean = prcl.FieldSet(dict_fields.pop('U'), dict_fields.pop('V'), dict_fields)
+                dict_fields[k] = prcl.Field.from_xarray(
+                    v, k, self.forcing_dims,allow_time_extrapolation=True)
+            self.ocean = prcl.FieldSet(
+                dict_fields.pop('U'), dict_fields.pop('V'), dict_fields)
             self.ocean.add_field(prcl.Field.from_xarray(
                 landmask, name='landmask', dimensions=self.forcing_dims,
                 allow_time_extrapolation=True, interp_method='nearest'))
-            if self.ika_params['start_filestem'] is not None:
-                self.start_coords = self.start_distribution.coords
-                self.start_distribution = prcl.Field.from_xarray(
-                    self.start_distribution, name='start_distribution',
-                    dimensions=self.forcing_dims, interp_method='nearest')
+            
+        if self.ika_params['start_filestem'] is not None:
+            self.start_coords = self.start_distribution.coords
+            self.start_distribution = prcl.Field.from_xarray(
+                self.start_distribution, name='start_distribution',
+                dimensions=self.forcing_dims,
+                interp_method=landmask_interp_methode)
 
         #Add necessary field constants
         #(constants easily accessed by particles during kernel execution)
-        data_structure = self.forcing_gen.feeding_habitat_structure.data_structure
+        timestep = self.forcing_gen.ikamoana_fields_structure.timestep
         if 'NaturalMortality' in self.ika_params['kernels']:
             N_params = self._readMortalityXML(self.ika_params['seapodym_file'])
-            self._setConstant('SEAPODYM_dt',
-                              data_structure.parameters_dictionary['deltaT']*24*60*60)
+            self._setConstant('SEAPODYM_dt', timestep)
             for (p, val) in N_params.items():
                 self._setConstant(p, val)
         if 'Age' in self.ika_params['kernels']:
-            self._setConstant('cohort_dt',
-                              data_structure.parameters_dictionary['deltaT']*24*60*60)
+            self._setConstant('cohort_dt', timestep)
 
     def initialiseFishParticles(
             self, start, n_fish=10, pclass:prcl.JITParticle=prcl.JITParticle):
@@ -263,8 +276,7 @@ class IkaSim :
         for scaling density by grid cell size (default true)."""
 
         # TODO : verify that this is a the desired behaviour
-        # self.start_distribution.data = self.start_distribution.data[0,:,:]
-        self.start_distribution = self.start_distribution[0,:,:]
+        self.start_distribution.data = self.start_distribution.data[0,:,:]
         
         data = self.start_distribution.data
         grid = self.start_distribution.grid
@@ -340,7 +352,15 @@ class IkaSim :
                                 coords = density_coords, dims=('time','lat','lon'))
         return PDensity
 
-    def runKernels(self, T, pfile_suffix='', verbose=True):
+# TODO : vérifier si une particule dépasse le dernier timestep (WARNING)
+# TODO : T -> valeur par défaut est égale à self.ika_params['T'] * nb sec par jour
+    def runKernels(self, T=None, pfile_suffix='', verbose=True):
+        """`T` in days."""
+        
+        if T is None :
+            T = self.ika_params['T']
+        T *= 86400 # converted to seconds
+        
         pfile = self.fish.ParticleFile(
             name=self.ika_params['run_name']+pfile_suffix+'.nc',
             outputdt=self.ika_params['output_dt'])
@@ -354,8 +374,7 @@ class IkaSim :
 
         self.fish.execute(
             run_kernels, runtime=T, dt=self.ika_params['dt'], output_file=pfile,
-            recovery={
-                prcl.ErrorCode.ErrorOutOfBounds:behaviours.KillFish},
+            recovery={prcl.ErrorCode.ErrorOutOfBounds:behaviours.KillFish},
             verbose_progress=verbose)
 
 

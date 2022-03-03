@@ -288,8 +288,8 @@ def taxis(
         t_length = f_length(t_age) / 100 # Convert cm to meter
 
         ## NOTE : We use _getCellEdgeSizes function to compute dx and dy.
-        # This function use GeographicPolar function from Parcels. The latitude correction has 
-        # already been applied..
+        # This function use GeographicPolar function from Parcels. The
+        # latitude correction has already been applied.
         Tlon[t,:,:] = vMax(t_length) * dx * dHdlon.data[t,:,:] 
         Tlat[t,:,:] = vMax(t_length) * dy * dHdlat.data[t,:,:] 
 
@@ -416,6 +416,7 @@ def diffusion(
 
         ## VECTORIZED
         diffusion = (
+            # TODO : Remove this
             ika_structure.sig_scale
             * d_max
             * (1 - ika_structure.c_scale * ika_structure.c

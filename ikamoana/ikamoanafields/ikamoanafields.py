@@ -322,6 +322,8 @@ class IkamoanaFields :
             u = convertionFunction(u)
             v = convertionFunction(v)
         
+        
+        # TODO : mortality doit etre renommé F
         return {'H':feeding_habitat, 'landmask':landmask,
                 'Kx':diffusion_x, 'Ky':diffusion_y,
                 'dKx_dx':dKxdx, 'dKy_dy':dKydy,

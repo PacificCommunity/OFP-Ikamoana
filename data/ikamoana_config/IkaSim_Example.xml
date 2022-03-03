@@ -14,9 +14,10 @@
 
   <domain>
     <time>
+      <!-- Repetition of the SEAPODYM deltaT ? All of these parameters are in days ? -->
+      <dt>30</dt>
       <start>2008-01-15</start>
       <sim_time>125</sim_time>
-      <dt>86400</dt>
       <output_dt>7</output_dt>
     </time>
     <lat>
@@ -79,6 +80,7 @@
     <!-- Supported : {m_per_s, nm_per_timestep}, Default : m_per_s -->
     <units>nm_per_timestep</units>
     <c_scale>1</c_scale>
+    <!-- Option : Ajouter Linear interpolation (en plus de nearest) -->
   </forcing>
 
   <kernels>
