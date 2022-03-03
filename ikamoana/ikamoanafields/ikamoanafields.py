@@ -7,6 +7,7 @@ from ..feedinghabitat import FeedingHabitat
 from ..feedinghabitat import feedinghabitatconfigreader as fhcf
 from ..fisherieseffort import fisherieseffort
 from . import core
+from ..utils import convertToNauticMiles
 
 class IkamoanaFields :
 
@@ -108,40 +109,39 @@ class IkamoanaFields :
 ## TODO later : Take into account L1 is a simplification.
 # Should use accessibility + forage distribution + current L1/L2/L3
     def current(self) -> Tuple[xr.DataArray, xr.DataArray]:
-        """Load current forcing from NetCDFs or Dymfiles.
+        """Load current forcing from NetCDFs or Dymfiles. No unit
+        convertion is applied here.
 
         Returns
         -------
         Tuple[xr.DataArray, xr.DataArray]
             U, V
         """
-        
-        U = fhcf.seapodymFieldConstructor(
+
+        u = fhcf.seapodymFieldConstructor(
             self.feeding_habitat_structure.data_structure.root_directory
             + self.ikamoana_fields_structure.u_file,  dym_varname='u_L1')
-        V = fhcf.seapodymFieldConstructor(
+        v = fhcf.seapodymFieldConstructor(
             self.feeding_habitat_structure.data_structure.root_directory
             + self.ikamoana_fields_structure.v_file,  dym_varname='v_L1')
         
-        U = latitudeDirection(U, south_to_north=True)
-        V = latitudeDirection(V, south_to_north=True)
+        u = latitudeDirection(u, south_to_north=True)
+        v = latitudeDirection(v, south_to_north=True)
 
         if self.feeding_habitat is not None:
             # NOTE : We assume that U and V have same coordinates.
-            timefun, latfun, lonfun = coordsAccess(U)
+            timefun, latfun, lonfun = coordsAccess(u)
             minlon_idx = lonfun(min(self.feeding_habitat.coords['lon'].data))
             maxlon_idx = lonfun(max(self.feeding_habitat.coords['lon'].data))
             minlat_idx = latfun(min(self.feeding_habitat.coords['lat'].data))
             maxlat_idx = latfun(max(self.feeding_habitat.coords['lat'].data))
             mintime_idx = timefun(min(self.feeding_habitat.coords['time'].data))
             maxtime_idx = timefun(max(self.feeding_habitat.coords['time'].data))
-            U = U[mintime_idx:maxtime_idx+1,
-                  minlat_idx:maxlat_idx+1,
+            u = u[mintime_idx:maxtime_idx+1, minlat_idx:maxlat_idx+1,
                   minlon_idx:maxlon_idx+1]
-            V = V[mintime_idx:maxtime_idx+1,
-                  minlat_idx:maxlat_idx+1,
+            v = v[mintime_idx:maxtime_idx+1, minlat_idx:maxlat_idx+1,
                   minlon_idx:maxlon_idx+1]
-        return U, V
+        return u, v
 
     def computeTaxis(self) -> xr.DataArray:
         
@@ -189,11 +189,12 @@ class IkamoanaFields :
             self.feeding_habitat_structure.data_structure, effort_ds,
             params_fisheries, convertion_tab=ika_struct.selected_fisheries)
         
-#TODO : finish the description
+#TODO : Rewrite documentation
     def computeDiffusion(
             self, landmask: xr.DataArray = None, lat_min: int = None,
-            lat_max: int = None, lon_min: int = None, lon_max: int = None
-            ) -> Tuple[xr.DataArray, xr.DataArray, xr.DataArray]:
+            lat_max: int = None, lon_min: int = None, lon_max: int = None,
+            current_u: xr.DataArray = None, current_v: xr.DataArray = None
+            ) -> Tuple[xr.DataArray, xr.DataArray, xr.DataArray,xr.DataArray]:
         """[summary]
 
         Parameters
@@ -203,7 +204,7 @@ class IkamoanaFields :
 
         Returns
         -------
-        Tuple[xr.DataArray, xr.DataArray, xr.DataArray]
+        Tuple[xr.DataArray, xr.DataArray, xr.DataArray,xr.DataArray]
             [description]
         """
         
@@ -218,12 +219,14 @@ class IkamoanaFields :
                 lat_min=lat_min, lat_max=lat_max, lon_min=lon_min, lon_max=lon_max,
                 field_output=False)
         
-        diffusion = core.diffusion(self.ikamoana_fields_structure,
-                                   self.feeding_habitat_structure.data_structure,
-                                   self.feeding_habitat)
-        grad_diff_lon, grad_diff_lat = core.gradient(diffusion, landmask)
+        diffusion_x, diffusion_y = core.diffusion(
+            self.ikamoana_fields_structure,
+            self.feeding_habitat_structure.data_structure,
+            self.feeding_habitat, current_u, current_v, landmask)
+        dKxdx, _ = core.gradient(diffusion_x, landmask)
+        _, dKydy = core.gradient(diffusion_y, landmask)
         
-        return diffusion, grad_diff_lon, grad_diff_lat
+        return diffusion_x, diffusion_y, dKxdx, dKydy
 
     def start_distribution(self, filepath: str) -> xr.DataArray :
         """Returns the first two time steps of the particles starting
@@ -258,7 +261,6 @@ class IkamoanaFields :
         Note that the starting distribution is given by the
         `start_distribution()` function."""
 
-        #self.feeding_habitat_structure.data_structure.normalizeCoords()
         hf_cond, ssto_cond = (self.ikamoana_fields_structure.landmask_from_habitat,
                               self.ikamoana_fields_structure.shallow_sea_to_ocean)
 
@@ -274,6 +276,9 @@ class IkamoanaFields :
         else :
             self.feeding_habitat=from_habitat
         
+        ## TODO : add possibility to invert latitudinal values (V * -1)
+        u, v = self.current()
+        
         taxis_lon, taxis_lat = self.computeTaxis()
 
         landmask = core.landmask(
@@ -282,34 +287,46 @@ class IkamoanaFields :
             shallow_sea_to_ocean=ssto_cond, lat_min=lat_min, lat_max=lat_max,
             lon_min=lon_min, lon_max=lon_max, field_output=True)
         
-        diffusion, dlon_Diffusion, dlat_Diffusion = self.computeDiffusion(
-            landmask[0], lat_min, lat_max, lon_min, lon_max)
-
-        U, V = self.current()
+        diffusion_x, diffusion_y, dKxdx, dKydy = self.computeDiffusion(
+            landmask[0], lat_min, lat_max, lon_min, lon_max, u, v)
 
         mortality = self.computeMortality(verbose)
         
-        taxis_lon = latitudeDirection(
-            taxis_lon,south_to_north).drop_vars('cohorts')
-        taxis_lat = latitudeDirection(
-            taxis_lat,south_to_north).drop_vars('cohorts')
-        diffusion = latitudeDirection(
-            diffusion,south_to_north).drop_vars('cohorts')
-        dlon_Diffusion = latitudeDirection(
-            dlon_Diffusion,south_to_north).drop_vars('cohorts')
-        dlat_Diffusion = latitudeDirection(
-            dlat_Diffusion,south_to_north).drop_vars('cohorts')
-        U = latitudeDirection(U,south_to_north)
-        V = latitudeDirection(V,south_to_north)
+        feeding_habitat = latitudeDirection(self.feeding_habitat,south_to_north).drop_vars('cohorts')
+        diffusion_x = latitudeDirection(diffusion_x,south_to_north).drop_vars('cohorts')
+        diffusion_y = latitudeDirection(diffusion_y,south_to_north).drop_vars('cohorts')
+        taxis_lon = latitudeDirection(taxis_lon,south_to_north).drop_vars('cohorts')
+        taxis_lat = latitudeDirection(taxis_lat,south_to_north).drop_vars('cohorts')
+        dKxdx = latitudeDirection(dKxdx,south_to_north).drop_vars('cohorts')
+        dKydy = latitudeDirection(dKydy,south_to_north).drop_vars('cohorts')
+        mortality = latitudeDirection(mortality,south_to_north).reindex_like(feeding_habitat)
         landmask = latitudeDirection(landmask,south_to_north)
-        feeding_habitat = latitudeDirection(
-            self.feeding_habitat,south_to_north).drop_vars('cohorts')
-        mortality = latitudeDirection(mortality,south_to_north)
-        mortality = mortality.reindex_like(feeding_habitat)
+        u = latitudeDirection(u,south_to_north)
+        v = latitudeDirection(v,south_to_north)
         
-        return {'Tx':taxis_lon, 'Ty':taxis_lat,
-                'K':diffusion, 'dK_dx':dlon_Diffusion, 'dK_dy':dlat_Diffusion,
-                'U':U, 'V':V, 
-                'H':feeding_habitat, 'landmask':landmask,
-                'mortality':mortality
-        }
+        if self.ikamoana_fields_structure.units == 'nm_per_timestep' :
+            timestep = self.ikamoana_fields_structure.timestep
+            def convertionFunction(field):
+                field = convertToNauticMiles(field, timestep)
+                field.attrs['units'] = "nmi².dt⁻¹"
+                return field
+            
+            # NOTE : since diffusion is in m².s⁻¹, we need to multiply 
+            # it 2 times by the coefficient (~ K * coef²).
+            diffusion_x = convertionFunction(convertionFunction(diffusion_x))
+            diffusion_y = convertionFunction(convertionFunction(diffusion_y))
+            dKxdx = convertionFunction(dKxdx)
+            dKydy = convertionFunction(dKydy)
+            taxis_lon = convertionFunction(taxis_lon)
+            taxis_lat = convertionFunction(taxis_lat)
+            u = convertionFunction(u)
+            v = convertionFunction(v)
+        
+        
+        # TODO : mortality doit etre renommé F
+        return {'H':feeding_habitat, 'landmask':landmask,
+                'Kx':diffusion_x, 'Ky':diffusion_y,
+                'dKx_dx':dKxdx, 'dKy_dy':dKydy,
+                'Tx':taxis_lon, 'Ty':taxis_lat,
+                'mortality':mortality,
+                'U':u, 'V':v}
