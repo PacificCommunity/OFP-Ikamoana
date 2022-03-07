@@ -2,7 +2,7 @@ import numpy as np
 from parcels.particle import JITParticle, ScipyParticle, Variable
 
 class IkaFish(JITParticle):
-        active = Variable("active", to_write=True)
+        active = Variable("active", to_write=False)
         age = Variable('age',dtype=np.float32, to_write=False)
         age_class = Variable('age_class',dtype=np.float32)
         Dx = Variable('Dx', to_write=False, dtype=np.float32)
@@ -30,7 +30,7 @@ class IkaTag(IkaFish):
         region = Variable('region', to_write=True, dtype=np.float32)
         depletionF = Variable('depletionF', to_write=False, dtype=np.float32)
         depletionN = Variable('depletionN', to_write=False, dtype=np.float32)
-        Fmor = Variable('Fmor', to_write=True, dtype=np.float32)
+        Fmor = Variable('Fmor', to_write=False, dtype=np.float32)
         Nmor = Variable('Nmor', to_write=False, dtype=np.float32)
 
         def __init__(self, *args, **kwargs):
@@ -41,3 +41,24 @@ class IkaTag(IkaFish):
             self.active = 1
             self.CapProb = 0
             self.SurvProb = 1
+
+class IkaMix(IkaTag):
+        Mix3CapProb = Variable('Mix3CapProb', to_write=True, dtype=np.float32)
+        Mix6CapProb = Variable('Mix6CapProb', to_write=True, dtype=np.float32)
+        Mix9CapProb = Variable('Mix9CapProb', to_write=True, dtype=np.float32)
+        Mix3SurvProb = Variable('Mix3SurvProb', to_write=False, dtype=np.float32)
+        Mix6SurvProb = Variable('Mix6SurvProb', to_write=False, dtype=np.float32)
+        Mix9SurvProb = Variable('Mix9SurvProb', to_write=False, dtype=np.float32)
+        TAL = Variable('TAL', to_write=True, dtype=np.float32)
+
+        def __init__(self, *args, **kwargs):
+            """Custom initialisation function which calls the base
+            initialisation and adds the instance variable p"""
+            super(IkaMix, self).__init__(*args, **kwargs)
+            self.Dx = self.Dy = self.Cx = self.Cy = self.Vx = self.Vy = self.Ax = self.Ay = 0.
+            self.active = 1
+            self.CapProb = 0
+            self.SurvProb = 1
+            self.Mix3SurvProb = self.Mix9SurvProb = self.Mix9SurvProb = 1
+            self.Mix3CapProb = self.Mix6CapProb = self.Mix9CapProb = 0
+            self.TAL = 0
