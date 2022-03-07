@@ -30,6 +30,8 @@ class IkaSim :
 
 # -------------------------------------------------------------------- #
 
+# TODO : DocString can be used on variables too. It can be useful to
+# fully understand each parameter.
     def _readParams(self, xml_filepath: str) -> dict :
         """Reads the parameters from a XML parameter file and stores
         them in a dictionary."""
@@ -59,13 +61,24 @@ class IkaSim :
         params['start_filestem'] = cohort.find('start_filestem')
         if params['start_filestem'] is not None:
             params['start_filestem'] = params['start_distribution'] + params['start_filestem'].text
+            if "file_extension" in cohort.find('start_filestem').attrib :
+                tmp = cohort.find(
+                    'start_filestem').attrib["file_extension"]
+                if tmp == '' or tmp is None :
+                    params['start_filestem_extension'] = "nc"
+                else :
+                    params['start_filestem_extension'] = tmp
 
         domain = root.find('domain')
 
         time = domain.find('time')
         params['start_time'] = np.datetime64(time.find('start').text)
+        # T in days ?
         params['T'] = int(time.find('sim_time').text)
+        # TODO : Is it a repetition of the SEAPODYM deltaT ?
+        # dt in days before conversion in seconds ?
         params['dt'] = int(time.find('dt').text)*86400
+        # output_dt in days before conversion in seconds ?
         params['output_dt'] = int(time.find('output_dt').text)*86400
 
         params['spatial_lims'] = {
@@ -108,8 +121,8 @@ class IkaSim :
 
 # -------------------------------------------------------------------- #
 
-
-    def generateForcing(self, from_habitat=None, to_file=False):
+# TODO : to_file : None | True | nom_de_run
+    def generateForcing(self, from_habitat: xr.DataArray = None, to_file=False):
 
         data_structure = self.forcing_gen.feeding_habitat_structure.data_structure
         ages = data_structure.findCohortByLength(self.ika_params['start_length'])
@@ -125,44 +138,40 @@ class IkaSim :
         evolve = self.ika_params['ageing_cohort']
 
         self.forcing = self.forcing_gen.computeIkamoanaFields(
-            from_habitat=from_habitat,
-            evolve=evolve,
+            from_habitat=from_habitat, evolve=evolve,
             # NOTE : must select one cohort
-            cohort_start= ages[0],
-            cohort_end= None,
-            time_start=start, time_end=end,
-            lon_min=lonlims[0], lon_max=lonlims[1],
-            lat_min=latlims[1], lat_max=latlims[0],
+            cohort_start=ages[0], cohort_end=None, time_start=start, time_end=end,
+            lon_min=lonlims[0], lon_max=lonlims[1], lat_min=latlims[1], lat_max=latlims[0],
         )
 
+        # TODO : Use latitudeDirection() to ensure that the latitude is
+        # from south to north?
+        #if self.ika_params['start_filestem'] is not None:
+        #    self.start_distribution = self.forcing_gen.start_distribution(
+        #        "{}{}.{}".format(self.ika_params['start_filestem'],
+        #                         self.start_age,
+        #                         self.ika_params['start_filestem_extension']))
 
-
-        # Landmask hasn't the same coordinates as others.
-        self.landmask = self.forcing.pop('landmask')
-
-        # TODO : We will not use Dataset because it shared coordinates
-        # among all DataArray.
-        self.forcing = xr.Dataset(self.forcing)
-
+        # Parcels will need a mapping of dimension coordinate names
+        self.forcing_dims = {'time':'time', 'lat':'lat', 'lon':'lon'}
         self.forcing_vars = dict([(i,i) for i in self.forcing.keys()])
 
 
         if to_file:
             for (var, forcing) in self.forcing.items():
+                forcing.name=var
                 forcing.to_netcdf(
                     path=os.path.join(self.ika_params['forcing_dir'],
                                       self.ika_params['run_name']+'_'+var+'.nc'))
             self.start_distribution.to_netcdf(
                 os.path.join(self.ika_params['forcing_dir'],
                              self.ika_params['run_name']+'_start_distribution.nc'))
-            self.landmask.to_netcdf(
-                os.path.join(self.ika_params['forcing_dir'],
-                             self.ika_params['run_name']+'_landmask.nc'))
-            self.mortality.to_netcdf(
-                os.path.join(self.ika_params['forcing_dir'],
-                             self.ika_params['run_name']+'_mortality.nc'))
 
-    def createFieldSet(self, from_disk: bool = False, variables: dict = None):
+
+# TODO : comment éviter l'utilisation de allow_time_extrapolation=True ?
+    def createFieldSet(
+            self, from_disk: bool = False, variables: dict = None,
+            landmask_interp_methode: str = 'nearest'):
         """[summary]
 
         Parameters
@@ -174,11 +183,14 @@ class IkaSim :
             and `run_name`.
 
             Example :
+                `start_distribution` is optional.
+
                 variables = {
-                    "dK_dx":"<run_name>_dK_dx.nc",
-                    "dK_dy":"<run_name>_dK_dy.nc",
+                    "dKx_dx":"<run_name>_dKx_dx.nc",
+                    "dKy_dy":"<run_name>_dKy_dy.nc",
                     "H":"<run_name>_H.nc",
-                    "K":"<run_name>_K.nc",
+                    "Kx":"<run_name>_Kx.nc",
+                    "Ky":"<run_name>_Ky.nc",
                     "landmask":"<run_name>_landmask.nc",
                     "start_distribution":"<run_name>start_distribution.nc",
                     "Tx":"<run_name>_Tx.nc",
@@ -190,8 +202,15 @@ class IkaSim :
 
         if from_disk:
             if variables is None :
-                list_var = ["dK_dx", "dK_dy", "H", "K", "landmask", "mortality",
-                            "Tx", "Ty", "U", "V"]
+                list_var = ["dKx_dx", "dKy_dy", "H", "Kx", "Ky", "landmask",
+                            "mortality", "Tx", "Ty", "U", "V"]
+                if self.ika_params['start_filestem'] is not None:
+                    self.start_distribution = self.forcing_gen.start_distribution(
+                        "{}{}.{}".format(self.ika_params['start_filestem'],
+                                         self.start_age,
+                                         self.ika_params['start_filestem_extension']))
+
+                    list_var.append("start_distribution")
                 variables = {
                     var: os.path.join(self.ika_params['forcing_dir'],
                                       self.ika_params['run_name']+'_'+var+'.nc')
@@ -199,46 +218,52 @@ class IkaSim :
             else :
                 variables = {k: os.path.join(self.ika_params['forcing_dir'],v)
                             for k, v in variables.items()}
+
+            if self.ika_params['start_filestem'] is not None:
+                self.start_distribution = xr.load_dataarray(
+                    variables.pop("start_distribution"))
+
             self.ocean = prcl.FieldSet.from_netcdf(
-                variables,
-                {k:k for k in variables.keys()},
-                {'time':'time_counter', 'lat':'nav_lat', 'lon':'nav_lon'},
-                allow_time_extrapolation=True
-                )
+                variables, {k:k for k in variables.keys()},
+                {'time':'time', 'lat':'lat', 'lon':'lon'},
+                allow_time_extrapolation=True)
+
         else:
-            self.ocean = prcl.FieldSet.from_xarray_dataset(
-                self.forcing, variables=self.forcing_vars,
-                dimensions=self.forcing_dims, allow_time_extrapolation=True)
+            dict_fields = {}
+            landmask = self.forcing.pop("landmask")
+            for k, v in self.forcing.items() :
+                dict_fields[k] = prcl.Field.from_xarray(
+                    v, k, self.forcing_dims,allow_time_extrapolation=True)
+            self.ocean = prcl.FieldSet(
+                dict_fields.pop('U'), dict_fields.pop('V'), dict_fields)
             self.ocean.add_field(prcl.Field.from_xarray(
-                self.landmask, name='landmask', dimensions=self.forcing_dims,
+                landmask, name='landmask', dimensions=self.forcing_dims,
                 allow_time_extrapolation=True, interp_method='nearest'))
 
-        #Creating the starting distribution should be separate from fieldset init
         if self.ika_params['start_filestem'] is not None:
-            # TODO : Use latitudeDirection to ensure that the latitude is
-            # from south to north?
             self.start_distribution = self.forcing_gen.start_distribution(
-                self.ika_params['start_filestem']+str(self.start_age)+'.dym')
+                "{}{}.{}".format(self.ika_params['start_filestem'],
+                                 self.start_age,
+                                 self.ika_params['start_filestem_extension']))
             self.start_coords = self.start_distribution.coords
             self.start_distribution = prcl.Field.from_xarray(
                 self.start_distribution, name='start_distribution',
-                dimensions=self.forcing_dims, interp_method='nearest')
+                dimensions=self.forcing_dims,
+                interp_method=landmask_interp_methode)
         if self.ika_params['start_cell_lon'] is not None:
             self.start_distribution = self.createStartField(self.ika_params['start_cell_lon'],
                                                             self.ika_params['start_cell_lat'])
 
         #Add necessary field constants
         #(constants easily accessed by particles during kernel execution)
-        data_structure = self.forcing_gen.feeding_habitat_structure.data_structure
+        timestep = self.forcing_gen.ikamoana_fields_structure.timestep
         if 'NaturalMortality' in self.ika_params['kernels']:
             N_params = self._readMortalityXML(self.ika_params['seapodym_file'])
-            self._setConstant('SEAPODYM_dt',
-                              data_structure.parameters_dictionary['deltaT']*24*60*60)
+            self._setConstant('SEAPODYM_dt', timestep)
             for (p, val) in N_params.items():
                 self._setConstant(p, val)
         if 'Age' in self.ika_params['kernels']:
-            self._setConstant('cohort_dt',
-                              data_structure.parameters_dictionary['deltaT']*24*60*60)
+            self._setConstant('cohort_dt', timestep)
 
     def addField(self, field, dims=None):
         self.ocean.add_field(prcl.Field.from_xarray(field, name=field.name,
@@ -379,17 +404,24 @@ class IkaSim :
                       lons-lonwidth, lats-latwidth, D)
 
         Density = Density[np.newaxis,:,:]
-        density_coords = {'time': [np.array(self.ocean.time_origin.fulltime(self.fish.time[0]),dtype=np.datetime64)],
-                          'lat': self.start_coords['lat'].data,
-                          'lon': self.start_coords['lon'].data}
-        PDensity = xr.DataArray(name = "Pdensity",
-                            data = Density,
-
-                            coords = density_coords,
-                            dims=('time','lat','lon'))
+        density_coords = {
+            'time': [np.array(self.ocean.time_origin.fulltime(
+                self.fish.time[0]),dtype=np.datetime64)],
+            'lat': self.start_coords['lat'].data,
+            'lon': self.start_coords['lon'].data}
+        PDensity = xr.DataArray(name = "Pdensity", data = Density,
+                                coords = density_coords, dims=('time','lat','lon'))
         return PDensity
 
-    def runKernels(self, T, pfile_suffix='', verbose=True):
+# TODO : vérifier si une particule dépasse le dernier timestep (WARNING)
+# TODO : T -> valeur par défaut est égale à self.ika_params['T'] * nb sec par jour
+    def runKernels(self, T=None, pfile_suffix='', verbose=True):
+        """`T` in days."""
+
+        if T is None :
+            T = self.ika_params['T']
+        T *= 86400 # converted to seconds
+
         pfile = self.fish.ParticleFile(
             name=self.ika_params['run_name']+pfile_suffix+'.nc',
             outputdt=self.ika_params['output_dt'])
@@ -408,6 +440,5 @@ class IkaSim :
 
         self.fish.execute(
             run_kernels, runtime=T, dt=self.ika_params['dt'], output_file=pfile,
-            recovery={
-                prcl.ErrorCode.ErrorOutOfBounds:behaviours.KillFish},
+            recovery={prcl.ErrorCode.ErrorOutOfBounds:behaviours.KillFish},
             verbose_progress=verbose)

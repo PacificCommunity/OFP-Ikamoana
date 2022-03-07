@@ -54,6 +54,17 @@ class TestLandmaskMethod(unittest.TestCase) :
             data_structure, dataarray_3d_landmask_habitat, field_output=False,
             use_SEAPODYM_global_mask=False, shallow_sea_to_ocean=True)
         self.assertTrue(not False in (res_landmask.data == res_shallow_habitat))
+    
+    def test_habitat_field_output(self):
+        FHStructure = namedtuple('FHStructure', ['variables_dictionary'])
+        variables_dictionary = {'forage_lmeso':array_3d_landmask_forage_lmeso}
+        data_structure = FHStructure(variables_dictionary)
+        res_landmask = landmask(
+            data_structure, dataarray_3d_landmask_habitat, field_output=True,
+            use_SEAPODYM_global_mask=False, shallow_sea_to_ocean=False)
+        self.assertTupleEqual(res_landmask.shape,
+                              dataarray_3d_landmask_habitat.shape)
+        self.assertTrue(not False in (res_landmask.data == res_no_shallow_habitat))
 
 if __name__ == '__main__' :
     unittest.main()

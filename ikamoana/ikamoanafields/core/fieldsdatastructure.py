@@ -61,7 +61,9 @@ class IkamoanaFieldsDataStructure :
         self.sig_scale=float(tagReading(root,['forcing','sig_scale'],1))
         self.c_scale=float(tagReading(root,['forcing','c_scale'],1))
         self.taxis_scale=float(tagReading(root,['forcing','taxis_scale'],1))
+        
         self.units=tagReading(root,['forcing','units'],'m_per_s')
+        """only `m_per_s` and `nm_per_timestep` are supported"""
         
         tmp = tagReading(root,['forcing','shallow_sea_to_ocean'], 'False')
         self.shallow_sea_to_ocean = (tmp == 'True') or (tmp == 'true')
@@ -79,6 +81,11 @@ class IkamoanaFieldsDataStructure :
         self.indonesian_filter = (tmp == 'True') or (tmp == 'true')
         """Apply the indonesian filter.
         See Also : FeedingHabitat.indonesianFilter()"""
+        
+        tmp = tagReading(root,['forcing','vertical_movement'], 'False')
+        self.vertical_movement = (tmp == 'True') or (tmp == 'true')
+        """Correction of rho by passive advection. Maybe temporary."""
+        
 
     def _readMortality(self, root: ET.Element) :
         iter_fisheries = root.find("mortality").find(

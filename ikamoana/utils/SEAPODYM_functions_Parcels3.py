@@ -331,7 +331,10 @@ def Create_SEAPODYM_Diffusion_Field(H, length_classes, timestep=30*24*60*60, sig
             print('age in days = %s' % (age/(24*60*60)))
             print("Calculating diffusivity for fish aged %s age_classes" % age_class)
         if units == 'nm_per_timestep':
-            Dmax = (np.power(GetLengthFromAge(age_class, length_classes)*((timestep)/1852), 2) / 4 ) * timestep/(timestep) #vmax = L for diffusion
+            Dmax = ((np.power(GetLengthFromAge(age_class, length_classes)
+                             * (timestep / 1852), 2)
+                    / 4 )
+                    * timestep / timestep) #vmax = L for diffusion
         else:
             Dmax = (np.power(GetLengthFromAge(age_class, length_classes), 2) / 4) * timestep
         if verbose :
