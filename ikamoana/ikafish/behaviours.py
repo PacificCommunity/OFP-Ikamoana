@@ -135,17 +135,17 @@ def TaxisRK4(particle, fieldset, time):
     v1 = fieldset.Ty[time, particle.depth, particle.lat, particle.lon]
     lon1 = particle.lon + u1*.5
     lat1 = particle.lat + v1*.5
-    
+
     u2 = fieldset.Tx[time + .5 * particle.dt, particle.depth, lat1, lon1]
     v2 = fieldset.Ty[time + .5 * particle.dt, particle.depth, lat1, lon1]
     lon2 = particle.lon + u2*.5
     lat2 = particle.lat + v2*.5
-    
+
     u3 = fieldset.Tx[time + .5 * particle.dt, particle.depth, lat2, lon2]
     v3 = fieldset.Ty[time + .5 * particle.dt, particle.depth, lat2, lon2]
     lon3 = particle.lon + u3
     lat3 = particle.lat + v3
-    
+
     u4 = fieldset.Tx[time + particle.dt, particle.depth, lat3, lon3]
     v4 = fieldset.Ty[time + particle.dt, particle.depth, lat3, lon3]
     particle.Tx = (u1 + 2*u2 + 2*u3 + u4) / 6. * f_lon
@@ -178,15 +178,14 @@ def RandomWalkNonUniformDiffusion(particle, fieldset, time):
 ######################## Mortality Kernels #########################
 
 def FishingMortality(particle, fieldset, time):
-    Fmor = fieldset.F[time, particle.depth, particle.lat, particle.lon]
+    Fmor = fieldset.F[time, particle.depth, particle.lat, particle.lon]/fieldset.SEAPODYM_dt
     particle.Fmor = Fmor
 
 def NaturalMortality(particle, fieldset, time):
-    Mnat = (fieldset.MPmax * math.exp(-fieldset.MPexp*particle.age_class)
-            + fieldset.MSmax * math.pow(particle.age_class, fieldset.MSslope))
-    Mvar = Mnat * math.pow(1 - fieldset.Mrange,
-                           1 - fieldset.H[time, particle.depth, particle.lat, particle.lon] / 2)
-    Nmor = Mvar * (particle.dt / fieldset.SEAPODYM_dt)
+    Mnat = fieldset.MPmax*math.exp(-fieldset.MPexp*particle.age_class) + fieldset.MSmax*math.pow(particle.age_class, fieldset.MSslope)
+    Mvar = Mnat * math.pow(1 - fieldset.Mrange, 1-fieldset.H[time, particle.depth, particle.lat, particle.lon]/2)
+    #Nmor = (Mvar * (particle.dt / fieldset.SEAPODYM_dt))
+    Nmor = Mvar/fieldset.SEAPODYM_dt
     particle.Nmor = Nmor
 
 def UpdateSurvivalProbNOnly(particle, fieldset, time):
@@ -195,12 +194,34 @@ def UpdateSurvivalProbNOnly(particle, fieldset, time):
     particle.SurvProb -= depletion
 
 def UpdateSurvivalProb(particle, fieldset, time):
-    depletion = particle.SurvProb - particle.SurvProb * math.exp(-(Fmor + Nmor))
-    particle.depletionF = depletion*Fmor / (Fmor+Nmor)
-    particle.depletionN = depletion*Nmor / (Fmor+Nmor)
+    Zint = math.exp(-(Fmor + Nmor)*particle.dt)
+    depletion = particle.SurvProb - particle.SurvProb * Zint
+    particle.depletionF = depletion*Fmor/(Fmor+Nmor)
+    particle.depletionN = depletion*Nmor/(Fmor+Nmor)
     particle.SurvProb -= depletion
     particle.CapProb += particle.depletionF
 
+def UpdateMixingPeriod(particle, fieldset, time):
+    particle.TAL += particle.dt
+    if particle.TAL > 90*86400:
+        depletion = particle.Mix3SurvProb - particle.Mix3SurvProb * Zint
+        depF = depletion*Fmor/(Fmor+Nmor)
+        particle.Mix3SurvProb -= depletion
+        particle.Mix3CapProb += depF
+    if particle.TAL > 180*86400:
+        depletion = particle.Mix6SurvProb - particle.Mix6SurvProb * Zint
+        depF = depletion*Fmor/(Fmor+Nmor)
+        particle.Mix6SurvProb -= depletion
+        particle.Mix6CapProb += depF
+    if particle.TAL > 270*86400:
+        depletion = particle.Mix9SurvProb - particle.Mix9SurvProb * Zint
+        depF = depletion*Fmor/(Fmor+Nmor)
+        particle.Mix9SurvProb -= depletion
+        particle.Mix9CapProb += depF
+
+###################### Field sampling kernels ########################
+def getRegion(particle, fieldset, time):
+    particle.region = fieldset.region[time, particle.depth, particle.lat, particle.lon]
 
 ###################### Internal state kernels ########################
 
@@ -223,6 +244,8 @@ AllKernels = {'IkaDymMove':IkaDymMove,
               'NaturalMortality':NaturalMortality,
               'UpdateSurvivalProbNOnly':UpdateSurvivalProbNOnly,
               'UpdateSurvivalProb':UpdateSurvivalProb,
+              'UpdateMixingPeriod':UpdateMixingPeriod,
+              'getRegion':getRegion,
               'Age':Age,
               'MoveSouth':MoveSouth,
               'LandBlock':LandBlock}

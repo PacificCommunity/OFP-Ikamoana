@@ -16,7 +16,7 @@ class IkaSim :
 
         self.ika_params = self._readParams(xml_filepath=xml_parameterfile)
         self.forcing_gen = ika.ikamoanafields.IkamoanaFields(IKAMOANA_config_filepath=xml_parameterfile,
-                                                             SEAPODYM_config_filepath=self.ika_params['seapodym_file'])
+                                                             SEAPODYM_config_filepath=self.ika_params['SEAPODYM_file'])
 
         if self.ika_params['random_seed'] is None:
             np.random.RandomState()
@@ -39,18 +39,18 @@ class IkaSim :
         if params['random_seed'] == 'None':
             params['random_seed'] = None
 
-        
+
         params['SEAPODYM_file'] = root.find('seapodym_parameters').text
         params['forcing_dir'] = root.find('forcing_dir').text
-    
+
         cohort = root.find('cohort_info')
         params['start_length'] = float(cohort.attrib['length'])
         params['ageing_cohort'] = int(cohort.attrib['ageing']) == 1
         params['start_filestem'] = (
             params['forcing_dir']
             + cohort.attrib['start_filestem'] if 'start_filestem' in cohort.attrib else None)
-        
-        
+
+
         time = root.find('time')
         params['start_time'] = np.datetime64(time.attrib['start'])
         params['T'] = int(time.attrib['sim_time'])
@@ -64,7 +64,7 @@ class IkaSim :
         }
 
         params['kernels'] = root.find('kernels').text.split()
-    
+
         return params
 
     def _setConstant(self, name, val):
@@ -144,6 +144,9 @@ class IkaSim :
                 self.start_dist = prcl.Field.from_xarray(
                     self.start_dist, name='start_dist',
                     dimensions=self.forcing_dims, interp_method='nearest')
+            if self.ika_params['start_cell_lon'] is not None:
+                self.start_dist = self.createStartField(self.ika_params['start_cell_lon'],
+                                                        self.ika_params['start_cell_lat'])
 
         # Add necessary field constants
         # (constants easily accessed by particles during kernel execution)
@@ -168,7 +171,7 @@ class IkaSim :
             self.fish = prcl.ParticleSet.from_list(
                 fieldset=self.ocean, lon=start[0],
                 time=self.ika_params['start_time'], lat=start[1], pclass=pclass)
-        else:
+        else: # we will distribute according to a start field distribution
             if self.start_dist is None :
                 raise ValueError('No starting distribution field in ocean fieldset!')
             plon, plat = self.startDistPositions(n_fish)
@@ -190,6 +193,31 @@ class IkaSim :
             self.fish[f].age = self.start_age*cohort_dt
 
         self._setConstant('cohort_dt', cohort_dt)
+
+    def createStartField(self, lon, lat, grid_lon=None, grid_lat=None):
+        #Function to create a particle starting distribution around
+        #a given cell vertex at a particular resolution
+        if grid_lon is None:
+            grid_lon = self.ocean.U.grid.lon
+        if grid_lat is None:
+            grid_lat = self.ocean.U.grid.lat
+        start = np.zeros([len(grid_lat), len(grid_lon)],dtype=np.float32)
+        coords = {'time': [self.ika_params['start_time']],
+                  'lat': grid_lat,
+                  'lon': grid_lon}
+        start_dist = xr.DataArray(name = "start",
+                            data = start[np.newaxis,:,:],
+                            coords = coords,
+                            dims=('time','lat','lon'))
+        self.start_coords = start_dist.coords #For density calculation later
+        start_dist = prcl.Field.from_xarray(start_dist, name='start_dist',
+                                            dimensions=self.forcing_dims,
+                                            interp_method='nearest')
+        latidx = np.argmin(np.abs(start_dist.lat-lat))
+        lonidx = np.argmin(np.abs(start_dist.lon-lon))
+        start_dist.data[:,latidx,lonidx] = 1
+        return start_dist
+
 
     def startDistPositions(self, N, area_scale=True):
 
@@ -284,3 +312,48 @@ class IkaSim :
                 prcl.ErrorCode.ErrorOutOfBounds:ika.ikafish.behaviours.KillFish},
             verbose_progress=verbose)
 
+    def _readParams(self, xml_filepath: str) -> dict :
+        """Reads the parameters from a XML parameter file and stores
+        them in a dictionary."""
+
+        tree = ET.parse(xml_filepath)
+        root = tree.getroot()
+        params = {}
+
+        params['run_name'] = root.find('run_name').text
+        params['SEAPODYM_file'] = root.find('seapodym_parameters').text
+        params['forcing_dir'] = root.find('forcing_dir').text
+        params['random_seed'] = root.find('random_seed').text
+        if params['random_seed'] == 'None':
+            params['random_seed'] = None
+
+        cohort = root.find('cohort_info')
+        params['start_length'] = float(cohort.attrib['length'])
+        #params['ageing_cohort'] = True if int(cohort.attrib['ageing']) == 1 else False
+        # NOTE : Is equivalent to
+        params['ageing_cohort'] = int(cohort.attrib['ageing']) == 1
+        params['start_cell_lon'] = float(cohort.attrib['start_cell_lon'])
+        params['start_cell_lat'] = float(cohort.attrib['start_cell_lat'])
+        params['start_filestem'] = (
+            params['forcing_dir']
+            + cohort.attrib['start_filestem'] if 'start_filestem' in cohort.attrib else None)
+
+        time = root.find('time')
+        params['start_time'] = np.datetime64(time.attrib['start'])
+        params['T'] = int(time.attrib['sim_time'])
+        params['dt'] = int(time.attrib['dt'])*86400
+        params['output_dt'] = int(time.attrib['output_dt'])*86400
+
+        domain = root.find('domain')
+        params['spatial_lims'] = {
+            # 'lonlim': np.float32([domain.find('lon').text.split()[0],
+            #                       domain.find('lon').text.split()[1]]),
+            # 'latlim': np.float32([domain.find('lat').text.split()[0],
+            #                       domain.find('lat').text.split()[1]])}
+            # NOTE : Is equivalent to
+            'lonlim': np.float32(domain.find('lon').text.split())[:2],
+            'latlim': np.float32(domain.find('lat').text.split())[:2],
+        }
+
+        params['kernels'] = root.find('kernels').text.split()
+        return params

@@ -16,6 +16,11 @@ class IkaSim :
 
         self.ika_params = self._readParams(xml_filepath=xml_parameterfile)
         self.forcing_gen = IkamoanaFields(xml_parameterfile)
+        ## A few key class variables that are required throughout
+        # Parcels will need a mapping of dimension coordinate names
+        self.forcing_dims = {'time':'time', 'lat':'lat', 'lon':'lon'}
+        ages = self.forcing_gen.feeding_habitat_structure.data_structure.findCohortByLength(self.ika_params['start_length'])
+        self.start_age = ages[0]
 
         if self.ika_params['random_seed'] is None:
             np.random.RandomState()
@@ -39,7 +44,7 @@ class IkaSim :
         params['random_seed'] = root.find('random_seed').text
         if params['random_seed'] == '':
             params['random_seed'] = None
-        
+
         directories = root.find('directories')
         params['start_distribution'] = directories.find('start_distribution').text
         params['seapodym_file'] = directories.find('seapodym_file').text
@@ -49,19 +54,23 @@ class IkaSim :
         params['start_length'] = float(cohort.find('start_length').text)
         tmp = cohort.find('ageing').text
         params['ageing_cohort'] = (tmp == 'True') or (tmp == 'true')
-        params['start_filestem'] = (params['start_distribution']
-                                    + cohort.find('start_filestem').text)
-        
-        if "file_extension" in cohort.find('start_filestem').attrib :
-            tmp = cohort.find(
-                'start_filestem').attrib["file_extension"]
-            if tmp == '' or tmp is None :
-                params['start_filestem_extension'] = "nc"
-            else :
-                params['start_filestem_extension'] = tmp
+        params['start_cell_lon'] = cohort.find('start_cell_lon')
+        if params['start_cell_lon'] is not None:
+            params['start_cell_lon'] = float(params['start_cell_lon'].text)
+            params['start_cell_lat'] = float(cohort.find('start_cell_lat').text)
+        params['start_filestem'] = cohort.find('start_filestem')
+        if params['start_filestem'] is not None:
+            params['start_filestem'] = params['start_distribution'] + params['start_filestem'].text
+            if "file_extension" in cohort.find('start_filestem').attrib :
+                tmp = cohort.find(
+                    'start_filestem').attrib["file_extension"]
+                if tmp == '' or tmp is None :
+                    params['start_filestem_extension'] = "nc"
+                else :
+                    params['start_filestem_extension'] = tmp
 
         domain = root.find('domain')
-        
+
         time = domain.find('time')
         params['start_time'] = np.datetime64(time.find('start').text)
         # T in days ?
@@ -80,7 +89,7 @@ class IkaSim :
         }
 
         params['kernels'] = [i.text for i in root.find('kernels').findall('kernel')]
-        
+
         return params
 
     def _readMortalityXML(
@@ -93,12 +102,19 @@ class IkaSim :
         root = tree.getroot()
         if species_name == None :
             species_name = root.find("sp_name").text
-            
-        return {'MPmax': float(root.find('Mp_mean_max').attrib[species_name]),
-                'MPexp': float(root.find('Mp_mean_exp').attrib[species_name]),
-                'MSmax': float(root.find('Ms_mean_max').attrib[species_name]),
-                'MSslope': float(root.find('Ms_mean_max').attrib[species_name]),
-                'Mrange': float(root.find('Ms_mean_max').attrib[species_name])}
+
+        n_param = {'MPmax': float(root.find(
+                                  'Mp_mean_max').attrib[species_name]),
+                   'MPexp': float(root.find(
+                                  'Mp_mean_exp').attrib[species_name]),
+                   'MSmax': float(root.find(
+                                  'Ms_mean_max').attrib[species_name]),
+                   'MSslope': float(root.find(
+                                    'Ms_mean_slope').attrib[species_name]),
+                   'Mrange': float(root.find(
+                                    'M_mean_range').attrib[species_name])}
+
+        return n_param
 
     def _setConstant(self, name, val):
         self.ocean.add_constant(name, val)
@@ -113,7 +129,6 @@ class IkaSim :
         start = data_structure.findIndexByDatetime(self.ika_params['start_time'])[0]
         end = data_structure.findIndexByDatetime(
             self.ika_params['start_time']+ self.ika_params['T'])[0]
-        self.start_age = ages[0]
         lonlims = self.ika_params['spatial_lims']['lonlim']
         lonlims = data_structure.findCoordIndexByValue(lonlims, coord='lon')
         lonlims = np.int32(lonlims)
@@ -131,16 +146,16 @@ class IkaSim :
 
         # TODO : Use latitudeDirection() to ensure that the latitude is
         # from south to north?
-        if self.ika_params['start_filestem'] is not None:
-            self.start_distribution = self.forcing_gen.start_distribution(
-                "{}{}.{}".format(self.ika_params['start_filestem'],
-                                 self.start_age,
-                                 self.ika_params['start_filestem_extension']))
+        #if self.ika_params['start_filestem'] is not None:
+        #    self.start_distribution = self.forcing_gen.start_distribution(
+        #        "{}{}.{}".format(self.ika_params['start_filestem'],
+        #                         self.start_age,
+        #                         self.ika_params['start_filestem_extension']))
 
         # Parcels will need a mapping of dimension coordinate names
         self.forcing_dims = {'time':'time', 'lat':'lat', 'lon':'lon'}
         self.forcing_vars = dict([(i,i) for i in self.forcing.keys()])
-        
+
 
         if to_file:
             for (var, forcing) in self.forcing.items():
@@ -166,10 +181,10 @@ class IkaSim :
         variables : dict, optional
             If None, names are automaticly created using `forcing_dir`
             and `run_name`.
-            
-            Example : 
+
+            Example :
                 `start_distribution` is optional.
-                
+
                 variables = {
                     "dKx_dx":"<run_name>_dKx_dx.nc",
                     "dKy_dy":"<run_name>_dKy_dy.nc",
@@ -190,6 +205,11 @@ class IkaSim :
                 list_var = ["dKx_dx", "dKy_dy", "H", "Kx", "Ky", "landmask",
                             "mortality", "Tx", "Ty", "U", "V"]
                 if self.ika_params['start_filestem'] is not None:
+                    self.start_distribution = self.forcing_gen.start_distribution(
+                        "{}{}.{}".format(self.ika_params['start_filestem'],
+                                         self.start_age,
+                                         self.ika_params['start_filestem_extension']))
+
                     list_var.append("start_distribution")
                 variables = {
                     var: os.path.join(self.ika_params['forcing_dir'],
@@ -198,7 +218,7 @@ class IkaSim :
             else :
                 variables = {k: os.path.join(self.ika_params['forcing_dir'],v)
                             for k, v in variables.items()}
-                
+
             if self.ika_params['start_filestem'] is not None:
                 self.start_distribution = xr.load_dataarray(
                     variables.pop("start_distribution"))
@@ -207,7 +227,7 @@ class IkaSim :
                 variables, {k:k for k in variables.keys()},
                 {'time':'time', 'lat':'lat', 'lon':'lon'},
                 allow_time_extrapolation=True)
-            
+
         else:
             dict_fields = {}
             landmask = self.forcing.pop("landmask")
@@ -219,13 +239,20 @@ class IkaSim :
             self.ocean.add_field(prcl.Field.from_xarray(
                 landmask, name='landmask', dimensions=self.forcing_dims,
                 allow_time_extrapolation=True, interp_method='nearest'))
-            
+
         if self.ika_params['start_filestem'] is not None:
+            self.start_distribution = self.forcing_gen.start_distribution(
+                "{}{}.{}".format(self.ika_params['start_filestem'],
+                                 self.start_age,
+                                 self.ika_params['start_filestem_extension']))
             self.start_coords = self.start_distribution.coords
             self.start_distribution = prcl.Field.from_xarray(
                 self.start_distribution, name='start_distribution',
                 dimensions=self.forcing_dims,
                 interp_method=landmask_interp_methode)
+        if self.ika_params['start_cell_lon'] is not None:
+            self.start_distribution = self.createStartField(self.ika_params['start_cell_lon'],
+                                                            self.ika_params['start_cell_lat'])
 
         #Add necessary field constants
         #(constants easily accessed by particles during kernel execution)
@@ -237,6 +264,12 @@ class IkaSim :
                 self._setConstant(p, val)
         if 'Age' in self.ika_params['kernels']:
             self._setConstant('cohort_dt', timestep)
+
+    def addField(self, field, dims=None):
+        self.ocean.add_field(prcl.Field.from_xarray(field, name=field.name,
+                                                   dimensions=self.forcing_dims if dims is None else dims,
+                                                   allow_time_extrapolation=True,
+                                                   interp_method='nearest'))
 
     def initialiseFishParticles(
             self, start, n_fish=10, pclass:prcl.JITParticle=prcl.JITParticle):
@@ -262,13 +295,38 @@ class IkaSim :
 
         #Initialise fish
         cohort_dt = self.forcing_gen.feeding_habitat_structure.data_structure.\
-            species_dictionary['cohorts_sp_unit'][0]
+            species_dictionary['cohorts_sp_unit'][0] * 86400
 
         for f in range(len(self.fish)):
             self.fish[f].age_class = self.start_age
             self.fish[f].age = self.start_age*cohort_dt
+            self.fish[f].SurvProb = self.fish[f].Mix3SurvProb = self.fish[f].Mix6SurvProb = self.fish[f].Mix9SurvProb = 1
 
         self._setConstant('cohort_dt', cohort_dt)
+
+    def createStartField(self, lon, lat, grid_lon=None, grid_lat=None):
+        #Function to create a particle starting distribution around
+        #a given cell vertex at a particular resolution
+        if grid_lon is None:
+            grid_lon = self.ocean.U.grid.lon
+        if grid_lat is None:
+            grid_lat = self.ocean.U.grid.lat
+        start = np.zeros([len(grid_lat), len(grid_lon)],dtype=np.float32)
+        coords = {'time': [self.ika_params['start_time']],
+                  'lat': grid_lat,
+                  'lon': grid_lon}
+        start_dist = xr.DataArray(name = "start",
+                            data = start[np.newaxis,:,:],
+                            coords = coords,
+                            dims=('time','lat','lon'))
+        self.start_coords = start_dist.coords #For density calculation later
+        start_dist = prcl.Field.from_xarray(start_dist, name='start_dist',
+                                            dimensions=self.forcing_dims,
+                                            interp_method='nearest')
+        latidx = np.argmin(np.abs(start_dist.lat-lat))
+        lonidx = np.argmin(np.abs(start_dist.lon-lon))
+        start_dist.data[:,latidx,lonidx] = 1
+        return start_dist
 
     def startDistPositions(self, N, area_scale=True):
         """Simple function returning random particle start positions using
@@ -277,14 +335,14 @@ class IkaSim :
 
         # TODO : verify that this is a the desired behaviour
         self.start_distribution.data = self.start_distribution.data[0,:,:]
-        
+
         data = self.start_distribution.data
         grid = self.start_distribution.grid
-        
+
         #Assuming regular grid
         lonwidth = (grid.lon[1] - grid.lon[0]) / 2
         latwidth = (grid.lat[1] - grid.lat[0]) / 2
-        
+
         # For distributions from a density on a spherical grid, we need to
         # rescale to a flat mesh
         def cell_area(lat,dx,dy):
@@ -309,9 +367,9 @@ class IkaSim :
         p = np.reshape(data, (1, data.size))
         inds = np.random.choice(data.size, N, replace=True, p=p[0] / np.sum(p))
         lat, lon = np.unravel_index(inds, data.shape)
-        lon = self.ocean.U.grid.lon[lon]
-        lat = self.ocean.U.grid.lat[lat]
-        
+        lon = grid.lon[lon]#self.ocean.U.grid.lon[lon]
+        lat = grid.lat[lat]#self.ocean.U.grid.lat[lat]
+
         for i in range(lon.size):
             lon[i] = add_jitter(lon[i], lonwidth, grid.lon[0], grid.lon[-1])
             lat[i] = add_jitter(lat[i], latwidth, grid.lat[0], grid.lat[-1])
@@ -323,9 +381,12 @@ class IkaSim :
         the same grid resolution given by the start field coordinates.
         Method replicates Seapodym biomass density ouputs, returning as
         an xarray dataarray"""
-        
+
         lons = self.start_distribution.grid.lon
         lats = self.start_distribution.grid.lat
+        #Assuming regular grid
+        lonwidth = (lons[1] - lons[0]) / 2
+        latwidth = (lats[1] - lats[0]) / 2
         #this is very slow with using JIT to compile to C
         @jit(nopython=True)
         def calc_D(lons, lats, grid_lon, grid_lat, D):
@@ -340,7 +401,7 @@ class IkaSim :
         D = np.zeros((len(lats), len(lons)))
         Density = calc_D(np.array([f.lon for f in self.fish]),
                       np.array([f.lat for f in self.fish]),
-                      lons-1, lats-1, D)
+                      lons-lonwidth, lats-latwidth, D)
 
         Density = Density[np.newaxis,:,:]
         density_coords = {
@@ -348,7 +409,7 @@ class IkaSim :
                 self.fish.time[0]),dtype=np.datetime64)],
             'lat': self.start_coords['lat'].data,
             'lon': self.start_coords['lon'].data}
-        PDensity = xr.DataArray(name = "Pdensity", data = Density, 
+        PDensity = xr.DataArray(name = "Pdensity", data = Density,
                                 coords = density_coords, dims=('time','lat','lon'))
         return PDensity
 
@@ -356,17 +417,22 @@ class IkaSim :
 # TODO : T -> valeur par défaut est égale à self.ika_params['T'] * nb sec par jour
     def runKernels(self, T=None, pfile_suffix='', verbose=True):
         """`T` in days."""
-        
+
         if T is None :
             T = self.ika_params['T']
         T *= 86400 # converted to seconds
-        
+
         pfile = self.fish.ParticleFile(
             name=self.ika_params['run_name']+pfile_suffix+'.nc',
             outputdt=self.ika_params['output_dt'])
 
         Behaviours = [self.fish.Kernel(behaviours.AllKernels[b])
                       for b in self.ika_params['kernels']]
+
+        # Run an initial field sampling kernel loop
+        if 'getRegion' in self.ika_params['kernels']:
+            self.fish.execute(self.fish.Kernel(behaviours.getRegion),
+                              dt=0)
 
         KernelString = ''.join(
             [('Behaviours[{}]+').format(i) for i in range(len(Behaviours))])
@@ -376,6 +442,3 @@ class IkaSim :
             run_kernels, runtime=T, dt=self.ika_params['dt'], output_file=pfile,
             recovery={prcl.ErrorCode.ErrorOutOfBounds:behaviours.KillFish},
             verbose_progress=verbose)
-
-
-
