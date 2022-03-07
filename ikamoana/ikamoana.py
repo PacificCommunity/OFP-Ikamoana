@@ -119,6 +119,17 @@ class IkaSim :
     def _setConstant(self, name, val):
         self.ocean.add_constant(name, val)
 
+    def _addField(
+            self, field, dims=None, name=None, time_extra=True,
+            interp_method='nearest'):
+        """Add a field to the self ocean attribut."""
+        
+        self.ocean.add_field(prcl.Field.from_xarray(
+            field, name=field.name if name is None else name,
+            dimensions=self.forcing_dims if dims is None else dims,
+            allow_time_extrapolation=time_extra,
+            interp_method=interp_method))
+
 # -------------------------------------------------------------------- #
 
 # TODO : to_file : None | True | nom_de_run
@@ -146,11 +157,11 @@ class IkaSim :
 
         # TODO : Use latitudeDirection() to ensure that the latitude is
         # from south to north?
-        #if self.ika_params['start_filestem'] is not None:
-        #    self.start_distribution = self.forcing_gen.start_distribution(
-        #        "{}{}.{}".format(self.ika_params['start_filestem'],
-        #                         self.start_age,
-        #                         self.ika_params['start_filestem_extension']))
+        if self.ika_params['start_filestem'] is not None:
+           self.start_distribution = self.forcing_gen.start_distribution(
+               "{}{}.{}".format(self.ika_params['start_filestem'],
+                                self.start_age,
+                                self.ika_params['start_filestem_extension']))
 
         # Parcels will need a mapping of dimension coordinate names
         self.forcing_dims = {'time':'time', 'lat':'lat', 'lon':'lon'}
@@ -235,10 +246,9 @@ class IkaSim :
                 dict_fields[k] = prcl.Field.from_xarray(
                     v, k, self.forcing_dims,allow_time_extrapolation=True)
             self.ocean = prcl.FieldSet(
-                dict_fields.pop('U'), dict_fields.pop('V'), dict_fields)
-            self.ocean.add_field(prcl.Field.from_xarray(
-                landmask, name='landmask', dimensions=self.forcing_dims,
-                allow_time_extrapolation=True, interp_method='nearest'))
+                dict_fields.pop('U'), dict_fields.pop('V'), dict_fields) 
+            self._addField(landmask,name='landmask',
+                          interp_method=landmask_interp_methode)
 
         if self.ika_params['start_filestem'] is not None:
             self.start_distribution = self.forcing_gen.start_distribution(
@@ -248,11 +258,10 @@ class IkaSim :
             self.start_coords = self.start_distribution.coords
             self.start_distribution = prcl.Field.from_xarray(
                 self.start_distribution, name='start_distribution',
-                dimensions=self.forcing_dims,
-                interp_method=landmask_interp_methode)
+                dimensions=self.forcing_dims)
         if self.ika_params['start_cell_lon'] is not None:
-            self.start_distribution = self.createStartField(self.ika_params['start_cell_lon'],
-                                                            self.ika_params['start_cell_lat'])
+            self.start_distribution = self.createStartField(
+                self.ika_params['start_cell_lon'], self.ika_params['start_cell_lat'])
 
         #Add necessary field constants
         #(constants easily accessed by particles during kernel execution)
@@ -264,69 +273,6 @@ class IkaSim :
                 self._setConstant(p, val)
         if 'Age' in self.ika_params['kernels']:
             self._setConstant('cohort_dt', timestep)
-
-    def addField(self, field, dims=None):
-        self.ocean.add_field(prcl.Field.from_xarray(field, name=field.name,
-                                                   dimensions=self.forcing_dims if dims is None else dims,
-                                                   allow_time_extrapolation=True,
-                                                   interp_method='nearest'))
-
-    def initialiseFishParticles(
-            self, start, n_fish=10, pclass:prcl.JITParticle=prcl.JITParticle):
-
-        if isinstance(start, np.ndarray) :
-            if start.shape[1] != n_fish :
-                raise ValueError('Number of fish and provided initial positions'
-                                 ' not equal!')
-            self.fish = prcl.ParticleSet.from_list(
-                fieldset=self.ocean, lon=start[0],
-                time=self.ika_params['start_time'], lat=start[1], pclass=pclass)
-        else:
-            if self.start_distribution is None :
-                raise ValueError('No starting distribution field in ocean fieldset!')
-            plon, plat = self.startDistPositions(n_fish)
-            self.fish = prcl.ParticleSet.from_list(
-                fieldset=self.ocean, lon=plon,
-                time=self.ika_params['start_time'], lat=plat, pclass=pclass)
-            # NOTE : previous method created interpolation errors
-            # self.fish = prcl.ParticleSet.from_field(
-            #     fieldset=self.ocean, start_field=self.start_dist,
-            #     time=self.ika_params['start_time'], size=n_fish, pclass=pclass)
-
-        #Initialise fish
-        cohort_dt = self.forcing_gen.feeding_habitat_structure.data_structure.\
-            species_dictionary['cohorts_sp_unit'][0] * 86400
-
-        for f in range(len(self.fish)):
-            self.fish[f].age_class = self.start_age
-            self.fish[f].age = self.start_age*cohort_dt
-            self.fish[f].SurvProb = self.fish[f].Mix3SurvProb = self.fish[f].Mix6SurvProb = self.fish[f].Mix9SurvProb = 1
-
-        self._setConstant('cohort_dt', cohort_dt)
-
-    def createStartField(self, lon, lat, grid_lon=None, grid_lat=None):
-        #Function to create a particle starting distribution around
-        #a given cell vertex at a particular resolution
-        if grid_lon is None:
-            grid_lon = self.ocean.U.grid.lon
-        if grid_lat is None:
-            grid_lat = self.ocean.U.grid.lat
-        start = np.zeros([len(grid_lat), len(grid_lon)],dtype=np.float32)
-        coords = {'time': [self.ika_params['start_time']],
-                  'lat': grid_lat,
-                  'lon': grid_lon}
-        start_dist = xr.DataArray(name = "start",
-                            data = start[np.newaxis,:,:],
-                            coords = coords,
-                            dims=('time','lat','lon'))
-        self.start_coords = start_dist.coords #For density calculation later
-        start_dist = prcl.Field.from_xarray(start_dist, name='start_dist',
-                                            dimensions=self.forcing_dims,
-                                            interp_method='nearest')
-        latidx = np.argmin(np.abs(start_dist.lat-lat))
-        lonidx = np.argmin(np.abs(start_dist.lon-lon))
-        start_dist.data[:,latidx,lonidx] = 1
-        return start_dist
 
     def startDistPositions(self, N, area_scale=True):
         """Simple function returning random particle start positions using
@@ -375,6 +321,76 @@ class IkaSim :
             lat[i] = add_jitter(lat[i], latwidth, grid.lat[0], grid.lat[-1])
 
         return lon, lat
+
+    def createStartField(
+            self, lon, lat, grid_lon=None, grid_lat=None) -> prcl.Field:
+        """Function to create a particle starting distribution around a
+        given cell vertex at a particular resolution"""
+        
+        if grid_lon is None:
+            grid_lon = self.ocean.U.grid.lon
+        if grid_lat is None:
+            grid_lat = self.ocean.U.grid.lat
+        start = np.zeros([len(grid_lat), len(grid_lon)],dtype=np.float32)
+        coords = {'time': [self.ika_params['start_time']],
+                  'lat': grid_lat,
+                  'lon': grid_lon}
+        start_dist = xr.DataArray(name = "start",
+                            data = start[np.newaxis,:,:],
+                            coords = coords,
+                            dims=('time','lat','lon'))
+        self.start_coords = start_dist.coords #For density calculation later
+        start_dist = prcl.Field.from_xarray(start_dist, name='start_dist',
+                                            dimensions=self.forcing_dims,
+                                            interp_method='nearest')
+        latidx = np.argmin(np.abs(start_dist.lat-lat))
+        lonidx = np.argmin(np.abs(start_dist.lon-lon))
+        start_dist.data[:,latidx,lonidx] = 1
+        return start_dist
+
+    def initialiseFishParticles(
+            self, start: np.ndarray = None, n_fish:int = 10,
+            pclass: prcl.JITParticle = prcl.JITParticle):
+        """`start` has shape = (2, x) where [0,:] are longitude positions
+        and [1,:] are latitude positions."""
+
+        if isinstance(start, np.ndarray) :
+            if start.shape[1] != n_fish :
+                raise ValueError('Number of fish and provided initial positions'
+                                 ' not equal!')
+            plon = start[0]
+            plat = start[1]
+        else:
+            if self.start_distribution is None :
+                raise ValueError('No starting distribution field in ocean fieldset!')
+            plon, plat = self.startDistPositions(n_fish)
+            
+        self.fish = prcl.ParticleSet.from_list(
+            fieldset=self.ocean, time=self.ika_params['start_time'],
+            lon=plon, lat=plat, pclass=pclass)
+
+        # NOTE : I'm not sure that 'cohorts_sp_unit' uses is robust.
+        # Initialise fish
+        cohort_dt = self.forcing_gen.feeding_habitat_structure.data_structure.\
+            species_dictionary['cohorts_sp_unit'][0] * 86400
+
+        for f in range(len(self.fish)):
+            fish = self.fish[f]
+            fish.age_class = self.start_age
+            fish.age = self.start_age*cohort_dt
+
+# TODO : Joe, do you confirm this implementation/comments ?
+# I thought that these parameters was already initialized in
+# ikafish __init__ ?
+
+            # NOTE : Only for IkaTag particles ?
+            if isinstance(pclass, ikafish.IkaTag):
+                fish.SurvProb = 1
+            # NOTE : Only for IkaMix particles ?
+            if isinstance(pclass, ikafish.IkaMix):
+                fish.Mix3SurvProb = fish.Mix6SurvProb = fish.Mix9SurvProb = 1
+
+        self._setConstant('cohort_dt', cohort_dt)
 
     def fishDensity(self):
         """Function calculating particle density at current time, using
