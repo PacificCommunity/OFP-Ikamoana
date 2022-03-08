@@ -447,8 +447,7 @@ class IkaSim :
 
         # Run an initial field sampling kernel loop
         if 'getRegion' in self.ika_params['kernels']:
-            self.fish.execute(self.fish.Kernel(behaviours.getRegion),
-                              dt=0)
+            self.fish.execute(self.fish.Kernel(behaviours.getRegion), dt=0)
 
         KernelString = ''.join(
             [('Behaviours[{}]+').format(i) for i in range(len(Behaviours))])
