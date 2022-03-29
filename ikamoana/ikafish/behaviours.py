@@ -1,24 +1,5 @@
 import parcels.rng as ParcelsRandom
-
-## NOTE : These variables camed from the "ikafish.py" module.
-#
-# Defined in class IkaFish(JITParticle)
-# - Ax / Ay
-# - Dx / Dy
-# - Cx / Cy
-# - Tx / Ty
-#
-# Defined in class IkaTag(IkaFish)
-# - Fmor / Nmor
-# - Dx = Dy = Cx = Cy = Vx = Vy = Ax = Ay = 0.
-#
-# Not defined
-# - tx / ty
-# - random
-# - Rx_component / Ry_component
-# - f_lon / f_lat
-# - loop_count
-
+import math
 
 ################## Moving and cleanup kernels ####################
 
@@ -36,34 +17,36 @@ def LandBlock(particle, fieldset, time):
 def IkaDymMove(particle, fieldset, time):
     particle.prev_lon = particle.lon
     particle.prev_lat = particle.lat
-    adv_x = Ax + tx
-    adv_y = Ay + ty
+    adv_x = particle.Ax + particle.Tx
+    adv_y = particle.Ay + particle.Ty
+    
     if adv_x > 2:
         adv_x = 2
     if adv_y > 2:
         adv_y = 2
-    move_x = adv_x + Dx + Cx
-    move_y = adv_y + Dy + Cy
-    particle.lon = particle.lon + move_x
-    particle.lat = particle.lat + move_y
+    
+    particle.lon = particle.lon + adv_x + particle.Dx + particle.Cx
+    particle.lat = particle.lat + adv_y + particle.Dy + particle.Cy
 
 def IkaDimMoveWithDiffusionReroll(particle, fieldset, time):
     particle.prev_lon = particle.lon
     particle.prev_lat = particle.lat
-    adv_x = Ax + tx
-    adv_y = Ay + ty
+    adv_x = particle.Ax + particle.Tx
+    adv_y = particle.Ay + particle.Ty
+    
     if adv_x > 2:
         adv_x = 2
     if adv_y > 2:
         adv_y = 2
-    loop_count = 0
+        
+    particle.loop_count = 0
     jump_loop = 0
     sections = 8
     #Check along the trajectory to make sure we're not jumping over small landmasses
     #mainly for sub 1deg forcing fields
     while jump_loop < sections:
-        move_x = adv_x + Dx + Cx
-        move_y = adv_y + Dy + Cy
+        move_x = adv_x + particle.Dx + particle.Cx
+        move_y = adv_y + particle.Dy + particle.Cy
         # Look along a transect of the potential move for land
         newlon = particle.lon + (jump_loop + 1) * (move_x/sections) # one section of the potential movement
         newlat = particle.lat + (jump_loop + 1) * (move_y/sections)
@@ -72,11 +55,11 @@ def IkaDimMoveWithDiffusionReroll(particle, fieldset, time):
         if onland == 1:
             Rx = ParcelsRandom.uniform(-1., 1.)
             Ry = ParcelsRandom.uniform(-1., 1.)
-            Dx = Rx * Rx_component * f_lon /particle.dt
-            Dy = Ry * Ry_component * f_lat /particle.dt
-            loop_count += 1
+            particle.Dx = Rx * particle.Rx_component * particle.f_lon
+            particle.Dy = Ry * particle.Ry_component * particle.f_lat
+            particle.loop_count += 1
             jump_loop = 0 # restart the transect
-            if loop_count > 500: # Give up trying to find legal moves
+            if particle.loop_count > 500: # Give up trying to find legal moves
                 move_x = 0
                 move_y = 0
                 jump_loop = sections # Exit the loop
@@ -96,126 +79,124 @@ def IkaDimMoveWithDiffusionReroll(particle, fieldset, time):
     particle.lon += move_x
     particle.lat += move_y
 
-def SaveMoveComponents(particle, fieldset, time):
-    particle.Ax = Ax
-    particle.Ay = Ay
-    particle.Tx = Tx
-    particle.Ty = Ty
-    particle.Dx = Dx
-    particle.Dy = Dy
-    particle.Cx = Cx
-    particle.Cy = Cy
-    particle.In_Loop = loop_count
-
 def KillFish(particle, fieldset, time):
     particle.delete()
 
 ############### Advection Kernels ####################
+
 def CalcLonLatScalers(particle, fieldset, time):
-    f_lat = particle.dt / 1000. / 1.852 / 60.
-    f_lon = f_lat / math.cos(particle.lat*math.pi/180)
+    """See also parcels.tools.converters.GeographicPolar converter."""
+    
+    # Geographic _      source to target : m -> degree
+    particle.f_lat = 1 / 1000. / 1.852 / 60.
+    # GeographicPolar _ source to target : m -> degree
+    particle.f_lon = particle.f_lat / math.cos(particle.lat*math.pi/180)
 
 def IkAdvectionRK4(particle, fieldset, time):
     """Advection of particles using fourth-order Runge-Kutta integration.
     Function needs to be converted to Kernel object before execution"""
     (u1, v1) = fieldset.UV[time, particle.depth, particle.lat, particle.lon]
-    lon1, lat1 = (particle.lon + u1*.5*particle.dt, particle.lat + v1*.5*particle.dt)
-    (u2, v2) = fieldset.UV[time + .5 * particle.dt, particle.depth, lat1, lon1]
-    lon2, lat2 = (particle.lon + u2*.5*particle.dt, particle.lat + v2*.5*particle.dt)
-    (u3, v3) = fieldset.UV[time + .5 * particle.dt, particle.depth, lat2, lon2]
-    lon3, lat3 = (particle.lon + u3*particle.dt, particle.lat + v3*particle.dt)
-    (u4, v4) = fieldset.UV[time + particle.dt, particle.depth, lat3, lon3]
+    uv_lon1 = particle.lon + u1*.5*particle.dt
+    uv_lat1 = particle.lat + v1*.5*particle.dt
+    
+    (u2, v2) = fieldset.UV[time + .5 * particle.dt, particle.depth, uv_lat1, uv_lon1]
+    uv_lon2 = particle.lon + u2*.5*particle.dt
+    uv_lat2 = particle.lat + v2*.5*particle.dt
+    
+    (u3, v3) = fieldset.UV[time + .5 * particle.dt, particle.depth, uv_lat2, uv_lon2]
+    uv_lon3 = particle.lon + u3*particle.dt
+    uv_lat3 = particle.lat + v3*particle.dt
+    
+    (u4, v4) = fieldset.UV[time + particle.dt, particle.depth, uv_lat3, uv_lon3]
     particle.Ax = (u1 + 2*u2 + 2*u3 + u4) / 6. * particle.dt
     particle.Ay = (v1 + 2*v2 + 2*v3 + v4) / 6. * particle.dt
-    Ax = particle.Ax
-    Ay = particle.Ay
 
 def TaxisRK4(particle, fieldset, time):
-    u1 = fieldset.Tx[time, particle.depth, particle.lat, particle.lon]
-    v1 = fieldset.Ty[time, particle.depth, particle.lat, particle.lon]
-    lon1 = particle.lon + u1*.5
-    lat1 = particle.lat + v1*.5
+    """Method inspired by IkAdvectionRK4."""
+    tx1 = fieldset.Tx[time, particle.depth, particle.lat, particle.lon]
+    ty1 = fieldset.Ty[time, particle.depth, particle.lat, particle.lon]
+    t_lon1 = particle.lon + tx1 * .5
+    t_lat1 = particle.lat + ty1 * .5
 
-    u2 = fieldset.Tx[time + .5 * particle.dt, particle.depth, lat1, lon1]
-    v2 = fieldset.Ty[time + .5 * particle.dt, particle.depth, lat1, lon1]
-    lon2 = particle.lon + u2*.5
-    lat2 = particle.lat + v2*.5
+    tx2 = fieldset.Tx[time + .5 * particle.dt, particle.depth, t_lat1, t_lon1]
+    ty2 = fieldset.Ty[time + .5 * particle.dt, particle.depth, t_lat1, t_lon1]
+    t_lon2 = particle.lon + tx2 * .5
+    t_lat2 = particle.lat + ty2 * .5
 
-    u3 = fieldset.Tx[time + .5 * particle.dt, particle.depth, lat2, lon2]
-    v3 = fieldset.Ty[time + .5 * particle.dt, particle.depth, lat2, lon2]
-    lon3 = particle.lon + u3
-    lat3 = particle.lat + v3
+    tx3 = fieldset.Tx[time + .5 * particle.dt, particle.depth, t_lat2, t_lon2]
+    ty3 = fieldset.Ty[time + .5 * particle.dt, particle.depth, t_lat2, t_lon2]
+    t_lon3 = particle.lon + tx3
+    t_lat3 = particle.lat + ty3
 
-    u4 = fieldset.Tx[time + particle.dt, particle.depth, lat3, lon3]
-    v4 = fieldset.Ty[time + particle.dt, particle.depth, lat3, lon3]
-    particle.Tx = (u1 + 2*u2 + 2*u3 + u4) / 6. * f_lon
-    particle.Ty = (v1 + 2*v2 + 2*v3 + v4) / 6. * f_lat
-    tx = particle.Tx
-    ty = particle.Ty
+    tx4 = fieldset.Tx[time + particle.dt, particle.depth, t_lat3, t_lon3]
+    ty4 = fieldset.Ty[time + particle.dt, particle.depth, t_lat3, t_lon3]
+    
+    particle.Tx = (tx1 + 2*tx2 + 2*tx3 + tx4) / 6. * particle.dt * particle.f_lon
+    particle.Ty = (ty1 + 2*ty2 + 2*ty3 + ty4) / 6. * particle.dt * particle.f_lat
 
 def RandomWalkNonUniformDiffusion(particle, fieldset, time):
-    r_var = 1/3.
+    # Init
+    r_var = 1./3.
     Rx = ParcelsRandom.uniform(-1., 1.)
     Ry = ParcelsRandom.uniform(-1., 1.)
+    # Read
     dKxdx = fieldset.dKx_dx[time, particle.depth, particle.lat, particle.lon]
     dKydy = fieldset.dKy_dy[time, particle.depth, particle.lat, particle.lon]
     kx = fieldset.Kx[time, particle.depth, particle.lat, particle.lon]
     ky = fieldset.Ky[time, particle.depth, particle.lat, particle.lon]
-    Rx_component = math.sqrt(2 * kx * particle.dt / r_var)
-    Ry_component = math.sqrt(2 * ky * particle.dt / r_var)
-    CorrectionX = dKxdx * f_lon
-    CorrectionY = dKydy * f_lat
-    Dx = Rx * Rx_component * f_lon / particle.dt
-    Dy = Ry * Ry_component * f_lat / particle.dt
-    Cx = CorrectionX
-    Cy = CorrectionY
-    particle.Cx = Cx
-    particle.Cy = Cy
-    particle.Dx = Dx
-    particle.Dy = Dy
+    # Convert
+    dKxdx = dKxdx * particle.dt
+    dKydy = dKydy * particle.dt
+    kx = kx * particle.dt 
+    ky = ky * particle.dt 
+    # Compute
+    particle.Rx_component = math.sqrt(2 * kx / r_var)
+    particle.Ry_component = math.sqrt(2 * ky / r_var)
+    particle.Dx = Rx * particle.Rx_component * particle.f_lon
+    particle.Dy = Ry * particle.Ry_component * particle.f_lat
+    particle.Cx = dKxdx * particle.f_lon
+    particle.Cy = dKydy * particle.f_lat
 
 
 ######################## Mortality Kernels #########################
 
 def FishingMortality(particle, fieldset, time):
-    Fmor = fieldset.F[time, particle.depth, particle.lat, particle.lon]/fieldset.SEAPODYM_dt
-    particle.Fmor = Fmor
+    particle.Fmor = fieldset.F[time, particle.depth, particle.lat, particle.lon]/fieldset.SEAPODYM_dt
 
 def NaturalMortality(particle, fieldset, time):
     Mnat = fieldset.MPmax*math.exp(-fieldset.MPexp*particle.age_class) + fieldset.MSmax*math.pow(particle.age_class, fieldset.MSslope)
     Mvar = Mnat * math.pow(1 - fieldset.Mrange, 1-fieldset.H[time, particle.depth, particle.lat, particle.lon]/2)
-    #Nmor = (Mvar * (particle.dt / fieldset.SEAPODYM_dt))
-    Nmor = Mvar/fieldset.SEAPODYM_dt
-    particle.Nmor = Nmor
+    #particle.Nmor = (Mvar * (particle.dt / fieldset.SEAPODYM_dt))
+    particle.Nmor = Mvar/fieldset.SEAPODYM_dt
 
 def UpdateSurvivalProbNOnly(particle, fieldset, time):
-    depletion = particle.SurvProb - particle.SurvProb * math.exp(-Nmor)
+    depletion = particle.SurvProb - particle.SurvProb * math.exp(-particle.Nmor)
     particle.depletionN = depletion
     particle.SurvProb -= depletion
 
 def UpdateSurvivalProb(particle, fieldset, time):
-    Zint = math.exp(-(Fmor + Nmor)*particle.dt)
-    depletion = particle.SurvProb - particle.SurvProb * Zint
-    particle.depletionF = depletion*Fmor/(Fmor+Nmor)
-    particle.depletionN = depletion*Nmor/(Fmor+Nmor)
+    particle.Zint = math.exp(-(particle.Fmor + particle.Nmor)*particle.dt)
+    depletion = particle.SurvProb - particle.SurvProb * particle.Zint
+    particle.depletionF = depletion*particle.Fmor/(particle.Fmor+particle.Nmor)
+    particle.depletionN = depletion*particle.Nmor/(particle.Fmor+particle.Nmor)
     particle.SurvProb -= depletion
     particle.CapProb += particle.depletionF
 
 def UpdateMixingPeriod(particle, fieldset, time):
     particle.TAL += particle.dt
     if particle.TAL > 90*86400:
-        depletion = particle.Mix3SurvProb - particle.Mix3SurvProb * Zint
-        depF = depletion*Fmor/(Fmor+Nmor)
+        depletion = particle.Mix3SurvProb - particle.Mix3SurvProb * particle.Zint
+        depF = depletion*particle.Fmor/(particle.Fmor+particle.Nmor)
         particle.Mix3SurvProb -= depletion
         particle.Mix3CapProb += depF
     if particle.TAL > 180*86400:
-        depletion = particle.Mix6SurvProb - particle.Mix6SurvProb * Zint
-        depF = depletion*Fmor/(Fmor+Nmor)
+        depletion = particle.Mix6SurvProb - particle.Mix6SurvProb * particle.Zint
+        depF = depletion*particle.Fmor/(particle.Fmor+particle.Nmor)
         particle.Mix6SurvProb -= depletion
         particle.Mix6CapProb += depF
     if particle.TAL > 270*86400:
-        depletion = particle.Mix9SurvProb - particle.Mix9SurvProb * Zint
-        depF = depletion*Fmor/(Fmor+Nmor)
+        depletion = particle.Mix9SurvProb - particle.Mix9SurvProb * particle.Zint
+        depF = depletion*particle.Fmor/(particle.Fmor+particle.Nmor)
         particle.Mix9SurvProb -= depletion
         particle.Mix9CapProb += depF
 
@@ -234,7 +215,6 @@ def Age(particle, fieldset, time):
 
 AllKernels = {'IkaDymMove':IkaDymMove,
               'IkaDimMoveWithDiffusionReroll': IkaDimMoveWithDiffusionReroll,
-              'SaveMoveComponents':SaveMoveComponents,
               'KillFish':KillFish,
               'CalcLonLatScalers':CalcLonLatScalers,
               'IkAdvectionRK4':IkAdvectionRK4,

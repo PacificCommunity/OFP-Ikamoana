@@ -279,9 +279,7 @@ def taxis(
     Tlat = np.zeros(dHdlat.data.shape, dtype=np.float32)
     f_length = fh_structure.findLengthByCohort
 
-    # TODO : remove
     dx, dy = getCellEdgeSizes(dHdlon)
-    timestep = ika_structure.timestep
     
     for t in range(dHdlon.time.size):
         t_age = age[t] if is_evolving else age
@@ -294,10 +292,6 @@ def taxis(
         Tlat[t,:,:] = vMax(t_length) * dy * dHdlat.data[t,:,:] 
 
     taxis_attrs = {**dHdlat.attrs, "units":"m².s⁻¹"}
-    # if ika_structure.units == 'nm_per_timestep':
-    #     Tlon *= timestep / 1852
-    #     Tlat *= timestep / 1852
-    #     taxis_attrs["units"] = "nmi².dt⁻¹"
         
     return (
         xr.DataArray(
@@ -406,17 +400,26 @@ def diffusion(
     lmax = f_length(-1) / 100
     Vmax_diff = 1.25
     
+    # TODO : Cf. TODO below
+    timestep = ika_structure.timestep
+    
     for t in range(habitat.time.size):
 
         t_age = age[t] if is_evolving else age
         t_length = f_length(t_age) / 100 # Convert into meter
         d_speed  = Vmax_diff-0.25*t_length/lmax # fixed, given in 'body length' units
         d_inf = (d_speed*t_length)**2 / 4
+        
+        #######################################################
+        # TODO : check if it is correct to multiply by timestep.
+        # See also previous version of the ikamoana
+        d_inf = ((d_speed*t_length)**2 / 4) * timestep
+        #######################################################
+        
         d_max = ika_structure.sigma_K * d_inf
 
         ## VECTORIZED
         diffusion = (
-            # TODO : Remove this
             ika_structure.sig_scale
             * d_max
             * (1 - ika_structure.c_scale * ika_structure.c
@@ -571,6 +574,6 @@ def fishingMortality(
     fishing_mortality_ds.attrs.update(effort_ds.attrs)
     fishing_mortality_ds.attrs["Fisheries"] = list(fishing_mortality.keys())
 
-    return fisherieseffort.sumDataSet(fishing_mortality_ds, name="Mortality")
+    return fisherieseffort.sumDataSet(fishing_mortality_ds, name="F")
 
 

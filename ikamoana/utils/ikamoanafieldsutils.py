@@ -20,12 +20,14 @@ def convertToField(field : Union[xr.DataArray, xr.Dataset], name=None) :
         dimensions=dict([(i,i) for i in field.dims.keys()]))
 
 def convertToNauticMiles(
-        field:Union[xr.DataArray, xr.Dataset], timestep:float
+        field:Union[xr.DataArray, xr.Dataset], timestep: float = 1.,
+        square: bool = False
         ) -> Union[xr.DataArray, xr.Dataset] :
     """Converts the unit of a field from meters per second to nautical
     miles per timestep."""
-    
-    convertion = lambda x : x * timestep / 1852
+    divider = 1852 if  not square else 1852**2
+    factor = timestep / divider
+    convertion = lambda x : x * factor
     return xr.apply_ufunc(convertion, field)
 
 def sliceField(

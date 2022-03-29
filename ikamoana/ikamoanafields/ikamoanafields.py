@@ -163,7 +163,11 @@ class IkamoanaFields :
                           grad_lon, grad_lat, name=self.feeding_habitat.name)
 
     def computeMortality(self, verbose: bool = False) -> xr.DataArray :
-
+        
+        if not hasattr(self.ikamoana_fields_structure, "selected_fisheries") :
+            raise ValueError("selected_fisheries can not be find. Make sure that"
+                             " you gave mortality and selected_fisheries tags.")
+        
         fh_struct = self.feeding_habitat_structure.data_structure
         ika_struct = self.ikamoana_fields_structure
         
@@ -228,25 +232,6 @@ class IkamoanaFields :
         
         return diffusion_x, diffusion_y, dKxdx, dKydy
 
-    def start_distribution(self, filepath: str) -> xr.DataArray :
-        """Returns the first two time steps of the particles starting
-        distribution."""
-        
-        dist = fhcf.seapodymFieldConstructor(filepath, dym_varname='start_distribution')
-        #dist = xr.apply_ufunc(np.nan_to_num,dist)
-        
-        # Clip dimensions to the same as the feeding habitats, but only
-        dist = latitudeDirection(dist, south_to_north=True)
-        if self.feeding_habitat is not None :
-            _, latfun, lonfun  = coordsAccess(dist)
-            minlon_idx = lonfun(min(self.feeding_habitat.coords['lon'].data))
-            maxlon_idx = lonfun(max(self.feeding_habitat.coords['lon'].data))
-            minlat_idx = latfun(min(self.feeding_habitat.coords['lat'].data))
-            maxlat_idx = latfun(max(self.feeding_habitat.coords['lat'].data))
-            return dist[:2, minlat_idx:maxlat_idx+1, minlon_idx:maxlon_idx+1]
-        else :
-            return dist[:2]
-
 # ------------------------------- MAIN ------------------------------- #
 
     def computeIkamoanaFields(
@@ -290,8 +275,6 @@ class IkamoanaFields :
         diffusion_x, diffusion_y, dKxdx, dKydy = self.computeDiffusion(
             landmask[0], lat_min, lat_max, lon_min, lon_max, u, v)
 
-        mortality = self.computeMortality(verbose)
-        
         feeding_habitat = latitudeDirection(self.feeding_habitat,south_to_north).drop_vars('cohorts')
         diffusion_x = latitudeDirection(diffusion_x,south_to_north).drop_vars('cohorts')
         diffusion_y = latitudeDirection(diffusion_y,south_to_north).drop_vars('cohorts')
@@ -299,34 +282,40 @@ class IkamoanaFields :
         taxis_lat = latitudeDirection(taxis_lat,south_to_north).drop_vars('cohorts')
         dKxdx = latitudeDirection(dKxdx,south_to_north).drop_vars('cohorts')
         dKydy = latitudeDirection(dKydy,south_to_north).drop_vars('cohorts')
-        mortality = latitudeDirection(mortality,south_to_north).reindex_like(feeding_habitat)
         landmask = latitudeDirection(landmask,south_to_north)
         u = latitudeDirection(u,south_to_north)
         v = latitudeDirection(v,south_to_north)
         
+        mortality_dict = {}
+        if hasattr(self.ikamoana_fields_structure, "selected_fisheries") :
+            mortality = self.computeMortality(verbose)
+            mortality = latitudeDirection(mortality,south_to_north
+                                          ).reindex_like(feeding_habitat)
+            mortality_dict['F'] = mortality
+        
         if self.ikamoana_fields_structure.units == 'nm_per_timestep' :
             timestep = self.ikamoana_fields_structure.timestep
-            def convertionFunction(field):
+            def convertionSimple(field):
                 field = convertToNauticMiles(field, timestep)
+                field.attrs['units'] = "nmi.dt⁻¹"
+                return field
+            def convertionSquare(field):
+                field = convertToNauticMiles(field, timestep, square=True)
                 field.attrs['units'] = "nmi².dt⁻¹"
                 return field
-            
-            # NOTE : since diffusion is in m².s⁻¹, we need to multiply 
-            # it 2 times by the coefficient (~ K * coef²).
-            diffusion_x = convertionFunction(convertionFunction(diffusion_x))
-            diffusion_y = convertionFunction(convertionFunction(diffusion_y))
-            dKxdx = convertionFunction(dKxdx)
-            dKydy = convertionFunction(dKydy)
-            taxis_lon = convertionFunction(taxis_lon)
-            taxis_lat = convertionFunction(taxis_lat)
-            u = convertionFunction(u)
-            v = convertionFunction(v)
+
+            diffusion_x = convertionSquare(diffusion_x)
+            diffusion_y = convertionSquare(diffusion_y)
+            dKxdx = convertionSquare(dKxdx)
+            dKydy = convertionSquare(dKydy)
+            taxis_lon = convertionSimple(taxis_lon)
+            taxis_lat = convertionSimple(taxis_lat)
+            u = convertionSimple(u)
+            v = convertionSimple(v)
         
-        
-        # TODO : mortality doit etre renommé F
         return {'H':feeding_habitat, 'landmask':landmask,
                 'Kx':diffusion_x, 'Ky':diffusion_y,
                 'dKx_dx':dKxdx, 'dKy_dy':dKydy,
                 'Tx':taxis_lon, 'Ty':taxis_lat,
-                'mortality':mortality,
-                'U':u, 'V':v}
+                'U':u, 'V':v,
+                **mortality_dict}
