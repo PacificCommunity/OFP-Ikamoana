@@ -4,7 +4,7 @@ import numpy as np
 import parcels
 import xarray as xr
 from ikamoana.ikamoanafields.core.fieldsgenerator import (
-    _getCellEdgeSizes,
+    getCellEdgeSizes,
     gradient
 )
 
@@ -31,7 +31,7 @@ class Test_getCellEdgeSizesMethod(unittest.TestCase):
         parcels_size_x = parcels_field.cell_edge_sizes['x']
         parcels_size_y = parcels_field.cell_edge_sizes['y']
         
-        size_x, size_y = _getCellEdgeSizes(dataarray_3d_edge_size_1_degrees)
+        size_x, size_y = getCellEdgeSizes(dataarray_3d_edge_size_1_degrees)
 
         self.assertTrue(not False in (size_x == parcels_size_x),
                         __parcels_edge_size_message__)
@@ -47,7 +47,7 @@ class Test_getCellEdgeSizesMethod(unittest.TestCase):
         parcels_size_x = parcels_field.cell_edge_sizes['x']
         parcels_size_y = parcels_field.cell_edge_sizes['y']
         
-        size_x, size_y = _getCellEdgeSizes(dataarray_3d_edge_size_2_degrees)
+        size_x, size_y = getCellEdgeSizes(dataarray_3d_edge_size_2_degrees)
         
         self.assertTrue(not False in (size_x == parcels_size_x),
                         __parcels_edge_size_message__)

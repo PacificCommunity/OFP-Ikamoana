@@ -16,10 +16,9 @@
     <time>
       <!-- All of these parameters are in days -->
       <dt>30</dt>
-      <!-- <start>2008-02-15</start> -->
-      <start>2000-01-15</start>
-      <sim_time>1090</sim_time>
-      <output_dt>30</output_dt>
+      <start>2008-02-15</start>
+      <sim_time>720</sim_time>
+      <output_dt>15</output_dt>
     </time>
     <lat>
       <min>-40</min>
@@ -32,17 +31,11 @@
   </domain>
 
   <cohort_info>
-    <start_length>26.43</start_length>
+    <start_length>26</start_length>
     <ageing>True</ageing>
     <!-- This kind of file is 3D, ikamoana will select previous start_date/cohort_age. -->
     <!-- If no file_extension is passed, default will be "nc" -->
-    <start_dynamic_file file_extension="dym">skj_age</start_dynamic_file>
-    <!-- This type of file is 2D (no time axis). It is used for the basic initialization. -->
-    <start_static_file>skj_age5.nc</start_static_file>
-    <start_cell>
-      <lon>190</lon>
-      <lat>0</lat>
-    </start_cell>
+    <start_filestem file_extension="dym">skj_age</start_filestem>
   </cohort_info>
 
 <!-- DOCUMENTATION (mortality) :
@@ -154,7 +147,7 @@ calculated by IkaField.
     <taxis_scale>1</taxis_scale>
     <sig_scale>1</sig_scale>
     <!-- Supported : {m_per_s, nm_per_timestep}, Default : m_per_s -->
-    <units>m_per_s</units>
+    <units>nm_per_timestep</units>
     <c_scale>1</c_scale>
     <!-- Option : Ajouter Linear interpolation (en plus de nearest) -->
   </forcing>
@@ -165,6 +158,9 @@ calculated by IkaField.
     <kernel>TaxisRK4</kernel>
     <kernel>RandomWalkNonUniformDiffusion</kernel>
     <kernel>IkaDymMove</kernel>
+    <!-- <kernel>IkaDimMoveWithDiffusionReroll</kernel> -->
+    <kernel>Age</kernel>
+    <kernel>LandBlock</kernel>
   </kernels>
 
   <random_seed></random_seed>
