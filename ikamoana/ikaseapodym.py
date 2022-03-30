@@ -65,6 +65,8 @@ class IkaSeapodym(IkaSimulation) :
             params['start_length'] = float(root.find('start_length').text)
             tmp = root.find('ageing').text
             params['ageing_cohort'] = (tmp == 'True') or (tmp == 'true')
+            tmp = root.find('number_of_cohorts').text
+            params['number_of_cohorts'] = int(tmp) if tmp not in [None,''] else 1
 
             if root.find('start_dynamic_file') is not None :
                 params['start_dynamic_file'] = (params['start_distribution']
@@ -99,6 +101,8 @@ class IkaSeapodym(IkaSimulation) :
                 for elmt in files :
                     forcing_files[elmt.tag] = elmt.text
             params["forcing_files"] = forcing_files
+            tmp = root.find("field_interp_method").text
+            params["fields_interp_method"] = "nearest" if tmp in [None, ""] else tmp
         
         def readKernels(root:ET.Element, params:dict) :
             params['kernels'] = [i.text for i in root.findall('kernel')]
@@ -112,6 +116,21 @@ class IkaSeapodym(IkaSimulation) :
                 [float(x) for x in root.find('length').find(sp_name).text.split()])
             index = np.absolute(length_list-start_length).argmin()
             params["start_age"] = index
+        
+        def readMortality(params:dict):
+            """Read a XML file to get all parameters needed for
+            mortality field production."""
+            
+            tree = ET.parse(params['seapodym_file'])
+            root = tree.getroot()
+            species_name = root.find("sp_name").text
+
+            params["mortality_constants"] = {
+                'MPmax': float(root.find('Mp_mean_max').attrib[species_name]),
+                'MPexp': float(root.find('Mp_mean_exp').attrib[species_name]),
+                'MSmax': float(root.find('Ms_mean_max').attrib[species_name]),
+                'MSslope': float(root.find('Ms_mean_slope').attrib[species_name]),
+                'Mrange': float(root.find('M_mean_range').attrib[species_name])}
 
         tree = ET.parse(filepath)
         root = tree.getroot()
@@ -124,25 +143,27 @@ class IkaSeapodym(IkaSimulation) :
         readCohortInfo(root.find('cohort_info'), params)
         readKernels(root.find('kernels'), params)
         readAge(params['seapodym_file'], params["start_length"], params)
+# NOTE : Do we have to add these parameters only when NaturalMortality
+# is in kernels list ?
+        readMortality(params)
 
         return params
     
     def loadFields(
             self, from_habitat: xr.DataArray = None,
+            fields_interp_method: str = None,
             landmask_interp_methode: str = 'nearest',
             allow_time_extrapolation: bool = True):
         
         def loadFieldsFromFiles():
-# TODO : verify that we use the right function to load netcdf
 # TODO : use reshaping
             forcing = {}
-            for k, v in self.ika_params["forcing_files"].items() :
-                forcing[k] = xr.open_dataarray(v)
+            for name, filepath in self.ika_params["forcing_files"].items() :
+                forcing[name] = seapodymFieldConstructor(filepath, dym_varname=name)
             return forcing
         
         def generateFields():
             generator = IkamoanaFields(self.ika_params['ikamoana_file'])
-            
             data_structure = generator.feeding_habitat_structure.data_structure
             ages = data_structure.findCohortByLength(self.ika_params['start_length'])
             start = data_structure.findIndexByDatetime(self.ika_params['start_time'])[0]
@@ -158,8 +179,16 @@ class IkaSeapodym(IkaSimulation) :
             return generator.computeIkamoanaFields(
                 from_habitat=from_habitat, evolve=evolve,
                 cohort_start=ages[0], cohort_end=None, time_start=start, time_end=end,
-                lon_min=lonlims[0], lon_max=lonlims[1], lat_min=latlims[1], lat_max=latlims[0],
-            )
+                lon_min=lonlims[0], lon_max=lonlims[1], lat_min=latlims[1], lat_max=latlims[0])
+        
+        def readCohortDt():
+            tree = ET.parse(self.ika_params['seapodym_file'])
+            root = tree.getroot()
+            deltaT = float(root.find('deltaT').attrib["value"])
+            return deltaT*24*60*60
+        
+        if fields_interp_method is None :
+            fields_interp_method = self.ika_params['fields_interp_method']
         
         files_forcing = loadFieldsFromFiles()
         
@@ -169,9 +198,15 @@ class IkaSeapodym(IkaSimulation) :
         # only the value in files_forcing is conserved.
         forcing = {**generated_forcing, **files_forcing}
         
-        super().loadFields(fields=forcing,inplace=True,
+        super().loadFields(fields=forcing, inplace=True,
                            landmask_interp_methode=landmask_interp_methode,
+                           fields_interp_method=fields_interp_method,
                            allow_time_extrapolation=allow_time_extrapolation)
+        
+        self.ocean.add_constant('cohort_dt', readCohortDt())
+        
+        for cst, value in self.ika_params['mortality_constants'].items():
+            self.ocean.add_constant(name=cst, value=value)
     
     def _fromCellToStartField(self):
         grid_lon = self.ocean.U.grid.lon
@@ -259,7 +294,7 @@ class IkaSeapodym(IkaSimulation) :
             self, particles_longitude:Union[list,np.ndarray] = None,
             particles_latitude:Union[list,np.ndarray] = None,
             particles_class: JITParticle = JITParticle, method: str = None,
-            particles_number: int = 10,
+            particles_number: int = None,
             particles_starting_time: Union[np.datetime64,List[np.datetime64]] = None,
             particles_variables: Dict[str,List[Any]] = {}):
         """If both `start_cell`, `start_static_file` and
@@ -327,6 +362,8 @@ class IkaSeapodym(IkaSimulation) :
             delattr(self, "fish")
         if self.ocean.completed :
             self.ocean.completed = False
+        if particles_number is None :
+            particles_number = self.ika_params['number_of_cohorts']
         
         if particles_longitude is None and particles_latitude is None :
 

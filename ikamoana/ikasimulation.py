@@ -34,8 +34,9 @@ class IkaSimulation :
             self, fields: Union[Dict[str,Union[str,parcels.Field,xr.DataArray]],
                                 xr.Dataset,
                                 parcels.FieldSet],
-            inplace: bool = False, landmask_interp_methode: str = 'nearest',
-            allow_time_extrapolation: bool = True
+            inplace: bool = False, allow_time_extrapolation: bool = True,
+            landmask_interp_methode: str = 'nearest',
+            fields_interp_method: str = 'nearest', 
             ):
         """`fields` Dict can be field_name:filepath, field_name:DataArray
         or field_name:Field.
@@ -78,7 +79,6 @@ class IkaSimulation :
                     landmask = np.full(shape=fields.U.data.shape, fill_value=True)
                     for f in fields.get_fields() :
                         landmask &= np.isfinite(f.data)
-                        # TODO : finish this
                     landmask = parcels.Field(
                         name="landmask", data=landmask, grid=fields.U.grid,
                         interp_method=landmask_interp_methode)
@@ -98,11 +98,17 @@ class IkaSimulation :
                 return fields
             
             if isinstance(fields, xr.Dataset) :
-                landmask = fields.drop_vars("landmask")["landmask"]
+                landmask = fields["landmask"]
+                landmask = parcels.Field.from_xarray(
+                    landmask, name="landmask",
+                    dimensions={k:k for k in landmask.coords.keys()},
+                    interp_method=landmask_interp_methode)
+                fields = fields.drop_vars("landmask")
                 fields = parcels.FieldSet.from_xarray_dataset(
                     ds=fields, variables={k:k for k in fields.keys()},
                     dimensions={k:k for k in fields.coords.keys()},
-                    allow_time_extrapolation=allow_time_extrapolation)
+                    allow_time_extrapolation=allow_time_extrapolation,
+                    interp_method=fields_interp_method)
             
             else :
                 landmask = fields.pop("landmask")
@@ -115,7 +121,8 @@ class IkaSimulation :
                     if not isinstance(v, parcels.Field) :
                         fields[k] = parcels.Field.from_xarray(
                             v, name=k, dimensions={k:k for k in v.coords.keys()},
-                            allow_time_extrapolation=allow_time_extrapolation)
+                            allow_time_extrapolation=allow_time_extrapolation,
+                            interp_method=fields_interp_method)
                 
                 fields = parcels.FieldSet(
                     U=fields.pop('U'), V=fields.pop('V'), fields=fields)

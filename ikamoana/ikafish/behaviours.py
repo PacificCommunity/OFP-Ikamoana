@@ -1,6 +1,8 @@
 import parcels.rng as ParcelsRandom
 import math
 
+# NOTE : No more SEAPODYM_dt ? Can we use particle.dt instead ?
+
 ################## Moving and cleanup kernels ####################
 
 def MoveSouth(particle, fieldset, time):
@@ -161,13 +163,15 @@ def RandomWalkNonUniformDiffusion(particle, fieldset, time):
 ######################## Mortality Kernels #########################
 
 def FishingMortality(particle, fieldset, time):
-    particle.Fmor = fieldset.F[time, particle.depth, particle.lat, particle.lon]/fieldset.SEAPODYM_dt
+    # particle.Fmor = fieldset.F[time, particle.depth, particle.lat, particle.lon]/fieldset.SEAPODYM_dt
+    particle.Fmor = fieldset.F[time, particle.depth, particle.lat, particle.lon]/particle.dt
 
 def NaturalMortality(particle, fieldset, time):
     Mnat = fieldset.MPmax*math.exp(-fieldset.MPexp*particle.age_class) + fieldset.MSmax*math.pow(particle.age_class, fieldset.MSslope)
     Mvar = Mnat * math.pow(1 - fieldset.Mrange, 1-fieldset.H[time, particle.depth, particle.lat, particle.lon]/2)
     #particle.Nmor = (Mvar * (particle.dt / fieldset.SEAPODYM_dt))
-    particle.Nmor = Mvar/fieldset.SEAPODYM_dt
+    #particle.Nmor = Mvar/fieldset.SEAPODYM_dt
+    particle.Nmor = Mvar/particle.dt
 
 def UpdateSurvivalProbNOnly(particle, fieldset, time):
     depletion = particle.SurvProb - particle.SurvProb * math.exp(-particle.Nmor)
@@ -182,19 +186,20 @@ def UpdateSurvivalProb(particle, fieldset, time):
     particle.SurvProb -= depletion
     particle.CapProb += particle.depletionF
 
+# TODO : We use time argument instead of TAL (TAL = time).
 def UpdateMixingPeriod(particle, fieldset, time):
-    particle.TAL += particle.dt
-    if particle.TAL > 90*86400:
+    # particle.TAL += particle.dt
+    if time > 90*86400:
         depletion = particle.Mix3SurvProb - particle.Mix3SurvProb * particle.Zint
         depF = depletion*particle.Fmor/(particle.Fmor+particle.Nmor)
         particle.Mix3SurvProb -= depletion
         particle.Mix3CapProb += depF
-    if particle.TAL > 180*86400:
+    if time > 180*86400:
         depletion = particle.Mix6SurvProb - particle.Mix6SurvProb * particle.Zint
         depF = depletion*particle.Fmor/(particle.Fmor+particle.Nmor)
         particle.Mix6SurvProb -= depletion
         particle.Mix6CapProb += depF
-    if particle.TAL > 270*86400:
+    if time > 270*86400:
         depletion = particle.Mix9SurvProb - particle.Mix9SurvProb * particle.Zint
         depF = depletion*particle.Fmor/(particle.Fmor+particle.Nmor)
         particle.Mix9SurvProb -= depletion

@@ -15,7 +15,7 @@
   <domain>
     <time>
       <!-- All of these parameters are in days -->
-      <dt>1</dt>
+      <dt>2</dt>
       <!-- <start>2008-02-15</start> -->
       <start>2000-01-15</start>
       <sim_time>1090</sim_time>
@@ -71,13 +71,13 @@ calculated by IkaField.
   <mortality>
     <selected_fisheries>
       <fishery name="P1" effort_file_name="1"/>
-      <!-- <fishery name="P21" effort_file_name="2"/>
+      <fishery name="P21" effort_file_name="2"/>
       <fishery name="P3" effort_file_name="3"/>
       <fishery name="S4" effort_file_name="4"/>
       <fishery name="S5" effort_file_name="5"/>
       <fishery name="S6" effort_file_name="6"/>
       <fishery name="S7" effort_file_name="7"/>
-      <fishery name="8" effort_file_name="8"/>
+      <!-- <fishery name="8" effort_file_name="8"/>
       <fishery name="L9" effort_file_name="9"/>
       <fishery name="S10" effort_file_name="10"/>
       <fishery name="S12" effort_file_name="12"/>
@@ -134,6 +134,7 @@ calculated by IkaField.
 
     <files files_only="False">
       <test>/home/ash/Documents/GitHub_Repositories/OFP-Ikamoana/data/ikamoana_data/skj_age5.dym</test>
+      <test_2>/home/ash/Documents/GitHub_Repositories/OFP-Ikamoana/data/ikamoana_data/skj_age5.nc</test_2>
       <!-- <H></H>
       <Kx></Kx>
       <Ky></Ky>
@@ -171,7 +172,11 @@ calculated by IkaField.
     <kernel>RandomWalkNonUniformDiffusion</kernel>
     <!-- <kernel>IkaDymMove</kernel> -->
     <kernel>IkaDimMoveWithDiffusionReroll</kernel>
-    <kernel>LandBlock</kernel>
+    <kernel>FishingMortality</kernel>
+    <kernel>NaturalMortality</kernel>
+    <kernel>UpdateSurvivalProb</kernel>
+    <kernel>UpdateMixingPeriod</kernel>
+    <kernel>Age</kernel>
   </kernels>
 
   <random_seed></random_seed>
