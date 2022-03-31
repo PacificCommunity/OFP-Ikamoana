@@ -9,6 +9,8 @@ import parcels
 import xarray as xr
 from parcels.particle import JITParticle
 from ikamoana.utils.feedinghabitatutils import seapodymFieldConstructor
+from ikamoana.utils.ikamoanafieldsutils import fieldToDataArray
+import os
 
 # Unity used here are seconds and meters.
 
@@ -198,3 +200,31 @@ class IkaSimulation :
         self.fish.execute(
             run_kernels, endtime=end_time, runtime=duration_time, dt=delta_time,
             recovery=recovery, output_file=particles_file, verbose_progress=verbose)
+        
+# TOOLS -------------------------------------------------------------- #
+
+    def oceanToNetCDF(self, dir_path: str = None, to_dataset: bool = False):
+        
+        if dir_path is None :
+            dir_path = "."
+        dir_path = os.path.join(dir_path,self.run_name)
+        try :
+            os.mkdir(dir_path)
+        except FileExistsError :
+            print(("WARNING : The {} directory already exists. The files it "
+                   "contains will be replaced.").format(dir_path))
+        
+        fields_dict = {}
+        for field in self.ocean.get_fields() :
+            if (not isinstance(field, parcels.VectorField)
+                    and not field.name == "start_distribution") :
+                print(field.name)
+                fields_dict[field.name] = fieldToDataArray(field)
+                     
+        if to_dataset :
+            file_name = "{}.nc".format(self.run_name)
+            xr.Dataset(fields_dict).to_netcdf(os.path.join(dir_path, file_name))
+        else :
+            for field_name, field_value in fields_dict.items() :
+                file_name = "{}_{}.nc".format(self.run_name, field_name)
+                field_value.to_netcdf(os.path.join(dir_path, file_name))

@@ -9,7 +9,7 @@
     <!-- Where the starting distribution of each cohort is stored -->
     <start_distribution>/home/ash/Documents/GitHub_Repositories/OFP-Ikamoana/data/ikamoana_data/</start_distribution>
     <!-- Where the SEAPODYM configuration file is stored -->
-    <seapodym_file>/home/ash/Documents/GitHub_Repositories/OFP-Ikamoana/data/SEAPODYM_data/run-test/skj_CLT_e5_3_est.xml</seapodym_file>
+    <seapodym_file>/home/ash/Documents/GitHub_Repositories/OFP-Ikamoana/data/SEAPODYM_data/run-test/newparfile.xml</seapodym_file>
   </directories>
 
   <domain>
@@ -18,7 +18,7 @@
       <dt>2</dt>
       <!-- <start>2008-02-15</start> -->
       <start>2000-01-15</start>
-      <sim_time>1090</sim_time>
+      <sim_time>90</sim_time>
       <output_dt>30</output_dt>
     </time>
     <lat>
@@ -71,13 +71,13 @@ calculated by IkaField.
   <mortality>
     <selected_fisheries>
       <fishery name="P1" effort_file_name="1"/>
-      <fishery name="P21" effort_file_name="2"/>
+      <!-- <fishery name="P21" effort_file_name="2"/>
       <fishery name="P3" effort_file_name="3"/>
       <fishery name="S4" effort_file_name="4"/>
       <fishery name="S5" effort_file_name="5"/>
       <fishery name="S6" effort_file_name="6"/>
       <fishery name="S7" effort_file_name="7"/>
-      <!-- <fishery name="8" effort_file_name="8"/>
+      <fishery name="8" effort_file_name="8"/>
       <fishery name="L9" effort_file_name="9"/>
       <fishery name="S10" effort_file_name="10"/>
       <fishery name="S12" effort_file_name="12"/>
@@ -133,8 +133,6 @@ calculated by IkaField.
   <forcing>
 
     <files files_only="False">
-      <test>/home/ash/Documents/GitHub_Repositories/OFP-Ikamoana/data/ikamoana_data/skj_age5.dym</test>
-      <test_2>/home/ash/Documents/GitHub_Repositories/OFP-Ikamoana/data/ikamoana_data/skj_age5.nc</test_2>
       <!-- <H></H>
       <Kx></Kx>
       <Ky></Ky>

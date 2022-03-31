@@ -186,20 +186,19 @@ def UpdateSurvivalProb(particle, fieldset, time):
     particle.SurvProb -= depletion
     particle.CapProb += particle.depletionF
 
-# TODO : We use time argument instead of TAL (TAL = time).
 def UpdateMixingPeriod(particle, fieldset, time):
-    # particle.TAL += particle.dt
-    if time > 90*86400:
+    particle.TAL += particle.dt
+    if particle.TAL > 90*86400 :
         depletion = particle.Mix3SurvProb - particle.Mix3SurvProb * particle.Zint
         depF = depletion*particle.Fmor/(particle.Fmor+particle.Nmor)
         particle.Mix3SurvProb -= depletion
         particle.Mix3CapProb += depF
-    if time > 180*86400:
+    if particle.TAL > 180*86400 :
         depletion = particle.Mix6SurvProb - particle.Mix6SurvProb * particle.Zint
         depF = depletion*particle.Fmor/(particle.Fmor+particle.Nmor)
         particle.Mix6SurvProb -= depletion
         particle.Mix6CapProb += depF
-    if time > 270*86400:
+    if particle.TAL > 270*86400 :
         depletion = particle.Mix9SurvProb - particle.Mix9SurvProb * particle.Zint
         depF = depletion*particle.Fmor/(particle.Fmor+particle.Nmor)
         particle.Mix9SurvProb -= depletion

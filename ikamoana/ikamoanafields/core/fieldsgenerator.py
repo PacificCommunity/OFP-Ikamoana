@@ -119,7 +119,7 @@ def landmask(
                   'lon':habitat_field.coords['lon']}
 
     ## TODO : Why is lon between 1 and ny-1 ?
-    landmask[-1,:] = landmask[0,:] = 0
+    # landmask[-1,:] = landmask[0,:] = 0
 
     if field_output :
         if habitat_field is None :
