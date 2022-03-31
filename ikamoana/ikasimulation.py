@@ -218,7 +218,6 @@ class IkaSimulation :
         for field in self.ocean.get_fields() :
             if (not isinstance(field, parcels.VectorField)
                     and not field.name == "start_distribution") :
-                print(field.name)
                 fields_dict[field.name] = fieldToDataArray(field)
                      
         if to_dataset :
