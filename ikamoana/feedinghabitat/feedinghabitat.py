@@ -705,24 +705,26 @@ class FeedingHabitat :
         print("Warning : This function (correctEpiTempWithVld) was only tested"
               " for Skipjack.\n It will also add +1 to sigma_min. Cf. function"
               " documentation for more details.")
-
+        
+        sst = self.data_structure.variables_dictionary['sst']
+        temperature_L1 = self.data_structure.variables_dictionary['temperature_L1']
+        vld = self.data_structure.variables_dictionary['vld']
+        
+        # NOTE : If we use coordinates to compare/sum/multiply etc...
+        # it can have some errors due to values mismatch. 
         dTdz = np.divide(
-            2.0 * (self.data_structure.variables_dictionary['sst']
-            - self.data_structure.variables_dictionary['temperature_L1']),
+            2.0 * (sst.data - temperature_L1.data), vld.data,
             #(1000.0 * self.variables_dictionary['vld']),
-            self.data_structure.variables_dictionary['vld'],
-            out=np.zeros_like(self.data_structure.variables_dictionary['vld']),
-            where=self.data_structure.variables_dictionary['vld']!=0.0)
+            out=np.zeros_like(vld),
+            where=vld!=0.0)
 
         dTdz = np.where(dTdz < 0.0, 0.0, dTdz)
         dTdz = np.where(dTdz > 0.2, 0.2, dTdz)
 
-        self.data_structure.variables_dictionary['temperature_L1'] = (
-            self.data_structure.variables_dictionary['temperature_L1']
-            + 4.0 * dTdz
-            * (self.data_structure.variables_dictionary['sst']
-               - self.data_structure.variables_dictionary['temperature_L1'])
-            )
+        data = temperature_L1.data + 4.0 * dTdz * (sst.data - temperature_L1.data)
+        self.data_structure.variables_dictionary['temperature_L1'] = xr.DataArray(
+            data=data, coords=temperature_L1.coords, attrs=temperature_L1.attrs
+        )
 
         # Since the estimate of sigma with sst is always lower
         # due to larger extension of warm watermasses in the surface

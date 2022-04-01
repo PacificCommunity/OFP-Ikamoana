@@ -92,15 +92,20 @@ class IkaSeapodym(IkaSimulation) :
             files = root.find("files")
             params['files_only'] = False
             forcing_files = {}
+            forcing_dataset = {}
             if files is not None :
-                if "file_only" in files.attrib :
+                if "files_only" in files.attrib :
                     params['files_only'] = (files.attrib['files_only']
                                             in ["True", "true"])
                 else :
                     params['files_only'] = False
                 for elmt in files :
-                    forcing_files[elmt.tag] = elmt.text
-            params["forcing_files"] = forcing_files
+                    if ("dataset" in elmt.attrib
+                            and elmt.attrib["dataset"] in ["True","true"]):
+                            forcing_dataset[elmt.tag] = elmt.text
+                    else :
+                        forcing_files[elmt.tag] = elmt.text
+            params["forcing_files"] = (forcing_files,forcing_dataset)
             tmp = root.find("field_interp_method").text
             params["fields_interp_method"] = "nearest" if tmp in [None, ""] else tmp
         
@@ -157,8 +162,13 @@ class IkaSeapodym(IkaSimulation) :
         
         def loadFieldsFromFiles():
 # TODO : use reshaping
+            forcing_files, forcing_dataset = self.ika_params["forcing_files"]
             forcing = {}
-            for name, filepath in self.ika_params["forcing_files"].items() :
+            for _, filepath in forcing_dataset.items() :
+                ds = xr.load_dataset(filepath)
+                for dr_name in ds :
+                    forcing[dr_name] = ds[dr_name]
+            for name, filepath in forcing_files.items() :
                 forcing[name] = seapodymFieldConstructor(filepath, dym_varname=name)
             return forcing
         

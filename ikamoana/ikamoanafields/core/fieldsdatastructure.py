@@ -124,8 +124,8 @@ class IkamoanaFieldsDataStructure :
         
         ## CURRENTS #################################
         # TODO : For now, only the first layer is used.
-        self.u_file = 'po_interim_historic_2x30d_u_L1_1979_2010.dym'
-        self.v_file = 'po_interim_historic_2x30d_v_L1_1979_2010.dym'
+        self.u_file = root.find('strfile_u').attrib['layer0']
+        self.v_file = root.find('strfile_v').attrib['layer0']
         
         ## DIFFUSION ####################################
         self.sigma_K=float(root.find('sigma_species').attrib[sp_name])
