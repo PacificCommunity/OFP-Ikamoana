@@ -59,7 +59,6 @@ class IkamoanaFieldsDataStructure :
     def _readIkamoana(self, root: ET.Element) :
         self.diffusion_boost=float(tagReading(root,['forcing','diffusion_boost'],0))
         self.diffusion_scale=float(tagReading(root,['forcing','diffusion_scale'],1))
-        self.sig_scale=float(tagReading(root,['forcing','sig_scale'],1))
         self.c_scale=float(tagReading(root,['forcing','c_scale'],1))
         self.taxis_scale=float(tagReading(root,['forcing','taxis_scale'],1))
         
@@ -97,7 +96,12 @@ class IkamoanaFieldsDataStructure :
                              "<mortality> tag if you don't want to compute F.")
         selected_fisheries = {}
         for fishery in iter_fisheries :
-            selected_fisheries[fishery.attrib['name']] = fishery.attrib['effort_file_name']
+            seapodym_name = fishery.attrib['name']
+            if 'effort_file_name' in fishery.attrib :
+                effort_file_name = fishery.attrib['effort_file_name']
+            else :
+                effort_file_name = seapodym_name
+            selected_fisheries[seapodym_name] = effort_file_name
         self.selected_fisheries = selected_fisheries
         tmp = tagReading(root, ["mortality","predict_effort"], "False")
         self.predict_effort = True if tmp in ["True", "true"] else False

@@ -15,11 +15,11 @@
   <domain>
     <time>
       <!-- All of these parameters are in days -->
-      <dt>1</dt>
+      <dt>0.1</dt>
       <!-- <start>2008-02-15</start> -->
       <start>2000-01-15</start>
-      <sim_time>1090</sim_time>
-      <output_dt>30</output_dt>
+      <sim_time>90</sim_time>
+      <output_dt>0.1</output_dt>
     </time>
     <lat>
       <min>-40</min>
@@ -41,8 +41,8 @@
     <!-- This type of file is 2D (no time axis). It is used for the basic initialization. -->
     <start_static_file>skj_age5.nc</start_static_file>
     <start_cell>
-      <lon>190</lon>
-      <lat>0</lat>
+      <lon>150</lon>
+      <lat>40</lat>
     </start_cell>
   </cohort_info>
 
@@ -133,7 +133,6 @@ calculated by IkaField.
   <forcing>
 
     <files files_only="False">
-      <test>/home/ash/Documents/GitHub_Repositories/OFP-Ikamoana/data/ikamoana_data/skj_age5.dym</test>
       <!-- <H></H>
       <Kx></Kx>
       <Ky></Ky>
@@ -169,7 +168,6 @@ calculated by IkaField.
     <kernel>IkAdvectionRK4</kernel>
     <kernel>TaxisRK4</kernel>
     <kernel>RandomWalkNonUniformDiffusion</kernel>
-    <!-- <kernel>IkaDymMove</kernel> -->
     <kernel>IkaDimMoveWithDiffusionReroll</kernel>
     <kernel>LandBlock</kernel>
   </kernels>

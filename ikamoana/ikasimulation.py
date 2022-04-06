@@ -12,16 +12,65 @@ from ikamoana.utils.feedinghabitatutils import seapodymFieldConstructor
 from ikamoana.utils.ikamoanafieldsutils import fieldToDataArray
 import os
 
-# Unity used here are seconds and meters.
+# NOTE : Unity used here are seconds and meters.
 
 KernelType = Callable[[JITParticle,parcels.FieldSet,datetime], None]
 
 class IkaSimulation :
+    """
+    Encapsulates the simulation methods of the Parcels library. Is used
+    as a template by the IkaSeapodym class.
 
+    Attributes
+    ----------
+    run_name : str
+        The name of the simulation.
+    random_seed : float
+        Seed to generate random values.
+    ocean : parcels.FieldSet
+        Contains all the fields necessary for the simulation.
+    fish : parcels.ParticleSet
+        Contains the state of all particles.
+
+    Examples
+    --------
+    First example : Simply load the U and V fields followed by running
+    the AdvectionRK4 plot method on a single particle. Finally, export 
+    the fields to a Dataset for later use.
+    
+    >>> my_sim = ikasim.IkaSimulation()
+    >>> my_dataset = xr.Dataset({U:"U.nc", "V":"V.nc"})
+    >>> my_sim.loadFields(fields=my_dataset)
+    >>> my_sim.initializeParticleSet(
+    ...     particles_longitude=[150],
+    ...     particles_latitude=[10],
+    ...     particles_class=parcels.particle.JITParticle,
+    ...     particles_starting_time=np.datetime64('1979-01-15'),
+    ...     particles_variables={"age":[0]})
+    >>> my_sim.fish.show(field=my_sim.ocean.U)
+    >>> my_sim.runKernels(
+    ...     {"AdvectionRK4":parcels.AdvectionRK4},
+    ...     # Duration in seconds (= 30 days)
+    ...     duration_time=30*(24*60*60),
+    ...     # Can also use a end date
+    ...     #end_time=np.datetime64('1980-02-15'),
+    ...     delta_time=24*60*60,
+    ...     # Record day after day
+    ...     output_delta_time=24*60*60)
+    >>> my_sim.oceanToNetCDF(to_dataset=True)
+    """
+    
     def __init__(self, run_name: str = None, random_seed: float = None):
+        """Initialize an IkaSimulation object.
+
+        Parameters
+        ----------
+        run_name : str, optional
+           It is used to identify the simulation. Automatically
+           generated if None.
+        random_seed : float, optional
+            Automatically generated if None.
         """
-        `run_name` is used to identify the simulation.
-        `random_seed` automatically computed if None."""
         
         if run_name is None :
             run_name = str(uuid.uuid4())[:8]
@@ -33,20 +82,47 @@ class IkaSimulation :
         self.random_seed = random_seed
         
     def loadFields(
-            self, fields: Union[Dict[str,Union[str,parcels.Field,xr.DataArray]],
-                                xr.Dataset,
-                                parcels.FieldSet],
+            self, fields: Union[xr.Dataset, parcels.FieldSet,
+                                Dict[str,Union[str,parcels.Field,xr.DataArray]]],
             inplace: bool = False, allow_time_extrapolation: bool = True,
             landmask_interp_methode: str = 'nearest',
             fields_interp_method: str = 'nearest', 
             ):
-        """`fields` Dict can be field_name:filepath, field_name:DataArray
-        or field_name:Field.
-        `fields` must contains U and V. If landmask is not inside, it is
-        calculated automatically using Nan values of both U and V."""
+        """Loads all the fields needed for the simulation into a
+        Parcels.FieldSet structure.
+
+        Parameters
+        ----------
+        fields : Union[xr.Dataset, parcels.FieldSet, Dict[str,Union[str,parcels.Field,xarray.DataArray]]]
+            It must contains U and V. If  the "landmask" is not inside,
+            it is calculated automatically using the Nan values of both
+            U and V. If `fields` is a Dict, keys are fields name and
+            values can be Fields, DataArray or filepath (str).
+        inplace : bool, optional
+            Choose if this function manipulates a copy of the `fields`
+            structure or the structure itself.
+        allow_time_extrapolation : bool, optional
+            This is a Parcels parameter passed at FieldSet creation.
+            Please refer to the Parcels documentation.
+        landmask_interp_methode : str, optional
+            Interpolation method used to create the parcels landmask.
+            Please refer to the Parcels documentation.
+        fields_interp_method : str, optional
+            Interpolation method used to create the parcels FieldSet.
+            Please refer to the Parcels documentation.
+
+        Raises
+        ------
+        AttributeError
+            `fields` (Dataset/FieldSet) argument must contains both U
+            and V but U or V are missing.
+        KeyError
+            `fields` (Dict[str,DataArray/Field]) argument must contains
+            both U and V but U or V are missing.
+        """
         
-        # NOTE : spatial_limits:Dict is not needed. We consider that all fields 
-        # are already at the right size.
+        # NOTE : spatial_limits:Dict is not needed. We consider that
+        # all fields are already at the right size.
         
         def loadFilepaths(fields):
             """In the case where `fields` contains path to NetCDF/DYM
@@ -151,8 +227,32 @@ class IkaSimulation :
             particles_class: JITParticle = JITParticle,
             particles_starting_time: Union[np.datetime64,List[np.datetime64]] = None,
             particles_variables: Dict[str,List[Any]] = {}):
+        """Initialise the ParticleSet (`fish` attribut) from lists of
+        longitude and latitude.
+
+        Parameters
+        ----------
+        particles_longitude : Union[list,np.ndarray]
+            The longitudinal position of the particles.
+        particles_latitude : Union[list,np.ndarray]
+            The latitudinal position of the particles.
+        particles_class : JITParticle, optional
+            The class of particles to be used in this simulation.
+        particles_starting_time : Union[np.datetime64,List[np.datetime64]], optional
+            Optional list of start time values for particles. Default is
+            `ocean.U.time[0]`.
+        particles_variables : Dict[str,List[Any]], optional
+            Variables to add to particles. {variable name : list of
+            values for each particle}.
+
+        Raises
+        ------
+        ValueError
+            Each list in particles_variables must have a length equal to
+            the number of particles.
+        """
         
-        # The verification of the sizes of particles_latitude and
+        # NOTE : The verification of the sizes of particles_latitude and
         # particles_longitude is done later by parcels.ParticleSet.from_list.
         
         particles_number = len(particles_longitude)
@@ -174,18 +274,52 @@ class IkaSimulation :
             delta_time: int = 1, duration_time: int = None, end_time: np.datetime64 = None,
             save: bool = False, output_name: str = None, output_delta_time: int = 1,
             verbose: bool = False):
-        """
-        `recovery` is a dict that contains error code (int) as keys and
-        function as values. See also parcels.ErrorCode class to know
-        which codes can be handled.
+        """Execute a given kernel (or a list of kernels) function(s)
+        over the particle set for multiple timesteps. Optionally also
+        provide sub-timestepping for particle output.
+
+        Parameters
+        ----------
+        kernels : Union[KernelType, Dict[str, KernelType]]
+            Kernel function to execute. This can be the name of a
+            defined Python function or a parcels.kernel.Kernel object.
+            If you define multiple kernels in a dict, they will be
+            concatenated using the + operator.
+        recovery : Dict[int, KernelType], optional
+            Dictionary with additional `parcels.tools.error` recovery
+            kernels to allow custom recovery behaviour in case of kernel
+            errors.
+        delta_time : int, optional
+            It is either a timedelta object or a double. Use a negative
+            value for a backward-in-time simulation.
+        duration_time : int, optional
+            Length of the timestepping loop. Use instead of endtime. It
+            is either a timedelta object or a positive double.
+        end_time : np.datetime64, optional
+            End time for the timestepping loop. It is either a datetime
+            object or a positive double.
+        save : bool, optional
+            Specify if you want to save particles history into a NetCDF
+            file.
+        output_name : str, optional
+            Name of the `parcels.particlefile.ParticleFile` object from
+            the ParticleSet. Default is then `run_name`.
+        output_delta_time : int, optional
+            Interval which dictates the update frequency of file output.
+            It is either a timedelta object or a positive double.
+        verbose : bool, optional
+            Boolean for providing a progress bar for the kernel
+            execution loop.
         """
 
-        # The verification of the duration_time and end_time (only one
-        # can be chosen) is done later by parcels.ParticleSet.execute.
+        # NOTE : The verification of the duration_time and end_time
+        # (only one can be chosen) is done later by parcels.ParticleSet.execute.
         
         if save :
             if output_name is None :
-                output_name = self.run_name
+                output_name = "{}_particleFile".format(self.run_name)
+            else :
+                output_name, _ = os.path.splitext(output_name)
             particles_file = self.fish.ParticleFile(
                 name=("{}.nc").format(output_name), outputdt=output_delta_time)
         else :
@@ -204,6 +338,17 @@ class IkaSimulation :
 # TOOLS -------------------------------------------------------------- #
 
     def oceanToNetCDF(self, dir_path: str = None, to_dataset: bool = False):
+        """Export the `ocean` FieldSet into a single NetCDF (as a Dataset)
+        or multiple NetCDF (as DataArrays).
+
+        Parameters
+        ----------
+        dir_path : str, optional
+            The directory where Fields will be saved. Created if it
+            doesn't exist.
+        to_dataset : bool, optional
+            Save as one Dataset (True) or multiple DataArrays (False).
+        """
         
         if dir_path is None :
             dir_path = "."

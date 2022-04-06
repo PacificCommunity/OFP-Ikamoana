@@ -275,6 +275,7 @@ def taxis(
         return is_evolving, age
 
     is_evolving, age = argumentCheck(dHdlon)
+    taxis_scale = ika_structure.taxis_scale
     Tlon = np.zeros(dHdlon.data.shape, dtype=np.float32)
     Tlat = np.zeros(dHdlat.data.shape, dtype=np.float32)
     f_length = fh_structure.findLengthByCohort
@@ -288,8 +289,8 @@ def taxis(
         ## NOTE : We use _getCellEdgeSizes function to compute dx and dy.
         # This function use GeographicPolar function from Parcels. The
         # latitude correction has already been applied.
-        Tlon[t,:,:] = vMax(t_length) * dx * dHdlon.data[t,:,:] 
-        Tlat[t,:,:] = vMax(t_length) * dy * dHdlat.data[t,:,:] 
+        Tlon[t,:,:] = vMax(t_length) * dx * dHdlon.data[t,:,:] * taxis_scale
+        Tlat[t,:,:] = vMax(t_length) * dy * dHdlat.data[t,:,:] * taxis_scale
 
     taxis_attrs = {**dHdlat.attrs, "units":"m².s⁻¹"}
         
@@ -318,9 +319,9 @@ def _diffusionCorrection(
         if current_u is None or current_v is None :
             raise ValueError("If vertical_movement is True, you must specify "
                              "currents fields (current_u, current_v)")
-        #correction of rho by passive advection
+        # correction of rho by passive advection
         currents_magnitude = np.sqrt(current_u**2 + current_v**2)
-        # TODO: this was used in SEAPODYM with nmi.dt, use carefully
+        # NOTE : this was used in SEAPODYM with nmi.dt, use carefully
         # fV = 1.0 - currents_magnitude/(500.0*dt/30.0+currents_magnitude)
         # We transformed 500 nm.dt into m.s
         fV = 1.0 - currents_magnitude/((926/2592)+currents_magnitude)
@@ -420,11 +421,10 @@ def diffusion(
 
         ## VECTORIZED
         diffusion = (
-            ika_structure.sig_scale
-            * d_max
-            * (1 - ika_structure.c_scale * ika_structure.c
-               * np.power(habitat_data[t,:,:], ika_structure.P))
-            * ika_structure.diffusion_scale + ika_structure.diffusion_boost
+            d_max * (1 - ika_structure.c_scale * ika_structure.c
+                     * np.power(habitat_data[t,:,:], ika_structure.P))
+            * ika_structure.diffusion_scale
+            + ika_structure.diffusion_boost
         )
         
         diffusion_x[t,:,:], diffusion_y[t,:,:] = _diffusionCorrection(

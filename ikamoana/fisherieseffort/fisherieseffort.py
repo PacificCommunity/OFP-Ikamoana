@@ -613,27 +613,7 @@ def effortByFishery(
     - Optional -> remove some named fisheries (`remove_fisheries`)
     - removeEmptyEntries
     - Optional -> removeNoCatchEntries
-    - separateFisheriestmp_dict = {}
-for f in df_effort['f'].unique():
-
-    tmp = df_effort[df_effort['f'] == f]
-    update_dict = {
-        _labels['gear']:list(df_effort[_labels['gear']].explode().unique()),
-        _labels['resolution']:list(df_effort[_labels['resolution']].explode().unique())}
-
-    tmp = tmp[
-        ['time',_labels['latitude'],_labels['longitude'],
-         _labels['effort']]]
-
-    tmp = tmp.groupby(['time',_labels['latitude'],_labels['longitude']]
-                      ).sum().to_xarray()['E']
-    
-    tmp.name = f
-    tmp.attrs.update(update_dict)
-    
-    tmp_dict[f] = tmp
-    
-xr.Dataset(tmp_dict)
+    - separateFisheries
     
     Parameters
     ----------
@@ -662,15 +642,6 @@ xr.Dataset(tmp_dict)
     """
 
     fisheries_effort = readFiles(filepath, skiprows)
-    # print(fisheries_effort['f'].unique())
-    # print(fisheries_effort[
-    #     (fisheries_effort['lat'] <= 64.5) &
-    #     (fisheries_effort['lat'] >= -53.5) &
-    #     (fisheries_effort['lon'] <= 289.5) &
-    #     (fisheries_effort['lon'] >= 89.5) &
-    #     (fisheries_effort['time'] >= np.datetime64('1979-01-15')) &
-    #     (fisheries_effort['time'] <= np.datetime64('2010-12-16'))
-    #     ]['E'].sum())
     if selected_fisheries is not None :
         fisheries_effort = selectFisheries(fisheries_effort, selected_fisheries)
     fisheries_effort = removeEmptyEntries(fisheries_effort, verbose)

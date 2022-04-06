@@ -15,10 +15,10 @@
   <domain>
     <time>
       <!-- All of these parameters are in days -->
-      <dt>1</dt>
+      <dt>30</dt>
       <!-- <start>2008-02-15</start> -->
       <start>2000-01-15</start>
-      <sim_time>90</sim_time>
+      <sim_time>720</sim_time>
       <output_dt>30</output_dt>
     </time>
     <lat>
@@ -87,8 +87,6 @@ calculated by IkaField.
     <predict_effort>False</predict_effort>
     <skiprows>0</skiprows>
   </mortality>
-  
-  <!-- Leave empty for default value. Check fieldsdatastructure.py for default values. -->
 
 <!-- DOCUMENTATION (forcing) :
 
@@ -134,8 +132,11 @@ calculated by IkaField.
 -->
   <forcing>
 
-    <files files_only="True">
-      <ocean dataset="True" >/home/ash/Documents/GitHub_Repositories/OFP-Ikamoana/data/ikamoana_data/IkaSim_Example_025_30/IkaSim_Example_025_30_90d.nc</ocean>
+    <files files_only="False">
+      <!-- <ocean dataset="True">/home/ash/Documents/GitHub_Repositories/OFP-Ikamoana/data/ikamoana_data/IkaSim_Example_025_30/IkaSim_Example_025_30_720d.nc</ocean> -->
+      <!-- <ocean dataset="True">/home/ash/Documents/GitHub_Repositories/OFP-Ikamoana/data/ikamoana_data/IkaSim_Example_025_30/IkaSim_Example_025_30_90d.nc</ocean> -->
+      <!-- <ocean dataset="True">/home/ash/Documents/GitHub_Repositories/OFP-Ikamoana/data/ikamoana_data/IkaSim_Example_025_30/IkaSim_Example_025_30_30d.nc</ocean> -->
+      <!-- <ocean dataset="True">/home/ash/Documents/GitHub_Repositories/OFP-Ikamoana/data/ikamoana_data/IkaSim_Example_025_30/IkaSim_Example_025_30_30d_no_vertical.nc</ocean> -->
       <!-- <H></H>
       <Kx></Kx>
       <Ky></Ky>

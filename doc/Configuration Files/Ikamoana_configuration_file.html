@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <title>Presentation</title>
+        <style>
+/* From extension vscode.github */
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+.vscode-dark img[src$=\#gh-light-mode-only],
+.vscode-light img[src$=\#gh-dark-mode-only] {
+	display: none;
+}
+
+/* From extension vscode.markdown-math */
+@font-face{font-family:KaTeX_AMS;font-style:normal;font-weight:400;src:url(fonts/KaTeX_AMS-Regular.woff2) format("woff2"),url(fonts/KaTeX_AMS-Regular.woff) format("woff"),url(fonts/KaTeX_AMS-Regular.ttf) format("truetype")}@font-face{font-family:KaTeX_Caligraphic;font-style:normal;font-weight:700;src:url(fonts/KaTeX_Caligraphic-Bold.woff2) format("woff2"),url(fonts/KaTeX_Caligraphic-Bold.woff) format("woff"),url(fonts/KaTeX_Caligraphic-Bold.ttf) format("truetype")}@font-face{font-family:KaTeX_Caligraphic;font-style:normal;font-weight:400;src:url(fonts/KaTeX_Caligraphic-Regular.woff2) format("woff2"),url(fonts/KaTeX_Caligraphic-Regular.woff) format("woff"),url(fonts/KaTeX_Caligraphic-Regular.ttf) format("truetype")}@font-face{font-family:KaTeX_Fraktur;font-style:normal;font-weight:700;src:url(fonts/KaTeX_Fraktur-Bold.woff2) format("woff2"),url(fonts/KaTeX_Fraktur-Bold.woff) format("woff"),url(fonts/KaTeX_Fraktur-Bold.ttf) format("truetype")}@font-face{font-family:KaTeX_Fraktur;font-style:normal;font-weight:400;src:url(fonts/KaTeX_Fraktur-Regular.woff2) format("woff2"),url(fonts/KaTeX_Fraktur-Regular.woff) format("woff"),url(fonts/KaTeX_Fraktur-Regular.ttf) format("truetype")}@font-face{font-family:KaTeX_Main;font-style:normal;font-weight:700;src:url(fonts/KaTeX_Main-Bold.woff2) format("woff2"),url(fonts/KaTeX_Main-Bold.woff) format("woff"),url(fonts/KaTeX_Main-Bold.ttf) format("truetype")}@font-face{font-family:KaTeX_Main;font-style:italic;font-weight:700;src:url(fonts/KaTeX_Main-BoldItalic.woff2) format("woff2"),url(fonts/KaTeX_Main-BoldItalic.woff) format("woff"),url(fonts/KaTeX_Main-BoldItalic.ttf) format("truetype")}@font-face{font-family:KaTeX_Main;font-style:italic;font-weight:400;src:url(fonts/KaTeX_Main-Italic.woff2) format("woff2"),url(fonts/KaTeX_Main-Italic.woff) format("woff"),url(fonts/KaTeX_Main-Italic.ttf) format("truetype")}@font-face{font-family:KaTeX_Main;font-style:normal;font-weight:400;src:url(fonts/KaTeX_Main-Regular.woff2) format("woff2"),url(fonts/KaTeX_Main-Regular.woff) format("woff"),url(fonts/KaTeX_Main-Regular.ttf) format("truetype")}@font-face{font-family:KaTeX_Math;font-style:italic;font-weight:700;src:url(fonts/KaTeX_Math-BoldItalic.woff2) format("woff2"),url(fonts/KaTeX_Math-BoldItalic.woff) format("woff"),url(fonts/KaTeX_Math-BoldItalic.ttf) format("truetype")}@font-face{font-family:KaTeX_Math;font-style:italic;font-weight:400;src:url(fonts/KaTeX_Math-Italic.woff2) format("woff2"),url(fonts/KaTeX_Math-Italic.woff) format("woff"),url(fonts/KaTeX_Math-Italic.ttf) format("truetype")}@font-face{font-family:"KaTeX_SansSerif";font-style:normal;font-weight:700;src:url(fonts/KaTeX_SansSerif-Bold.woff2) format("woff2"),url(fonts/KaTeX_SansSerif-Bold.woff) format("woff"),url(fonts/KaTeX_SansSerif-Bold.ttf) format("truetype")}@font-face{font-family:"KaTeX_SansSerif";font-style:italic;font-weight:400;src:url(fonts/KaTeX_SansSerif-Italic.woff2) format("woff2"),url(fonts/KaTeX_SansSerif-Italic.woff) format("woff"),url(fonts/KaTeX_SansSerif-Italic.ttf) format("truetype")}@font-face{font-family:"KaTeX_SansSerif";font-style:normal;font-weight:400;src:url(fonts/KaTeX_SansSerif-Regular.woff2) format("woff2"),url(fonts/KaTeX_SansSerif-Regular.woff) format("woff"),url(fonts/KaTeX_SansSerif-Regular.ttf) format("truetype")}@font-face{font-family:KaTeX_Script;font-style:normal;font-weight:400;src:url(fonts/KaTeX_Script-Regular.woff2) format("woff2"),url(fonts/KaTeX_Script-Regular.woff) format("woff"),url(fonts/KaTeX_Script-Regular.ttf) format("truetype")}@font-face{font-family:KaTeX_Size1;font-style:normal;font-weight:400;src:url(fonts/KaTeX_Size1-Regular.woff2) format("woff2"),url(fonts/KaTeX_Size1-Regular.woff) format("woff"),url(fonts/KaTeX_Size1-Regular.ttf) format("truetype")}@font-face{font-family:KaTeX_Size2;font-style:normal;font-weight:400;src:url(fonts/KaTeX_Size2-Regular.woff2) format("woff2"),url(fonts/KaTeX_Size2-Regular.woff) format("woff"),url(fonts/KaTeX_Size2-Regular.ttf) format("truetype")}@font-face{font-family:KaTeX_Size3;font-style:normal;font-weight:400;src:url(fonts/KaTeX_Size3-Regular.woff2) format("woff2"),url(fonts/KaTeX_Size3-Regular.woff) format("woff"),url(fonts/KaTeX_Size3-Regular.ttf) format("truetype")}@font-face{font-family:KaTeX_Size4;font-style:normal;font-weight:400;src:url(fonts/KaTeX_Size4-Regular.woff2) format("woff2"),url(fonts/KaTeX_Size4-Regular.woff) format("woff"),url(fonts/KaTeX_Size4-Regular.ttf) format("truetype")}@font-face{font-family:KaTeX_Typewriter;font-style:normal;font-weight:400;src:url(fonts/KaTeX_Typewriter-Regular.woff2) format("woff2"),url(fonts/KaTeX_Typewriter-Regular.woff) format("woff"),url(fonts/KaTeX_Typewriter-Regular.ttf) format("truetype")}.katex{text-rendering:auto;font:normal 1.21em KaTeX_Main,Times New Roman,serif;line-height:1.2;text-indent:0}.katex *{-ms-high-contrast-adjust:none!important;border-color:currentColor}.katex .katex-version:after{content:"0.13.24"}.katex .katex-mathml{clip:rect(1px,1px,1px,1px);border:0;height:1px;overflow:hidden;padding:0;position:absolute;width:1px}.katex .katex-html>.newline{display:block}.katex .base{position:relative;white-space:nowrap;width:-webkit-min-content;width:-moz-min-content;width:min-content}.katex .base,.katex .strut{display:inline-block}.katex .textbf{font-weight:700}.katex .textit{font-style:italic}.katex .textrm{font-family:KaTeX_Main}.katex .textsf{font-family:KaTeX_SansSerif}.katex .texttt{font-family:KaTeX_Typewriter}.katex .mathnormal{font-family:KaTeX_Math;font-style:italic}.katex .mathit{font-family:KaTeX_Main;font-style:italic}.katex .mathrm{font-style:normal}.katex .mathbf{font-family:KaTeX_Main;font-weight:700}.katex .boldsymbol{font-family:KaTeX_Math;font-style:italic;font-weight:700}.katex .amsrm,.katex .mathbb,.katex .textbb{font-family:KaTeX_AMS}.katex .mathcal{font-family:KaTeX_Caligraphic}.katex .mathfrak,.katex .textfrak{font-family:KaTeX_Fraktur}.katex .mathtt{font-family:KaTeX_Typewriter}.katex .mathscr,.katex .textscr{font-family:KaTeX_Script}.katex .mathsf,.katex .textsf{font-family:KaTeX_SansSerif}.katex .mathboldsf,.katex .textboldsf{font-family:KaTeX_SansSerif;font-weight:700}.katex .mathitsf,.katex .textitsf{font-family:KaTeX_SansSerif;font-style:italic}.katex .mainrm{font-family:KaTeX_Main;font-style:normal}.katex .vlist-t{border-collapse:collapse;display:inline-table;table-layout:fixed}.katex .vlist-r{display:table-row}.katex .vlist{display:table-cell;position:relative;vertical-align:bottom}.katex .vlist>span{display:block;height:0;position:relative}.katex .vlist>span>span{display:inline-block}.katex .vlist>span>.pstrut{overflow:hidden;width:0}.katex .vlist-t2{margin-right:-2px}.katex .vlist-s{display:table-cell;font-size:1px;min-width:2px;vertical-align:bottom;width:2px}.katex .vbox{align-items:baseline;display:inline-flex;flex-direction:column}.katex .hbox{width:100%}.katex .hbox,.katex .thinbox{display:inline-flex;flex-direction:row}.katex .thinbox{max-width:0;width:0}.katex .msupsub{text-align:left}.katex .mfrac>span>span{text-align:center}.katex .mfrac .frac-line{border-bottom-style:solid;display:inline-block;width:100%}.katex .hdashline,.katex .hline,.katex .mfrac .frac-line,.katex .overline .overline-line,.katex .rule,.katex .underline .underline-line{min-height:1px}.katex .mspace{display:inline-block}.katex .clap,.katex .llap,.katex .rlap{position:relative;width:0}.katex .clap>.inner,.katex .llap>.inner,.katex .rlap>.inner{position:absolute}.katex .clap>.fix,.katex .llap>.fix,.katex .rlap>.fix{display:inline-block}.katex .llap>.inner{right:0}.katex .clap>.inner,.katex .rlap>.inner{left:0}.katex .clap>.inner>span{margin-left:-50%;margin-right:50%}.katex .rule{border:0 solid;display:inline-block;position:relative}.katex .hline,.katex .overline .overline-line,.katex .underline .underline-line{border-bottom-style:solid;display:inline-block;width:100%}.katex .hdashline{border-bottom-style:dashed;display:inline-block;width:100%}.katex .sqrt>.root{margin-left:.27777778em;margin-right:-.55555556em}.katex .fontsize-ensurer.reset-size1.size1,.katex .sizing.reset-size1.size1{font-size:1em}.katex .fontsize-ensurer.reset-size1.size2,.katex .sizing.reset-size1.size2{font-size:1.2em}.katex .fontsize-ensurer.reset-size1.size3,.katex .sizing.reset-size1.size3{font-size:1.4em}.katex .fontsize-ensurer.reset-size1.size4,.katex .sizing.reset-size1.size4{font-size:1.6em}.katex .fontsize-ensurer.reset-size1.size5,.katex .sizing.reset-size1.size5{font-size:1.8em}.katex .fontsize-ensurer.reset-size1.size6,.katex .sizing.reset-size1.size6{font-size:2em}.katex .fontsize-ensurer.reset-size1.size7,.katex .sizing.reset-size1.size7{font-size:2.4em}.katex .fontsize-ensurer.reset-size1.size8,.katex .sizing.reset-size1.size8{font-size:2.88em}.katex .fontsize-ensurer.reset-size1.size9,.katex .sizing.reset-size1.size9{font-size:3.456em}.katex .fontsize-ensurer.reset-size1.size10,.katex .sizing.reset-size1.size10{font-size:4.148em}.katex .fontsize-ensurer.reset-size1.size11,.katex .sizing.reset-size1.size11{font-size:4.976em}.katex .fontsize-ensurer.reset-size2.size1,.katex .sizing.reset-size2.size1{font-size:.83333333em}.katex .fontsize-ensurer.reset-size2.size2,.katex .sizing.reset-size2.size2{font-size:1em}.katex .fontsize-ensurer.reset-size2.size3,.katex .sizing.reset-size2.size3{font-size:1.16666667em}.katex .fontsize-ensurer.reset-size2.size4,.katex .sizing.reset-size2.size4{font-size:1.33333333em}.katex .fontsize-ensurer.reset-size2.size5,.katex .sizing.reset-size2.size5{font-size:1.5em}.katex .fontsize-ensurer.reset-size2.size6,.katex .sizing.reset-size2.size6{font-size:1.66666667em}.katex .fontsize-ensurer.reset-size2.size7,.katex .sizing.reset-size2.size7{font-size:2em}.katex .fontsize-ensurer.reset-size2.size8,.katex .sizing.reset-size2.size8{font-size:2.4em}.katex .fontsize-ensurer.reset-size2.size9,.katex .sizing.reset-size2.size9{font-size:2.88em}.katex .fontsize-ensurer.reset-size2.size10,.katex .sizing.reset-size2.size10{font-size:3.45666667em}.katex .fontsize-ensurer.reset-size2.size11,.katex .sizing.reset-size2.size11{font-size:4.14666667em}.katex .fontsize-ensurer.reset-size3.size1,.katex .sizing.reset-size3.size1{font-size:.71428571em}.katex .fontsize-ensurer.reset-size3.size2,.katex .sizing.reset-size3.size2{font-size:.85714286em}.katex .fontsize-ensurer.reset-size3.size3,.katex .sizing.reset-size3.size3{font-size:1em}.katex .fontsize-ensurer.reset-size3.size4,.katex .sizing.reset-size3.size4{font-size:1.14285714em}.katex .fontsize-ensurer.reset-size3.size5,.katex .sizing.reset-size3.size5{font-size:1.28571429em}.katex .fontsize-ensurer.reset-size3.size6,.katex .sizing.reset-size3.size6{font-size:1.42857143em}.katex .fontsize-ensurer.reset-size3.size7,.katex .sizing.reset-size3.size7{font-size:1.71428571em}.katex .fontsize-ensurer.reset-size3.size8,.katex .sizing.reset-size3.size8{font-size:2.05714286em}.katex .fontsize-ensurer.reset-size3.size9,.katex .sizing.reset-size3.size9{font-size:2.46857143em}.katex .fontsize-ensurer.reset-size3.size10,.katex .sizing.reset-size3.size10{font-size:2.96285714em}.katex .fontsize-ensurer.reset-size3.size11,.katex .sizing.reset-size3.size11{font-size:3.55428571em}.katex .fontsize-ensurer.reset-size4.size1,.katex .sizing.reset-size4.size1{font-size:.625em}.katex .fontsize-ensurer.reset-size4.size2,.katex .sizing.reset-size4.size2{font-size:.75em}.katex .fontsize-ensurer.reset-size4.size3,.katex .sizing.reset-size4.size3{font-size:.875em}.katex .fontsize-ensurer.reset-size4.size4,.katex .sizing.reset-size4.size4{font-size:1em}.katex .fontsize-ensurer.reset-size4.size5,.katex .sizing.reset-size4.size5{font-size:1.125em}.katex .fontsize-ensurer.reset-size4.size6,.katex .sizing.reset-size4.size6{font-size:1.25em}.katex .fontsize-ensurer.reset-size4.size7,.katex .sizing.reset-size4.size7{font-size:1.5em}.katex .fontsize-ensurer.reset-size4.size8,.katex .sizing.reset-size4.size8{font-size:1.8em}.katex .fontsize-ensurer.reset-size4.size9,.katex .sizing.reset-size4.size9{font-size:2.16em}.katex .fontsize-ensurer.reset-size4.size10,.katex .sizing.reset-size4.size10{font-size:2.5925em}.katex .fontsize-ensurer.reset-size4.size11,.katex .sizing.reset-size4.size11{font-size:3.11em}.katex .fontsize-ensurer.reset-size5.size1,.katex .sizing.reset-size5.size1{font-size:.55555556em}.katex .fontsize-ensurer.reset-size5.size2,.katex .sizing.reset-size5.size2{font-size:.66666667em}.katex .fontsize-ensurer.reset-size5.size3,.katex .sizing.reset-size5.size3{font-size:.77777778em}.katex .fontsize-ensurer.reset-size5.size4,.katex .sizing.reset-size5.size4{font-size:.88888889em}.katex .fontsize-ensurer.reset-size5.size5,.katex .sizing.reset-size5.size5{font-size:1em}.katex .fontsize-ensurer.reset-size5.size6,.katex .sizing.reset-size5.size6{font-size:1.11111111em}.katex .fontsize-ensurer.reset-size5.size7,.katex .sizing.reset-size5.size7{font-size:1.33333333em}.katex .fontsize-ensurer.reset-size5.size8,.katex .sizing.reset-size5.size8{font-size:1.6em}.katex .fontsize-ensurer.reset-size5.size9,.katex .sizing.reset-size5.size9{font-size:1.92em}.katex .fontsize-ensurer.reset-size5.size10,.katex .sizing.reset-size5.size10{font-size:2.30444444em}.katex .fontsize-ensurer.reset-size5.size11,.katex .sizing.reset-size5.size11{font-size:2.76444444em}.katex .fontsize-ensurer.reset-size6.size1,.katex .sizing.reset-size6.size1{font-size:.5em}.katex .fontsize-ensurer.reset-size6.size2,.katex .sizing.reset-size6.size2{font-size:.6em}.katex .fontsize-ensurer.reset-size6.size3,.katex .sizing.reset-size6.size3{font-size:.7em}.katex .fontsize-ensurer.reset-size6.size4,.katex .sizing.reset-size6.size4{font-size:.8em}.katex .fontsize-ensurer.reset-size6.size5,.katex .sizing.reset-size6.size5{font-size:.9em}.katex .fontsize-ensurer.reset-size6.size6,.katex .sizing.reset-size6.size6{font-size:1em}.katex .fontsize-ensurer.reset-size6.size7,.katex .sizing.reset-size6.size7{font-size:1.2em}.katex .fontsize-ensurer.reset-size6.size8,.katex .sizing.reset-size6.size8{font-size:1.44em}.katex .fontsize-ensurer.reset-size6.size9,.katex .sizing.reset-size6.size9{font-size:1.728em}.katex .fontsize-ensurer.reset-size6.size10,.katex .sizing.reset-size6.size10{font-size:2.074em}.katex .fontsize-ensurer.reset-size6.size11,.katex .sizing.reset-size6.size11{font-size:2.488em}.katex .fontsize-ensurer.reset-size7.size1,.katex .sizing.reset-size7.size1{font-size:.41666667em}.katex .fontsize-ensurer.reset-size7.size2,.katex .sizing.reset-size7.size2{font-size:.5em}.katex .fontsize-ensurer.reset-size7.size3,.katex .sizing.reset-size7.size3{font-size:.58333333em}.katex .fontsize-ensurer.reset-size7.size4,.katex .sizing.reset-size7.size4{font-size:.66666667em}.katex .fontsize-ensurer.reset-size7.size5,.katex .sizing.reset-size7.size5{font-size:.75em}.katex .fontsize-ensurer.reset-size7.size6,.katex .sizing.reset-size7.size6{font-size:.83333333em}.katex .fontsize-ensurer.reset-size7.size7,.katex .sizing.reset-size7.size7{font-size:1em}.katex .fontsize-ensurer.reset-size7.size8,.katex .sizing.reset-size7.size8{font-size:1.2em}.katex .fontsize-ensurer.reset-size7.size9,.katex .sizing.reset-size7.size9{font-size:1.44em}.katex .fontsize-ensurer.reset-size7.size10,.katex .sizing.reset-size7.size10{font-size:1.72833333em}.katex .fontsize-ensurer.reset-size7.size11,.katex .sizing.reset-size7.size11{font-size:2.07333333em}.katex .fontsize-ensurer.reset-size8.size1,.katex .sizing.reset-size8.size1{font-size:.34722222em}.katex .fontsize-ensurer.reset-size8.size2,.katex .sizing.reset-size8.size2{font-size:.41666667em}.katex .fontsize-ensurer.reset-size8.size3,.katex .sizing.reset-size8.size3{font-size:.48611111em}.katex .fontsize-ensurer.reset-size8.size4,.katex .sizing.reset-size8.size4{font-size:.55555556em}.katex .fontsize-ensurer.reset-size8.size5,.katex .sizing.reset-size8.size5{font-size:.625em}.katex .fontsize-ensurer.reset-size8.size6,.katex .sizing.reset-size8.size6{font-size:.69444444em}.katex .fontsize-ensurer.reset-size8.size7,.katex .sizing.reset-size8.size7{font-size:.83333333em}.katex .fontsize-ensurer.reset-size8.size8,.katex .sizing.reset-size8.size8{font-size:1em}.katex .fontsize-ensurer.reset-size8.size9,.katex .sizing.reset-size8.size9{font-size:1.2em}.katex .fontsize-ensurer.reset-size8.size10,.katex .sizing.reset-size8.size10{font-size:1.44027778em}.katex .fontsize-ensurer.reset-size8.size11,.katex .sizing.reset-size8.size11{font-size:1.72777778em}.katex .fontsize-ensurer.reset-size9.size1,.katex .sizing.reset-size9.size1{font-size:.28935185em}.katex .fontsize-ensurer.reset-size9.size2,.katex .sizing.reset-size9.size2{font-size:.34722222em}.katex .fontsize-ensurer.reset-size9.size3,.katex .sizing.reset-size9.size3{font-size:.40509259em}.katex .fontsize-ensurer.reset-size9.size4,.katex .sizing.reset-size9.size4{font-size:.46296296em}.katex .fontsize-ensurer.reset-size9.size5,.katex .sizing.reset-size9.size5{font-size:.52083333em}.katex .fontsize-ensurer.reset-size9.size6,.katex .sizing.reset-size9.size6{font-size:.5787037em}.katex .fontsize-ensurer.reset-size9.size7,.katex .sizing.reset-size9.size7{font-size:.69444444em}.katex .fontsize-ensurer.reset-size9.size8,.katex .sizing.reset-size9.size8{font-size:.83333333em}.katex .fontsize-ensurer.reset-size9.size9,.katex .sizing.reset-size9.size9{font-size:1em}.katex .fontsize-ensurer.reset-size9.size10,.katex .sizing.reset-size9.size10{font-size:1.20023148em}.katex .fontsize-ensurer.reset-size9.size11,.katex .sizing.reset-size9.size11{font-size:1.43981481em}.katex .fontsize-ensurer.reset-size10.size1,.katex .sizing.reset-size10.size1{font-size:.24108004em}.katex .fontsize-ensurer.reset-size10.size2,.katex .sizing.reset-size10.size2{font-size:.28929605em}.katex .fontsize-ensurer.reset-size10.size3,.katex .sizing.reset-size10.size3{font-size:.33751205em}.katex .fontsize-ensurer.reset-size10.size4,.katex .sizing.reset-size10.size4{font-size:.38572806em}.katex .fontsize-ensurer.reset-size10.size5,.katex .sizing.reset-size10.size5{font-size:.43394407em}.katex .fontsize-ensurer.reset-size10.size6,.katex .sizing.reset-size10.size6{font-size:.48216008em}.katex .fontsize-ensurer.reset-size10.size7,.katex .sizing.reset-size10.size7{font-size:.57859209em}.katex .fontsize-ensurer.reset-size10.size8,.katex .sizing.reset-size10.size8{font-size:.69431051em}.katex .fontsize-ensurer.reset-size10.size9,.katex .sizing.reset-size10.size9{font-size:.83317261em}.katex .fontsize-ensurer.reset-size10.size10,.katex .sizing.reset-size10.size10{font-size:1em}.katex .fontsize-ensurer.reset-size10.size11,.katex .sizing.reset-size10.size11{font-size:1.19961427em}.katex .fontsize-ensurer.reset-size11.size1,.katex .sizing.reset-size11.size1{font-size:.20096463em}.katex .fontsize-ensurer.reset-size11.size2,.katex .sizing.reset-size11.size2{font-size:.24115756em}.katex .fontsize-ensurer.reset-size11.size3,.katex .sizing.reset-size11.size3{font-size:.28135048em}.katex .fontsize-ensurer.reset-size11.size4,.katex .sizing.reset-size11.size4{font-size:.32154341em}.katex .fontsize-ensurer.reset-size11.size5,.katex .sizing.reset-size11.size5{font-size:.36173633em}.katex .fontsize-ensurer.reset-size11.size6,.katex .sizing.reset-size11.size6{font-size:.40192926em}.katex .fontsize-ensurer.reset-size11.size7,.katex .sizing.reset-size11.size7{font-size:.48231511em}.katex .fontsize-ensurer.reset-size11.size8,.katex .sizing.reset-size11.size8{font-size:.57877814em}.katex .fontsize-ensurer.reset-size11.size9,.katex .sizing.reset-size11.size9{font-size:.69453376em}.katex .fontsize-ensurer.reset-size11.size10,.katex .sizing.reset-size11.size10{font-size:.83360129em}.katex .fontsize-ensurer.reset-size11.size11,.katex .sizing.reset-size11.size11{font-size:1em}.katex .delimsizing.size1{font-family:KaTeX_Size1}.katex .delimsizing.size2{font-family:KaTeX_Size2}.katex .delimsizing.size3{font-family:KaTeX_Size3}.katex .delimsizing.size4{font-family:KaTeX_Size4}.katex .delimsizing.mult .delim-size1>span{font-family:KaTeX_Size1}.katex .delimsizing.mult .delim-size4>span{font-family:KaTeX_Size4}.katex .nulldelimiter{display:inline-block;width:.12em}.katex .delimcenter,.katex .op-symbol{position:relative}.katex .op-symbol.small-op{font-family:KaTeX_Size1}.katex .op-symbol.large-op{font-family:KaTeX_Size2}.katex .accent>.vlist-t,.katex .op-limits>.vlist-t{text-align:center}.katex .accent .accent-body{position:relative}.katex .accent .accent-body:not(.accent-full){width:0}.katex .overlay{display:block}.katex .mtable .vertical-separator{display:inline-block;min-width:1px}.katex .mtable .arraycolsep{display:inline-block}.katex .mtable .col-align-c>.vlist-t{text-align:center}.katex .mtable .col-align-l>.vlist-t{text-align:left}.katex .mtable .col-align-r>.vlist-t{text-align:right}.katex .svg-align{text-align:left}.katex svg{fill:currentColor;stroke:currentColor;fill-rule:nonzero;fill-opacity:1;stroke-width:1;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;display:block;height:inherit;position:absolute;width:100%}.katex svg path{stroke:none}.katex img{border-style:none;max-height:none;max-width:none;min-height:0;min-width:0}.katex .stretchy{display:block;overflow:hidden;position:relative;width:100%}.katex .stretchy:after,.katex .stretchy:before{content:""}.katex .hide-tail{overflow:hidden;position:relative;width:100%}.katex .halfarrow-left{left:0;overflow:hidden;position:absolute;width:50.2%}.katex .halfarrow-right{overflow:hidden;position:absolute;right:0;width:50.2%}.katex .brace-left{left:0;overflow:hidden;position:absolute;width:25.1%}.katex .brace-center{left:25%;overflow:hidden;position:absolute;width:50%}.katex .brace-right{overflow:hidden;position:absolute;right:0;width:25.1%}.katex .x-arrow-pad{padding:0 .5em}.katex .cd-arrow-pad{padding:0 .55556em 0 .27778em}.katex .mover,.katex .munder,.katex .x-arrow{text-align:center}.katex .boxpad{padding:0 .3em}.katex .fbox,.katex .fcolorbox{border:.04em solid;box-sizing:border-box}.katex .cancel-pad{padding:0 .2em}.katex .cancel-lap{margin-left:-.2em;margin-right:-.2em}.katex .sout{border-bottom-style:solid;border-bottom-width:.08em}.katex .angl{border-right:.049em solid;border-top:.049em solid;box-sizing:border-box;margin-right:.03889em}.katex .anglpad{padding:0 .03889em}.katex .eqn-num:before{content:"(" counter(katexEqnNo) ")";counter-increment:katexEqnNo}.katex .mml-eqn-num:before{content:"(" counter(mmlEqnNo) ")";counter-increment:mmlEqnNo}.katex .mtr-glue{width:50%}.katex .cd-vert-arrow{display:inline-block;position:relative}.katex .cd-label-left{display:inline-block;position:absolute;right:calc(50% + .3em);text-align:left}.katex .cd-label-right{display:inline-block;left:calc(50% + .3em);position:absolute;text-align:right}.katex-display{display:block;margin:1em 0;text-align:center}.katex-display>.katex{display:block;text-align:center;white-space:nowrap}.katex-display>.katex>.katex-html{display:block;position:relative}.katex-display>.katex>.katex-html>.tag{position:absolute;right:0}.katex-display.leqno>.katex>.katex-html>.tag{left:0;right:auto}.katex-display.fleqn>.katex{padding-left:2em;text-align:left}body{counter-reset:katexEqnNo mmlEqnNo}
+
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+.katex-error {
+	color: var(--vscode-editorError-foreground);
+}
+
+</style>
+        
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/markdown.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/highlight.css">
+<style>
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe WPC', 'Segoe UI', system-ui, 'Ubuntu', 'Droid Sans', sans-serif;
+                font-size: 14px;
+                line-height: 1.6;
+            }
+        </style>
+        <style>
+.task-list-item { list-style-type: none; } .task-list-item-checkbox { margin-left: -20px; vertical-align: middle; }
+</style>
+        
+        
+        
+    </head>
+    <body class="vscode-body vscode-light">
+        <h1 id="presentation">Presentation</h1>
+<h2 id="table-of-contents">Table of contents</h2>
+<ol>
+<li><a href="#main_arch">Main architecture</a></li>
+<li><a href="#directories">Directories</a></li>
+<li><a href="#domain">Domain</a></li>
+<li><a href="#cohort_info">Cohort informations</a></li>
+<li><a href="#mortality">Mortality</a></li>
+<li><a href="#forcing">Forcing</a></li>
+<li><a href="#kernels">Kernels</a></li>
+</ol>
+<h2 id="main-architecture-">Main architecture <a name="main_arch"></a></h2>
+<pre><code class="language-xml"><div><span class="hljs-meta">&lt;?xml version=&quot;1.0&quot;?&gt;</span>
+<span class="hljs-tag">&lt;<span class="hljs-name">ika_params</span>&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-name">run_name</span>&gt;</span>...<span class="hljs-tag">&lt;/<span class="hljs-name">run_name</span>&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-name">random_seed</span>&gt;</span>...<span class="hljs-tag">&lt;/<span class="hljs-name">random_seed</span>&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-name">directories</span>&gt;</span>...<span class="hljs-tag">&lt;<span class="hljs-name">directories</span>&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-name">domain</span>&gt;</span>...<span class="hljs-tag">&lt;/<span class="hljs-name">domain</span>&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-name">cohort_info</span>&gt;</span>...<span class="hljs-tag">&lt;/<span class="hljs-name">cohort_info</span>&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-name">mortality</span>&gt;</span>...<span class="hljs-tag">&lt;/<span class="hljs-name">mortality</span>&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-name">forcing</span>&gt;</span>...<span class="hljs-tag">&lt;/<span class="hljs-name">forcing</span>&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-name">kernels</span>&gt;</span>...<span class="hljs-tag">&lt;/<span class="hljs-name">kernels</span>&gt;</span>
+  
+<span class="hljs-tag">&lt;<span class="hljs-name">ika_params</span>&gt;</span>
+</div></code></pre>
+<ul>
+<li><code>&lt;run_name&gt;...&lt;/run_name&gt;</code> : Contains the name of the simulation that will be randomly generated if not given.</li>
+<li><code>&lt;random_seed&gt;...&lt;/random_seed&gt;</code> : Contains a float that will be used to generate random artifacts (example : particles position).</li>
+</ul>
+<h2 id="directories-">Directories <a name="directories"></a></h2>
+<pre><code class="language-xml"><div><span class="hljs-tag">&lt;<span class="hljs-name">directories</span>&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-name">forcing_dir</span>&gt;</span>...<span class="hljs-tag">&lt;/<span class="hljs-name">forcing_dir</span>&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-name">start_distribution</span>&gt;</span>...<span class="hljs-tag">&lt;/<span class="hljs-name">start_distribution</span>&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-name">seapodym_file</span>&gt;</span>...<span class="hljs-tag">&lt;/<span class="hljs-name">seapodym_file</span>&gt;</span>
+<span class="hljs-tag">&lt;<span class="hljs-name">directories</span>&gt;</span>
+</div></code></pre>
+<ul>
+<li><code>&lt;forcing_dir&gt;</code> : Path to the directory containing the forcing fields (forcing used by the kernels). Also used to export fields to NetCDF.</li>
+<li><code>&lt;start_distribution&gt;</code> : Path to the directory containing the starting distribution of the particles.</li>
+<li><code>&lt;seapodym_file&gt;</code> : Path to the SEAPODYM configuration file.</li>
+</ul>
+<h2 id="domain-">Domain <a name="domain"></a></h2>
+<pre><code class="language-xml"><div><span class="hljs-tag">&lt;<span class="hljs-name">domain</span>&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-name">time</span>&gt;</span>
+        <span class="hljs-tag">&lt;<span class="hljs-name">dt</span>&gt;</span>...<span class="hljs-tag">&lt;/<span class="hljs-name">dt</span>&gt;</span>
+        <span class="hljs-tag">&lt;<span class="hljs-name">start</span>&gt;</span>...<span class="hljs-tag">&lt;/<span class="hljs-name">start</span>&gt;</span>
+        <span class="hljs-tag">&lt;<span class="hljs-name">sim_time</span>&gt;</span>...<span class="hljs-tag">&lt;/<span class="hljs-name">sim_time</span>&gt;</span>
+        <span class="hljs-tag">&lt;<span class="hljs-name">output_dt</span>&gt;</span>...<span class="hljs-tag">&lt;/<span class="hljs-name">output_dt</span>&gt;</span>
+    <span class="hljs-tag">&lt;/<span class="hljs-name">time</span>&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-name">lat</span>&gt;</span>
+        <span class="hljs-tag">&lt;<span class="hljs-name">min</span>&gt;</span>...<span class="hljs-tag">&lt;/<span class="hljs-name">min</span>&gt;</span>
+        <span class="hljs-tag">&lt;<span class="hljs-name">max</span>&gt;</span>...<span class="hljs-tag">&lt;/<span class="hljs-name">max</span>&gt;</span>
+    <span class="hljs-tag">&lt;/<span class="hljs-name">lat</span>&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-name">lon</span>&gt;</span>
+        <span class="hljs-tag">&lt;<span class="hljs-name">min</span>&gt;</span>...<span class="hljs-tag">&lt;/<span class="hljs-name">min</span>&gt;</span>
+        <span class="hljs-tag">&lt;<span class="hljs-name">max</span>&gt;</span>...<span class="hljs-tag">&lt;/<span class="hljs-name">max</span>&gt;</span>
+    <span class="hljs-tag">&lt;/<span class="hljs-name">lon</span>&gt;</span>
+<span class="hljs-tag">&lt;/<span class="hljs-name">domain</span>&gt;</span>
+</div></code></pre>
+<ul>
+<li><code>&lt;dt&gt;</code> : The IKAMOANA simulation delta time in <em>days</em>. This is not the delta time of the SEAPODYM forcing fields (defined in SEAPODYM configuration file). They can be different.</li>
+<li><code>&lt;start&gt;</code> : The start date of the simulation in <em>days</em>. The format is YYYY-MM-DD and will be converted to <em>numpy.datetime64</em>.</li>
+<li><code>&lt;sim_time&gt;</code> : Total simulation time in <em>days</em>.</li>
+<li><code>&lt;output_dt&gt;</code> : If you choose to export the particle history, you can choose a delta time different from the IKAMOANA <code>dt</code>.</li>
+<li><code>&lt;lat&gt;</code>, <code>&lt;lon&gt;</code> : These values will limit the domain in space. Latitude is South to North ([-90, 90]) and longitude is West to Est ([0, 360])</li>
+</ul>
+<blockquote>
+<p>Note : <code>dt</code>, <code>start</code> and <code>output_dt</code> are expressed in days.</p>
+</blockquote>
+<h2 id="cohort-informations-">Cohort informations <a name="cohort_info"></a></h2>
+<pre><code class="language-xml"><div><span class="hljs-tag">&lt;<span class="hljs-name">cohort_info</span>&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-name">start_length</span>&gt;</span>...<span class="hljs-tag">&lt;/<span class="hljs-name">start_length</span>&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-name">ageing</span>&gt;</span>...<span class="hljs-tag">&lt;/<span class="hljs-name">ageing</span>&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-name">number_of_cohorts</span>&gt;</span>...<span class="hljs-tag">&lt;/<span class="hljs-name">number_of_cohorts</span>&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-name">start_dynamic_file</span> <span class="hljs-attr">file_extension</span>=<span class="hljs-string">&quot;...&quot;</span>&gt;</span>...<span class="hljs-tag">&lt;/<span class="hljs-name">start_dynamic_file</span>&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-name">start_static_file</span>&gt;</span>...<span class="hljs-tag">&lt;/<span class="hljs-name">start_static_file</span>&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-name">start_cell</span>&gt;</span>
+        <span class="hljs-tag">&lt;<span class="hljs-name">lon</span>&gt;</span>...<span class="hljs-tag">&lt;/<span class="hljs-name">lon</span>&gt;</span>
+        <span class="hljs-tag">&lt;<span class="hljs-name">lat</span>&gt;</span>...<span class="hljs-tag">&lt;/<span class="hljs-name">lat</span>&gt;</span>
+    <span class="hljs-tag">&lt;/<span class="hljs-name">start_cell</span>&gt;</span>
+<span class="hljs-tag">&lt;/<span class="hljs-name">cohort_info</span>&gt;</span>
+</div></code></pre>
+<ul>
+<li><code>&lt;start_length&gt;</code> : The size of the first cohort. It refers to the <code>&lt;length&gt;</code> tag in the SEAPODYM configuration file.</li>
+<li><code>&lt;ageing&gt;</code> : Define if the cohort age will evolve through time.</li>
+<li><code>&lt;number_of_cohorts&gt;</code> : The total number of particles in the simulation at the first time step.</li>
+</ul>
+<h3 id="cohorts-initialization">Cohorts initialization</h3>
+<p>At least one of these methods must be chosen. If there is more than one tag in the configuration file, user will need to define the one he want to use in the <code>initializeParticleSet</code> function using the <code>method</code> argument.</p>
+<ul>
+<li><code>&lt;start_dynamic_file&gt;</code> : This kind of file is 3D. Ikamoana will select previous start_date/cohort_age based on the <code>&lt;start_length&gt;</code> and (<em>&lt;time&gt;</em>) <code>&lt;start&gt;</code> tags.
+<ul>
+<li>Attribut <code>file_extension</code> : Chosen among &quot;nc&quot; and &quot;dym&quot;. If no file_extension is passed, default will be &quot;nc&quot;.</li>
+</ul>
+</li>
+<li><code>&lt;start_static_file&gt;</code> : This type of file is 2D (no time axis) or only the first time step will be chosen.</li>
+<li><code>&lt;start_cell&gt;</code> : The particles will be randomly distributed in a specific cell. This method is used in tag release simulations.</li>
+</ul>
+<h2 id="mortality-">Mortality <a name="mortality"></a></h2>
+<pre><code class="language-xml"><div>  <span class="hljs-tag">&lt;<span class="hljs-name">mortality</span>&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-name">selected_fisheries</span>&gt;</span>
+      <span class="hljs-tag">&lt;<span class="hljs-name">fishery</span> <span class="hljs-attr">name</span>=<span class="hljs-string">&quot;...&quot;</span> <span class="hljs-attr">effort_file_name</span>=<span class="hljs-string">&quot;...&quot;</span>/&gt;</span>
+    <span class="hljs-tag">&lt;/<span class="hljs-name">selected_fisheries</span>&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-name">predict_effort</span>&gt;</span>...<span class="hljs-tag">&lt;/<span class="hljs-name">predict_effort</span>&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-name">skiprows</span>&gt;</span>...<span class="hljs-tag">&lt;/<span class="hljs-name">skiprows</span>&gt;</span>
+  <span class="hljs-tag">&lt;/<span class="hljs-name">mortality</span>&gt;</span>
+</div></code></pre>
+<ul>
+<li><code>&lt;mortality&gt;</code> (<em>Optional</em>) : If there is no mortality tag in the configuration file, mortality will not be calculated by IkaField.</li>
+<li><code>&lt;selected_fisheries&gt;</code> : Used to select all fisheries that the user wishes to include in the calculation of the mortality field.
+<ul>
+<li><code>&lt;fishery&gt;</code> :
+<ul>
+<li>Attribut <code>name</code> : Fishery name in SEAPODYM configuration file.</li>
+<li>Attribut <code>effort_file_name</code> (<em>Optional</em>) : Fishery name in effort file.</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><code>&lt;predict_effort&gt;</code> : Default is False. Effort can be predicted using the regression method when it is equal to 0 but catch is a positiv value. <strong>No longer supported.</strong> Can easily be reimplemented if necessary.</li>
+<li><code>&lt;skiprows&gt;</code> : Default value is 0. By default, in SEAPODYM, two lines are added at the begining of the file. These lines indicate, respectively, the number of fisheries and, for each of these fisheries, the number of entries in  the text file. According to this, specify how many lines have been added.</li>
+</ul>
+<blockquote>
+<p><strong>Example</strong> :</p>
+<pre><code class="language-xml"><div><span class="hljs-tag">&lt;<span class="hljs-name">selected_fisheries</span>&gt;</span>
+   <span class="hljs-tag">&lt;<span class="hljs-name">fishery</span> <span class="hljs-attr">name</span>=<span class="hljs-string">&quot;F1&quot;</span> <span class="hljs-attr">effort_file_name</span>=<span class="hljs-string">&quot;1&quot;</span>/&gt;</span>
+   <span class="hljs-tag">&lt;<span class="hljs-name">fishery</span> <span class="hljs-attr">name</span>=<span class="hljs-string">&quot;2&quot;</span>/&gt;</span>
+<span class="hljs-tag">&lt;/<span class="hljs-name">selected_fisheries</span>&gt;</span>
+</div></code></pre>
+</blockquote>
+<h2 id="forcing-fields-">Forcing fields <a name="forcing"></a></h2>
+<pre><code class="language-xml"><div><span class="hljs-tag">&lt;<span class="hljs-name">forcing</span>&gt;</span>
+
+    <span class="hljs-tag">&lt;<span class="hljs-name">files</span> <span class="hljs-attr">files_only</span>=<span class="hljs-string">&quot;...&quot;</span>&gt;</span>
+      <span class="hljs-tag">&lt;<span class="hljs-name">...</span> <span class="hljs-attr">dataset</span>=<span class="hljs-string">&quot;...&quot;</span> &gt;</span>...<span class="hljs-tag">&lt;/<span class="hljs-name">...</span>&gt;</span>
+    <span class="hljs-tag">&lt;/<span class="hljs-name">files</span>&gt;</span>
+
+    <span class="hljs-tag">&lt;<span class="hljs-name">correct_epi_temp_with_vld</span>&gt;</span>&gt;...<span class="hljs-tag">&lt;/<span class="hljs-name">correct_epi_temp_with_vld</span>&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-name">landmask_from_habitat</span>&gt;</span>...<span class="hljs-tag">&lt;/<span class="hljs-name">landmask_from_habitat</span>&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-name">shallow_sea_to_ocean</span>&gt;</span>...<span class="hljs-tag">&lt;/<span class="hljs-name">shallow_sea_to_ocean</span>&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-name">indonesian_filter</span>&gt;</span>...<span class="hljs-tag">&lt;/<span class="hljs-name">indonesian_filter</span>&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-name">vertical_movement</span>&gt;</span>...<span class="hljs-tag">&lt;/<span class="hljs-name">vertical_movement</span>&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-name">diffusion_boost</span>&gt;</span>...<span class="hljs-tag">&lt;/<span class="hljs-name">diffusion_boost</span>&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-name">diffusion_scale</span>&gt;</span>...<span class="hljs-tag">&lt;/<span class="hljs-name">diffusion_scale</span>&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-name">c_scale</span>&gt;</span>...<span class="hljs-tag">&lt;/<span class="hljs-name">c_scale</span>&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-name">taxis_scale</span>&gt;</span>...<span class="hljs-tag">&lt;/<span class="hljs-name">taxis_scale</span>&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-name">units</span>&gt;</span>...<span class="hljs-tag">&lt;/<span class="hljs-name">units</span>&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-name">field_interp_method</span>&gt;</span>...<span class="hljs-tag">&lt;/<span class="hljs-name">field_interp_method</span>&gt;</span>
+  <span class="hljs-tag">&lt;/<span class="hljs-name">forcing</span>&gt;</span>
+</div></code></pre>
+<ul>
+<li><code>&lt;files&gt;</code> (<em>Optional</em>) :
+<ul>
+<li>Attribut <code>files_only</code> : Specify if you want to generate feeding habitat and others (taxis, diffusion etc...) (&quot;False&quot;) or not (&quot;True&quot;).</li>
+<li><code>&lt;...&gt;</code> : &quot;...&quot; is the name of the Field/DataArray you want to add to the ocean FieldSet. This tag is followed by the filepath to the NetCDF (or Dymfile).
+<ul>
+<li>Attribut <code>dataset</code> : If you want to add all fields from a Dataset you must specify this attribut as True. For example, you may want to export your ocean once it is computed to reuse it later. To do so, export as a DataSet using <code>oceanToNetCDF</code> function with argument <code>to_dataset=True</code>. Then use this tag this way :</li>
+</ul>
+<pre><code class="language-xml"><div><span class="hljs-tag">&lt;<span class="hljs-name">files</span> <span class="hljs-attr">files_only</span>=<span class="hljs-string">&quot;True&quot;</span>&gt;</span>
+  <span class="hljs-tag">&lt;<span class="hljs-name">ocean</span> <span class="hljs-attr">dataset</span>=<span class="hljs-string">&quot;True&quot;</span>&gt;</span>/path/to/the/file.nc<span class="hljs-tag">&lt;/<span class="hljs-name">ocean</span>&gt;</span>
+<span class="hljs-tag">&lt;/<span class="hljs-name">files</span>&gt;</span>
+</div></code></pre>
+</li>
+</ul>
+</li>
+<li><code>&lt;correct_epi_temp_with_vld&gt;</code> : Boolean, default is False. Specify if you want to apply the <code>FeedingHabitat.correctEpiTempWithVld</code> method to the habitat computation.</li>
+<li><code>&lt;landmask_from_habitat&gt;</code> : Boolean, default is False. Specify if you want to use Seapodym landmask or a landmask extract from habitat Nan values.</li>
+<li><code>&lt;shallow_sea_to_ocean&gt;</code> : Boolean, default is False. Specify if you want to consider shallow sea as ocean (&quot;True&quot;) or land (&quot;False&quot;).</li>
+<li><code>&lt;indonesian_filter&gt;</code> : Boolean, default is False. Specify if you want to apply the <code>FeedingHabitat.indonesianFilter</code> method to the habitat computation.</li>
+<li><code>&lt;vertical_movement&gt;</code> : Boolean, default is False. Specify if you want to add a correction by the passive advection to the diffusion fields.</li>
+<li><code>&lt;diffusion_boost&gt;</code> : Float, default is 0. Is added to Diffusion.</li>
+<li><code>&lt;diffusion_scale&gt;</code> : Float, default is 1. Multiply the diffusion.</li>
+<li><code>&lt;c_scale&gt;</code> : Float, default is 1. Multiply the Seapodym <code>c_diff_fish</code> parameter in diffusion computation.</li>
+<li><code>&lt;taxis_scale&gt;</code> : Float, default is 1. Multiply the taxis.</li>
+<li><code>&lt;units&gt;</code> : String, default is &quot;m_per_s&quot;. Only m_per_s and nm_per_timestep are supported for now.</li>
+<li><code>&lt;field_interp_method&gt;</code> : String, default is &quot;nearest&quot;. Only &quot;linear&quot;, &quot;nearest&quot;, &quot;linear_invdist_land_tracer&quot;, &quot;cgrid_velocity&quot;, &quot;cgrid_tracer&quot; and &quot;bgrid_velocity&quot; are supported for now.</li>
+</ul>
+<h2 id="kernels-">Kernels <a name="kernels"></a></h2>
+<pre><code class="language-xml"><div>  <span class="hljs-tag">&lt;<span class="hljs-name">kernels</span>&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-name">kernel</span>&gt;</span>...<span class="hljs-tag">&lt;/<span class="hljs-name">kernel</span>&gt;</span>
+  <span class="hljs-tag">&lt;/<span class="hljs-name">kernels</span>&gt;</span>
+</div></code></pre>
+<ul>
+<li><code>&lt;kernels&gt;</code> : Contains all the kernels the user want to use in simulation execution.
+<ul>
+<li><code>&lt;kernel&gt;</code> : Kernel name. Must be contained in <code>ikafish.behaviours.AllKernels</code>. The kernels declaration order is the one Parcels will use to update particles. Some kernels are dependent on others and will have to be executed downstream. The user must pay attention and act accordingly.</li>
+</ul>
+</li>
+</ul>
+
+    </body>
+    </html>
