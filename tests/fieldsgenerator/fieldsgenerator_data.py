@@ -24,40 +24,40 @@ dataarray_3d_landmask_habitat = xr.DataArray(
     attrs={'lat_min':0,'lat_max':2,'lon_min':0,'lon_max':4})
 
 res_shallow_habitat = np.array(
-    [[0., 0., 0., 0., 0.],
+    [[1., 1., 1., 1., 1.],
      [1., 1., 0., 1., 0.],
-     [0., 0., 0., 0., 0.]])
+     [1., 1., 1., 1., 1.]])
 
 res_no_shallow_habitat = np.array(
-    [[0., 0., 0., 0., 0.],
+    [[1., 1., 1., 1., 1.],
      [1., 1., 2., 1., 0.],
-     [0., 0., 0., 0., 0.]])
+     [1., 1., 1., 1., 1.]])
 
 
 # -- SEAPODYM GLOBAL MASK
 # NOTE : False is land and True is ocean
 
 landmask_mask_L1 = np.array(
-    [[[0,0,0,0,0],
-      [0,1,1,1,0],
-      [0,0,0,0,0]]])
+    [[[0,1,1,1,0],
+      [1,1,1,1,1],
+      [0,1,1,1,0]]])
 
 landmask_mask_L3 = np.array(
     [[[0,0,0,0,0],
-      [0,0,1,0,0],
+      [0,1,1,1,0],
       [0,0,0,0,0]]])
 
 landmask_coords = {'lat':[0,1,2], 'lon':[0,1,2,3,4]}
 
 res_shallow_seapodym = np.array(
-    [[0,0,0,0,0],
-     [1,0,0,0,1],
-     [0,0,0,0,0]])
+    [[1,0,0,0,1],
+     [0,0,0,0,0],
+     [1,0,0,0,1]])
 
 res_no_shallow_seapodym = np.array(
-    [[0,0,0,0,0],
-     [1,2,0,2,1],
-     [0,0,0,0,0]])
+    [[1,2,2,2,1],
+     [2,0,0,0,2],
+     [1,2,2,2,1]])
 
 # ----------------------- _getCellEdgeSizes -------------------------- #
 

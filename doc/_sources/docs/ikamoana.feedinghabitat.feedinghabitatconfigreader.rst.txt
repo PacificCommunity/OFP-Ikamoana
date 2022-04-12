@@ -1,7 +1,0 @@
-ikamoana.feedinghabitat.feedinghabitatconfigreader module
-=========================================================
-
-.. automodule:: ikamoana.feedinghabitat.feedinghabitatconfigreader
-   :members:
-   :undoc-members:
-   :show-inheritance:

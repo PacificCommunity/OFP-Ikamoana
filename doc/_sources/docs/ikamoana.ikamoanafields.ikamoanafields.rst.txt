@@ -1,7 +1,0 @@
-ikamoana.ikamoanafields.ikamoanafields module
-=============================================
-
-.. automodule:: ikamoana.ikamoanafields.ikamoanafields
-   :members:
-   :undoc-members:
-   :show-inheritance:

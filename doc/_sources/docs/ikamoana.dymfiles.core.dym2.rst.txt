@@ -1,7 +1,0 @@
-ikamoana.dymfiles.core.dym2 module
-==================================
-
-.. automodule:: ikamoana.dymfiles.core.dym2
-   :members:
-   :undoc-members:
-   :show-inheritance:

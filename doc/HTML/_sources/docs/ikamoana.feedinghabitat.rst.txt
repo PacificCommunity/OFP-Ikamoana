@@ -1,0 +1,20 @@
+ikamoana.feedinghabitat package
+===============================
+
+Submodules
+----------
+
+.. toctree::
+   :maxdepth: 4
+
+   ikamoana.feedinghabitat.feedinghabitat
+   ikamoana.feedinghabitat.feedinghabitatconfigreader
+   ikamoana.feedinghabitat.habitatdatastructure
+
+Module contents
+---------------
+
+.. automodule:: ikamoana.feedinghabitat
+   :members:
+   :undoc-members:
+   :show-inheritance:

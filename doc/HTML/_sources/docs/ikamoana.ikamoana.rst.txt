@@ -1,0 +1,7 @@
+ikamoana.ikamoana module
+========================
+
+.. automodule:: ikamoana.ikamoana
+   :members:
+   :undoc-members:
+   :show-inheritance:

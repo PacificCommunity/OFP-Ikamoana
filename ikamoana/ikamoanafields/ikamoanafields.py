@@ -251,7 +251,7 @@ class IkamoanaFields :
 
         domain = dict(time_start=time_start, time_end=time_end, lat_min=lat_min,
                       lat_max=lat_max, lon_min=lon_min, lon_max=lon_max)
-            
+                
         if from_habitat is None :
             if evolve :
                 self.computeEvolvingFeedingHabitat(
@@ -260,32 +260,41 @@ class IkamoanaFields :
                 self.computeFeedingHabitat(cohort=cohort_start, **domain)
         else :
             self.feeding_habitat=from_habitat
-        
+                
         ## TODO : add possibility to invert latitudinal values (V * -1)
         u, v = self.current()
-        
+                
         taxis_lon, taxis_lat = self.computeTaxis()
-
+        
         landmask = core.landmask(
             self.feeding_habitat_structure.data_structure,
             habitat_field=self.feeding_habitat, use_SEAPODYM_global_mask=not(hf_cond),
             shallow_sea_to_ocean=ssto_cond, lat_min=lat_min, lat_max=lat_max,
             lon_min=lon_min, lon_max=lon_max, field_output=True)
-        
+                
         diffusion_x, diffusion_y, dKxdx, dKydy = self.computeDiffusion(
             landmask[0], lat_min, lat_max, lon_min, lon_max, u, v)
-
-        feeding_habitat = latitudeDirection(self.feeding_habitat,south_to_north).drop_vars('cohorts')
-        diffusion_x = latitudeDirection(diffusion_x,south_to_north).drop_vars('cohorts')
-        diffusion_y = latitudeDirection(diffusion_y,south_to_north).drop_vars('cohorts')
-        taxis_lon = latitudeDirection(taxis_lon,south_to_north).drop_vars('cohorts')
-        taxis_lat = latitudeDirection(taxis_lat,south_to_north).drop_vars('cohorts')
-        dKxdx = latitudeDirection(dKxdx,south_to_north).drop_vars('cohorts')
-        dKydy = latitudeDirection(dKydy,south_to_north).drop_vars('cohorts')
+        
+        feeding_habitat = latitudeDirection(self.feeding_habitat,south_to_north)
+        diffusion_x = latitudeDirection(diffusion_x,south_to_north)
+        diffusion_y = latitudeDirection(diffusion_y,south_to_north)
+        taxis_lon = latitudeDirection(taxis_lon,south_to_north)
+        taxis_lat = latitudeDirection(taxis_lat,south_to_north)
+        dKxdx = latitudeDirection(dKxdx,south_to_north)
+        dKydy = latitudeDirection(dKydy,south_to_north)
         landmask = latitudeDirection(landmask,south_to_north)
         u = latitudeDirection(u,south_to_north)
         v = latitudeDirection(v,south_to_north)
         
+        if evolve :
+            feeding_habitat = feeding_habitat.drop_vars('cohorts')
+            diffusion_x = diffusion_x.drop_vars('cohorts')
+            diffusion_y = diffusion_y.drop_vars('cohorts')
+            taxis_lon = taxis_lon.drop_vars('cohorts')
+            taxis_lat = taxis_lat.drop_vars('cohorts')
+            dKxdx = dKxdx.drop_vars('cohorts')
+            dKydy = dKydy.drop_vars('cohorts')
+                
         mortality_dict = {}
         if hasattr(self.ikamoana_fields_structure, "selected_fisheries") :
             mortality = self.computeMortality(verbose)

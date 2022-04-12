@@ -13,7 +13,7 @@ class IkaFish(JITParticle):
         active       = Variable("active", to_write=False, initial=1)
         prev_lon     = Variable('prev_lon', to_write=False)
         prev_lat     = Variable('prev_lat', to_write=False)
-        In_Loop      = Variable('In_Loop', to_write=False)
+        loop_count   = Variable('loop_count', to_write=False)
         f_lat        = Variable('f_lat', to_write=False)
         f_lon        = Variable('f_lon', to_write=False)
         Dx           = Variable('Dx', to_write=False)
@@ -42,7 +42,7 @@ class IkaFishDebug(JITParticle):
     age          = Variable('age', to_write=False)
     # Debug  
     age_class    = Variable('age_class')
-    In_Loop      = Variable('In_Loop')
+    loop_count   = Variable('loop_count')
     f_lat        = Variable('f_lat')
     f_lon        = Variable('f_lon')
     Dx           = Variable('Dx')
@@ -83,9 +83,9 @@ class IkaMix(IkaTag):
         Mix3CapProb = Variable('Mix3CapProb')
         Mix6CapProb = Variable('Mix6CapProb')
         Mix9CapProb = Variable('Mix9CapProb')
-        Mix3SurvProb = Variable('Mix3SurvProb', to_write=False, initial=1)
-        Mix6SurvProb = Variable('Mix6SurvProb', to_write=False, initial=1)
-        Mix9SurvProb = Variable('Mix9SurvProb', to_write=False, initial=1)
+        Mix3SurvProb = Variable('Mix3SurvProb', to_write=True, initial=1)
+        Mix6SurvProb = Variable('Mix6SurvProb', to_write=True, initial=1)
+        Mix9SurvProb = Variable('Mix9SurvProb', to_write=True, initial=1)
         
 
         def __init__(self, *args, **kwargs):

@@ -24,7 +24,7 @@ class Test_Diffusion(unittest.TestCase):
     FHStructure = namedtuple('FHStructure', ['findLengthByCohort'])
     IKAStructure = namedtuple(
         'IKAStructure',
-        ["timestep", "units", "sigma_K", "sig_scale","c_scale", "c", "P",
+        ["timestep", "units", "sigma_K","c_scale", "c", "P",
          "diffusion_scale", "diffusion_boost"])
 
     ## NOTE : These functions have changed, they need currents    

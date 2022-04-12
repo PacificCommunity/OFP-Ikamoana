@@ -1,7 +1,0 @@
-ikamoana.feedinghabitat.feedinghabitat module
-=============================================
-
-.. automodule:: ikamoana.feedinghabitat.feedinghabitat
-   :members:
-   :undoc-members:
-   :show-inheritance:

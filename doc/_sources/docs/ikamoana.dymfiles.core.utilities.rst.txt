@@ -1,7 +1,0 @@
-ikamoana.dymfiles.core.utilities module
-=======================================
-
-.. automodule:: ikamoana.dymfiles.core.utilities
-   :members:
-   :undoc-members:
-   :show-inheritance:

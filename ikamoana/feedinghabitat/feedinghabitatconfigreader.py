@@ -160,12 +160,14 @@ def _readXmlConfigFilepaths(root, root_directory, layers_number) :
     # TEMPERATURE ######################################################
     temperature_filepaths = []
     for temp_file in root.find('strfile_t').attrib.values() :
-        temperature_filepaths.append(root_directory +temp_file)
+        temperature_filepaths.append(path.join(root_directory, temp_file))
+    # TODO : remove this
+    # print(temperature_filepaths)
 
     # OXYGEN ###########################################################
     oxygen_filepaths = []
     for oxy_file in root.find('strfile_oxy').attrib.values() :
-        oxygen_filepaths.append(root_directory+oxy_file)
+        oxygen_filepaths.append(path.join(root_directory,oxy_file))
 
     partial_oxygen_time_axis = int(root.find('type_oxy').attrib['value'])
 
@@ -194,32 +196,36 @@ def _readXmlConfigFilepaths(root, root_directory, layers_number) :
     #We will assume if the temp files are in dym format, so are the forage
     forage_filetype = ".dym" if temperature_filepaths[0].lower().endswith('.dym') else ".nc"
     for forage in ordered_forage :
-        forage_filepaths.append(
-            root_directory+forage_directory+'Fbiom_'+forage+forage_filetype)
+        forage_filepaths.append(path.join(root_directory,forage_directory,
+                                          "Fbiom_"+forage+forage_filetype))
 
     # SST #####################################################################
     if root.find('strfile_sst') is None :
         sst_filepath = None
     else :
-        sst_filepath = root_directory + root.find('strfile_sst').attrib['value']
+        sst_filepath = path.join(root_directory,
+                                 root.find('strfile_sst').attrib['value'])
 
     # VLD #####################################################################
     if root.find('strfile_vld') is None :
         vld_filepath = None
     else :
-        vld_filepath = root_directory + root.find('strfile_vld').attrib['value']
+        vld_filepath = path.join(root_directory,
+                                 root.find('strfile_vld').attrib['value'])
 
     # MASK ####################################################################
     if root.find('str_file_mask') == None :
         mask_filepath = None
     else :
-        mask_filepath = root_directory + root.find('str_file_mask').attrib['value']
+        mask_filepath = path.join(root_directory,
+                                  root.find('str_file_mask').attrib['value'])
     
     # TOPO ####################################################################
     if root.find('str_file_topo') == None :
         topo_filepath = None
     else :
-        topo_filepath = root_directory + root.find('str_file_topo').attrib['value']
+        topo_filepath = path.join(root_directory,
+                                  root.find('str_file_topo').attrib['value'])
 
     return (temperature_filepaths, oxygen_filepaths, forage_filepaths, sst_filepath,
             vld_filepath, mask_filepath, topo_filepath, partial_oxygen_time_axis)
@@ -422,15 +428,20 @@ def loadFromXml(
     # INITIALIZATION ##########################################################
     tree = ET.parse(xml_filepath)
     root = tree.getroot()
-    # WARNING : os.path module is always the path module suitable
-    # for the operating system Python is running on.
+    
+    # NOTE : os.path module is always the path module suitable for the
+    # operating system Python is running on.
+    
     if root_directory is None :
         prefix = path.dirname(xml_filepath)
         prefix = path.join(prefix,'')
     else :
         prefix = root_directory
+    
+    strdir = root.find('strdir').attrib['value']
+    
+    root_directory = strdir if path.isabs(strdir) else path.join(prefix, strdir)
 
-    root_directory = prefix + root.find('strdir').attrib['value']
     output_directory = root_directory + root.find('strdir_output').attrib['value']
     layers_number = int(root.find('nb_layer').attrib['value'])
 

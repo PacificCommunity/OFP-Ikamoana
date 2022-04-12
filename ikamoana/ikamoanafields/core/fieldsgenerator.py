@@ -119,7 +119,7 @@ def landmask(
                   'lon':habitat_field.coords['lon']}
 
     ## TODO : Why is lon between 1 and ny-1 ?
-    landmask[-1,:] = landmask[0,:] = 0
+    # landmask[-1,:] = landmask[0,:] = 0
 
     if field_output :
         if habitat_field is None :
@@ -275,6 +275,7 @@ def taxis(
         return is_evolving, age
 
     is_evolving, age = argumentCheck(dHdlon)
+    taxis_scale = ika_structure.taxis_scale
     Tlon = np.zeros(dHdlon.data.shape, dtype=np.float32)
     Tlat = np.zeros(dHdlat.data.shape, dtype=np.float32)
     f_length = fh_structure.findLengthByCohort
@@ -288,10 +289,10 @@ def taxis(
         ## NOTE : We use _getCellEdgeSizes function to compute dx and dy.
         # This function use GeographicPolar function from Parcels. The
         # latitude correction has already been applied.
-        Tlon[t,:,:] = vMax(t_length) * dx * dHdlon.data[t,:,:] 
-        Tlat[t,:,:] = vMax(t_length) * dy * dHdlat.data[t,:,:] 
+        Tlon[t,:,:] = vMax(t_length) * dx * dHdlon.data[t,:,:] * taxis_scale
+        Tlat[t,:,:] = vMax(t_length) * dy * dHdlat.data[t,:,:] * taxis_scale
 
-    taxis_attrs = {**dHdlat.attrs, "units":"m².s⁻¹"}
+    taxis_attrs = {**dHdlat.attrs, "units":"m.s⁻¹"}
         
     return (
         xr.DataArray(
@@ -318,9 +319,9 @@ def _diffusionCorrection(
         if current_u is None or current_v is None :
             raise ValueError("If vertical_movement is True, you must specify "
                              "currents fields (current_u, current_v)")
-        #correction of rho by passive advection
+        # correction of rho by passive advection
         currents_magnitude = np.sqrt(current_u**2 + current_v**2)
-        # TODO: this was used in SEAPODYM with nmi.dt, use carefully
+        # NOTE : this was used in SEAPODYM with nmi.dt, use carefully
         # fV = 1.0 - currents_magnitude/(500.0*dt/30.0+currents_magnitude)
         # We transformed 500 nm.dt into m.s
         fV = 1.0 - currents_magnitude/((926/2592)+currents_magnitude)
@@ -400,31 +401,37 @@ def diffusion(
     lmax = f_length(-1) / 100
     Vmax_diff = 1.25
     
-    # TODO : Cf. TODO below
-    timestep = ika_structure.timestep
+    deltaT = fh_structure.parameters_dictionary['deltaT']
+    """Timestep from SEAPODYM in days."""
+    dt_seconds = deltaT*24*60*60
+    """Timestep from SEAPODYM in seconds."""
     
     for t in range(habitat.time.size):
-
+        
         t_age = age[t] if is_evolving else age
         t_length = f_length(t_age) / 100 # Convert into meter
         d_speed  = Vmax_diff-0.25*t_length/lmax # fixed, given in 'body length' units
-        d_inf = (d_speed*t_length)**2 / 4
         
         #######################################################
-        # TODO : check if it is correct to multiply by timestep.
-        # See also previous version of the ikamoana
-        d_inf = ((d_speed*t_length)**2 / 4) * timestep
+        # NOTE : previous version of the ikamoana
+        # d_inf = ((d_speed*t_length)**2 / 4) * timestep
+        #######################################################
+        
+        #######################################################
+        # NOTE : Patrick's method -> SEAPODYM + conversion to m².s⁻¹ :
+        d_inf = (d_speed*t_length*dt_seconds)**2 / (4.0*deltaT)
+        # Conversion in model unit
+        d_inf /= dt_seconds
         #######################################################
         
         d_max = ika_structure.sigma_K * d_inf
-
+        
         ## VECTORIZED
         diffusion = (
-            ika_structure.sig_scale
-            * d_max
-            * (1 - ika_structure.c_scale * ika_structure.c
-               * np.power(habitat_data[t,:,:], ika_structure.P))
-            * ika_structure.diffusion_scale + ika_structure.diffusion_boost
+            d_max * (1 - ika_structure.c_scale * ika_structure.c
+                     * np.power(habitat_data[t,:,:], ika_structure.P))
+            * ika_structure.diffusion_scale
+            + ika_structure.diffusion_boost
         )
         
         diffusion_x[t,:,:], diffusion_y[t,:,:] = _diffusionCorrection(

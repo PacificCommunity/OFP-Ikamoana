@@ -1,7 +1,0 @@
-ikamoana.dymfiles.core.dates module
-===================================
-
-.. automodule:: ikamoana.dymfiles.core.dates
-   :members:
-   :undoc-members:
-   :show-inheritance:

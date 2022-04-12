@@ -1,7 +1,0 @@
-ikamoana.dymfiles.core.netcdf module
-====================================
-
-.. automodule:: ikamoana.dymfiles.core.netcdf
-   :members:
-   :undoc-members:
-   :show-inheritance:

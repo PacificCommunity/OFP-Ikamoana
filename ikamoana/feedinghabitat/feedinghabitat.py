@@ -171,7 +171,14 @@ class FeedingHabitat :
         if (time_start is not None) and (time_end is not None) and (time_start > time_end) :
             time_start, time_end = time_end, time_start
 
-        return time_start,time_end, lat_min, lat_max, lon_min, lon_max
+        time_start = None if time_start is None else int(time_start) 
+        time_end = None if time_end is None else int(time_end) 
+        lat_min = None if lat_min is None else int(lat_min) 
+        lat_max = None if lat_max is None else int(lat_max) 
+        lon_min = None if lon_min is None else int(lon_min) 
+        lon_max = None if lon_max is None else int(lon_max) 
+
+        return time_start, time_end, lat_min, lat_max, lon_min, lon_max
 
     def _scaling(self, data) :
         """
@@ -220,13 +227,17 @@ class FeedingHabitat :
         """Select a part of the DataArray passed in argument according
         to time, latitude and longitude"""
 
+        time_start = time_start if time_start is None else int(time_start)
+        time_end = time_end if time_end is None else int(time_end)+1 
+        lat_min = lat_min if lat_min is None else int(lat_min)
+        lat_max = lat_max if lat_max is None else int(lat_max)+1 
+        lon_min = lon_min if lon_min is None else int(lon_min)
+        lon_max = lon_max if lon_max is None else int(lon_max)+1
+        
         return data_array.sel(
-            time=data_array.time.data[
-                time_start:time_end if time_end is None else time_end+1 ],
-            lat=data_array.lat.data[
-                lat_min:lat_max if lat_max is None else lat_max+1],
-            lon=data_array.lon.data[
-                lon_min:lon_max if lon_max is None else lon_max+1])
+            time=data_array.time.data[time_start:time_end],
+            lat=data_array.lat.data[lat_min:lat_max],
+            lon=data_array.lon.data[lon_min:lon_max])
 
     def _selSubMask(self, mask: str, lat_min: int = None, lat_max: int = None,
                     lon_min: int = None, lon_max: int = None) -> np.ndarray :
@@ -235,9 +246,12 @@ class FeedingHabitat :
 
         tmp = self.data_structure.global_mask[mask]
 
-        return tmp[:,
-                    lat_min:lat_max if lat_max is None else lat_max+1,
-                    lon_min:lon_max if lon_max is None else lon_max+1]
+        lat_min = lat_min if lat_min is None else int(lat_min)
+        lat_max = lat_max if lat_max is None else int(lat_max)+1 
+        lon_min = lon_min if lon_min is None else int(lon_min)
+        lon_max = lon_max if lon_max is None else int(lon_max)+1 
+
+        return tmp[:, lat_min:lat_max, lon_min:lon_max]
 
     def _sigmaStar(self, sigma_0, sigma_K) :
         """Return sigmaStar (the termal tolerance intervals, i.e. standard
@@ -705,24 +719,26 @@ class FeedingHabitat :
         print("Warning : This function (correctEpiTempWithVld) was only tested"
               " for Skipjack.\n It will also add +1 to sigma_min. Cf. function"
               " documentation for more details.")
-
+        
+        sst = self.data_structure.variables_dictionary['sst']
+        temperature_L1 = self.data_structure.variables_dictionary['temperature_L1']
+        vld = self.data_structure.variables_dictionary['vld']
+        
+        # NOTE : If we use coordinates to compare/sum/multiply etc...
+        # it can have some errors due to values mismatch. 
         dTdz = np.divide(
-            2.0 * (self.data_structure.variables_dictionary['sst']
-            - self.data_structure.variables_dictionary['temperature_L1']),
+            2.0 * (sst.data - temperature_L1.data), vld.data,
             #(1000.0 * self.variables_dictionary['vld']),
-            self.data_structure.variables_dictionary['vld'],
-            out=np.zeros_like(self.data_structure.variables_dictionary['vld']),
-            where=self.data_structure.variables_dictionary['vld']!=0.0)
+            out=np.zeros_like(vld),
+            where=vld!=0.0)
 
         dTdz = np.where(dTdz < 0.0, 0.0, dTdz)
         dTdz = np.where(dTdz > 0.2, 0.2, dTdz)
 
-        self.data_structure.variables_dictionary['temperature_L1'] = (
-            self.data_structure.variables_dictionary['temperature_L1']
-            + 4.0 * dTdz
-            * (self.data_structure.variables_dictionary['sst']
-               - self.data_structure.variables_dictionary['temperature_L1'])
-            )
+        data = temperature_L1.data + 4.0 * dTdz * (sst.data - temperature_L1.data)
+        self.data_structure.variables_dictionary['temperature_L1'] = xr.DataArray(
+            data=data, coords=temperature_L1.coords, attrs=temperature_L1.attrs
+        )
 
         # Since the estimate of sigma with sst is always lower
         # due to larger extension of warm watermasses in the surface

@@ -59,7 +59,6 @@ class IkamoanaFieldsDataStructure :
     def _readIkamoana(self, root: ET.Element) :
         self.diffusion_boost=float(tagReading(root,['forcing','diffusion_boost'],0))
         self.diffusion_scale=float(tagReading(root,['forcing','diffusion_scale'],1))
-        self.sig_scale=float(tagReading(root,['forcing','sig_scale'],1))
         self.c_scale=float(tagReading(root,['forcing','c_scale'],1))
         self.taxis_scale=float(tagReading(root,['forcing','taxis_scale'],1))
         
@@ -97,7 +96,12 @@ class IkamoanaFieldsDataStructure :
                              "<mortality> tag if you don't want to compute F.")
         selected_fisheries = {}
         for fishery in iter_fisheries :
-            selected_fisheries[fishery.attrib['name']] = fishery.attrib['effort_file_name']
+            seapodym_name = fishery.attrib['name']
+            if 'effort_file_name' in fishery.attrib :
+                effort_file_name = fishery.attrib['effort_file_name']
+            else :
+                effort_file_name = seapodym_name
+            selected_fisheries[seapodym_name] = effort_file_name
         self.selected_fisheries = selected_fisheries
         tmp = tagReading(root, ["mortality","predict_effort"], "False")
         self.predict_effort = True if tmp in ["True", "true"] else False
@@ -113,6 +117,8 @@ class IkamoanaFieldsDataStructure :
         deltaT = float(root.find('deltaT').attrib["value"])
         
         self.timestep=deltaT*24*60*60
+        """Delta time from SEAPODYM configuration file. May be different
+        than `dt` in IKAMOANA configuration file."""
         
         ## TAXIS ####################################
         self.vmax_a=float(root.find('MSS_species').attrib[sp_name])
@@ -124,8 +130,8 @@ class IkamoanaFieldsDataStructure :
         
         ## CURRENTS #################################
         # TODO : For now, only the first layer is used.
-        self.u_file = 'po_interim_historic_2x30d_u_L1_1979_2010.dym'
-        self.v_file = 'po_interim_historic_2x30d_v_L1_1979_2010.dym'
+        self.u_file = root.find('strfile_u').attrib['layer0']
+        self.v_file = root.find('strfile_v').attrib['layer0']
         
         ## DIFFUSION ####################################
         self.sigma_K=float(root.find('sigma_species').attrib[sp_name])

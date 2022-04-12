@@ -1,7 +1,0 @@
-ikamoana.ikafish.behaviours module
-==================================
-
-.. automodule:: ikamoana.ikafish.behaviours
-   :members:
-   :undoc-members:
-   :show-inheritance:
