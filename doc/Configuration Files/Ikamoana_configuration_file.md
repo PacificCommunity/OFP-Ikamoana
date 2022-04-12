@@ -103,6 +103,10 @@ At least one of these methods must be chosen. If there is more than one tag in t
 
 ## Mortality <a name="mortality"></a>
 
+> Note : This part is **optional**. If you don't need mortality field computation you can skip it.
+
+> Warning : At high (spatial) resolution, this part takes a lot of time to compute. It is recommended to calculate it once and then save it in a NetCDF file.
+
 ```xml
   <mortality>
     <selected_fisheries>
@@ -133,7 +137,7 @@ At least one of these methods must be chosen. If there is more than one tag in t
 ```xml
 <forcing>
 
-    <files files_only="...">
+    <files files_only="..." home_directory="...">
       <... dataset="..." >...</...>
     </files>
 
@@ -153,6 +157,7 @@ At least one of these methods must be chosen. If there is more than one tag in t
 
 - `<files>` (*Optional*) : 
   - Attribut `files_only` : Specify if you want to generate feeding habitat and others (taxis, diffusion etc...) ("False") or not ("True").
+  - Attribut `home_directory` : The directory where all the fields below are stored.
   - `<...>` : "..." is the name of the Field/DataArray you want to add to the ocean FieldSet. This tag is followed by the filepath to the NetCDF (or Dymfile).
     - Attribut `dataset` : If you want to add all fields from a Dataset you must specify this attribut as True. For example, you may want to export your ocean once it is computed to reuse it later. To do so, export as a DataSet using `oceanToNetCDF` function with argument `to_dataset=True`. Then use this tag this way :
     ```xml

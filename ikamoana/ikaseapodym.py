@@ -5,6 +5,7 @@ import numpy as np
 import parcels
 import xarray as xr
 from parcels.particle import JITParticle
+import os
 
 from ikamoana.ikafish import behaviours
 from ikamoana.ikamoanafields.ikamoanafields import IkamoanaFields
@@ -132,7 +133,7 @@ class IkaSeapodym(IkaSimulation) :
         def readForcing(root:ET.Element, params:dict) :
             files = root.find("files")
             params['files_only'] = False
-            forcing_files = {}
+            forcing_dataarray = {}
             forcing_dataset = {}
             if files is not None :
                 if "files_only" in files.attrib :
@@ -140,13 +141,20 @@ class IkaSeapodym(IkaSimulation) :
                                             in ["True", "true"])
                 else :
                     params['files_only'] = False
+                
+                home=""
+                if "home_directory"  in files.attrib :
+                    home = files.attrib['home_directory']
+                    params['files_home_directory'] = home
+                
                 for elmt in files :
                     if ("dataset" in elmt.attrib
                             and elmt.attrib["dataset"] in ["True","true"]):
-                            forcing_dataset[elmt.tag] = elmt.text
+                            forcing_dataset[elmt.tag] = os.path.join(home,elmt.text)
                     else :
-                        forcing_files[elmt.tag] = elmt.text
-            params["forcing_files"] = (forcing_files,forcing_dataset)
+                        forcing_dataarray[elmt.tag] = os.path.join(home,elmt.text)
+            params["forcing_files"] = {"forcing_dataarray":forcing_dataarray,
+                                       "forcing_dataset":forcing_dataset}
             tmp = root.find("field_interp_method").text
             params["fields_interp_method"] = "nearest" if tmp in [None, ""] else tmp
         
@@ -221,13 +229,13 @@ class IkaSeapodym(IkaSimulation) :
         
         def loadFieldsFromFiles():
 # TODO : use reshaping
-            forcing_files, forcing_dataset = self.ika_params["forcing_files"]
+            forcing_files = self.ika_params["forcing_files"]
             forcing = {}
-            for _, filepath in forcing_dataset.items() :
+            for _, filepath in forcing_files["forcing_dataset"].items() :
                 ds = xr.load_dataset(filepath)
                 for dr_name in ds :
                     forcing[dr_name] = ds[dr_name]
-            for name, filepath in forcing_files.items() :
+            for name, filepath in forcing_files["forcing_dataarray"].items() :
                 forcing[name] = seapodymFieldConstructor(filepath, dym_varname=name)
             return forcing
         

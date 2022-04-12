@@ -292,7 +292,7 @@ def taxis(
         Tlon[t,:,:] = vMax(t_length) * dx * dHdlon.data[t,:,:] * taxis_scale
         Tlat[t,:,:] = vMax(t_length) * dy * dHdlat.data[t,:,:] * taxis_scale
 
-    taxis_attrs = {**dHdlat.attrs, "units":"m².s⁻¹"}
+    taxis_attrs = {**dHdlat.attrs, "units":"m.s⁻¹"}
         
     return (
         xr.DataArray(
@@ -401,24 +401,31 @@ def diffusion(
     lmax = f_length(-1) / 100
     Vmax_diff = 1.25
     
-    # TODO : Cf. TODO below
-    timestep = ika_structure.timestep
+    deltaT = fh_structure.parameters_dictionary['deltaT']
+    """Timestep from SEAPODYM in days."""
+    dt_seconds = deltaT*24*60*60
+    """Timestep from SEAPODYM in seconds."""
     
     for t in range(habitat.time.size):
-
+        
         t_age = age[t] if is_evolving else age
         t_length = f_length(t_age) / 100 # Convert into meter
         d_speed  = Vmax_diff-0.25*t_length/lmax # fixed, given in 'body length' units
-        d_inf = (d_speed*t_length)**2 / 4
         
         #######################################################
-        # TODO : check if it is correct to multiply by timestep.
-        # See also previous version of the ikamoana
-        d_inf = ((d_speed*t_length)**2 / 4) * timestep
+        # NOTE : previous version of the ikamoana
+        # d_inf = ((d_speed*t_length)**2 / 4) * timestep
+        #######################################################
+        
+        #######################################################
+        # NOTE : Patrick's method -> SEAPODYM + conversion to m².s⁻¹ :
+        d_inf = (d_speed*t_length*dt_seconds)**2 / (4.0*deltaT)
+        # Conversion in model unit
+        d_inf /= dt_seconds
         #######################################################
         
         d_max = ika_structure.sigma_K * d_inf
-
+        
         ## VECTORIZED
         diffusion = (
             d_max * (1 - ika_structure.c_scale * ika_structure.c

@@ -117,6 +117,8 @@ class IkamoanaFieldsDataStructure :
         deltaT = float(root.find('deltaT').attrib["value"])
         
         self.timestep=deltaT*24*60*60
+        """Delta time from SEAPODYM configuration file. May be different
+        than `dt` in IKAMOANA configuration file."""
         
         ## TAXIS ####################################
         self.vmax_a=float(root.find('MSS_species').attrib[sp_name])

@@ -1,0 +1,96 @@
+<?xml version="1.0"?>
+<ika_params>
+
+  <run_name>IkaSim_Example_Fish</run_name>
+
+  <directories>
+    <forcing_dir>/home/ash/Documents/GitHub_Repositories/OFP-Ikamoana/data/ikamoana_data/</forcing_dir>
+    <start_distribution>/home/ash/Documents/GitHub_Repositories/OFP-Ikamoana/data/ikamoana_data/</start_distribution>
+    <seapodym_file>/home/ash/Documents/GitHub_Repositories/OFP-Ikamoana/data/SEAPODYM_data/run-test/skj_CLT_e5_3_est.xml</seapodym_file>
+  </directories>
+
+  <domain>
+    <time>
+      <dt>30</dt>
+      <start>2000-01-15</start>
+      <sim_time>1110</sim_time>
+      <output_dt>30</output_dt>
+    </time>
+    <lat>
+      <min>-40</min>
+      <max>50</max>
+    </lat>
+    <lon>
+      <min>120</min>
+      <max>290</max>
+    </lon>
+  </domain>
+
+  <cohort_info>
+    <start_length>87.96</start_length>
+    <ageing>False</ageing>
+    <number_of_cohorts>1000</number_of_cohorts>
+
+    <start_dynamic_file file_extension="dym">skj_age</start_dynamic_file>
+
+    <start_static_file>skj_age5.nc</start_static_file>
+
+    <start_cell>
+      <lon>150</lon>
+      <lat>40</lat>
+    </start_cell>
+
+  </cohort_info>
+
+  <!-- <mortality>
+    <selected_fisheries>
+      <fishery name="P1" effort_file_name="1"/>
+      <fishery name="P21" effort_file_name="2"/>
+      <fishery name="P3" effort_file_name="3"/>
+      <fishery name="S4" effort_file_name="4"/>
+      <fishery name="S5" Trueffort_file_name="8"/>
+      <fishery name="L9" effort_file_name="9"/>
+      <fishery name="S10" effort_file_name="10"/>
+      <fishery name="S12" effort_file_name="12"/>
+      <fishery name="S13" effort_file_name="13"/>
+      <fishery name="P15" effort_file_name="15"/>
+    </selected_fisheries>
+    <predict_effort>False</predict_effort>
+    <skiprows>0</skiprows>
+  </mortality> -->
+
+  <forcing>
+
+    <files files_only="False">
+    </files>
+
+    <correct_epi_temp_with_vld>True</correct_epi_temp_with_vld>
+    <landmask_from_habitat>False</landmask_from_habitat>
+    <shallow_sea_to_ocean>True</shallow_sea_to_ocean>
+    <indonesian_filter>True</indonesian_filter>
+    <vertical_movement>False</vertical_movement>
+    <diffusion_boost>0</diffusion_boost>
+    <diffusion_scale>1</diffusion_scale>
+    <taxis_scale>1</taxis_scale>
+    <sig_scale>1</sig_scale>
+    <!-- Supported : {m_per_s, nm_per_timestep}, Default : m_per_s -->
+    <units>m_per_s</units>
+    <c_scale>1</c_scale>
+    <!-- Supported : {'linear', 'nearest', 'linear_invdist_land_tracer',
+                      'cgrid_velocity', 'cgrid_tracer' and 'bgrid_velocity'},
+         Default : nearest -->
+    <field_interp_method>nearest</field_interp_method>
+  </forcing>
+
+  <kernels>
+    <kernel>CalcLonLatScalers</kernel>
+    <kernel>IkAdvectionRK4</kernel>
+    <kernel>TaxisRK4</kernel>
+    <kernel>RandomWalkNonUniformDiffusion</kernel>
+    <kernel>IkaDimMoveWithDiffusionReroll</kernel>
+    <kernel>LandBlock</kernel>
+  </kernels>
+
+  <random_seed></random_seed>
+
+</ika_params>

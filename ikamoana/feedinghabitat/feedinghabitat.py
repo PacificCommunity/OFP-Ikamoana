@@ -171,7 +171,14 @@ class FeedingHabitat :
         if (time_start is not None) and (time_end is not None) and (time_start > time_end) :
             time_start, time_end = time_end, time_start
 
-        return time_start,time_end, lat_min, lat_max, lon_min, lon_max
+        time_start = None if time_start is None else int(time_start) 
+        time_end = None if time_end is None else int(time_end) 
+        lat_min = None if lat_min is None else int(lat_min) 
+        lat_max = None if lat_max is None else int(lat_max) 
+        lon_min = None if lon_min is None else int(lon_min) 
+        lon_max = None if lon_max is None else int(lon_max) 
+
+        return time_start, time_end, lat_min, lat_max, lon_min, lon_max
 
     def _scaling(self, data) :
         """
@@ -220,13 +227,17 @@ class FeedingHabitat :
         """Select a part of the DataArray passed in argument according
         to time, latitude and longitude"""
 
+        time_start = time_start if time_start is None else int(time_start)
+        time_end = time_end if time_end is None else int(time_end)+1 
+        lat_min = lat_min if lat_min is None else int(lat_min)
+        lat_max = lat_max if lat_max is None else int(lat_max)+1 
+        lon_min = lon_min if lon_min is None else int(lon_min)
+        lon_max = lon_max if lon_max is None else int(lon_max)+1
+        
         return data_array.sel(
-            time=data_array.time.data[
-                time_start:time_end if time_end is None else time_end+1 ],
-            lat=data_array.lat.data[
-                lat_min:lat_max if lat_max is None else lat_max+1],
-            lon=data_array.lon.data[
-                lon_min:lon_max if lon_max is None else lon_max+1])
+            time=data_array.time.data[time_start:time_end],
+            lat=data_array.lat.data[lat_min:lat_max],
+            lon=data_array.lon.data[lon_min:lon_max])
 
     def _selSubMask(self, mask: str, lat_min: int = None, lat_max: int = None,
                     lon_min: int = None, lon_max: int = None) -> np.ndarray :
@@ -235,9 +246,12 @@ class FeedingHabitat :
 
         tmp = self.data_structure.global_mask[mask]
 
-        return tmp[:,
-                    lat_min:lat_max if lat_max is None else lat_max+1,
-                    lon_min:lon_max if lon_max is None else lon_max+1]
+        lat_min = lat_min if lat_min is None else int(lat_min)
+        lat_max = lat_max if lat_max is None else int(lat_max)+1 
+        lon_min = lon_min if lon_min is None else int(lon_min)
+        lon_max = lon_max if lon_max is None else int(lon_max)+1 
+
+        return tmp[:, lat_min:lat_max, lon_min:lon_max]
 
     def _sigmaStar(self, sigma_0, sigma_K) :
         """Return sigmaStar (the termal tolerance intervals, i.e. standard

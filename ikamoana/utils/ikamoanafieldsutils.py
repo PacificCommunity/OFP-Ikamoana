@@ -47,6 +47,17 @@ def convertToNauticMiles(
     convertion = lambda x : x * factor
     return xr.apply_ufunc(convertion, field)
 
+def convertToMeters(
+        field:Union[xr.DataArray, xr.Dataset], timestep: float = 1.,
+        square: bool = False
+        ) -> Union[xr.DataArray, xr.Dataset] :
+    """Converts the unit of a field from nautic miles per timestep to
+    meters per second."""
+    multiply = 1852 if not square else 1852**2
+    factor = multiply / timestep
+    convertion = lambda x : x * factor
+    return xr.apply_ufunc(convertion, field)
+
 def sliceField(
         field : Union[xr.DataArray, xr.Dataset], time_start: int = None,
         time_end: int = None, lat_min: int = None, lat_max: int = None,

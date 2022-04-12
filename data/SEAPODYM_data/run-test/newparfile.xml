@@ -20,8 +20,8 @@
 <deltaT value="30"/>
 <iterationNumber value="15"/>
 <tuna_spinup value="0"/>
-<save_first_date year="1979" month="1"/>
-<save_last_date year="2010" month="12"/>
+<save_first_date year="2000" month="1"/>
+<save_last_date year="2003" month="1"/>
 <nb_yr_forecast value="0"/>
 <nb_step_to_skip value="48"/>
 
@@ -117,7 +117,7 @@
 <!--================= -->
 
 <!-- Working Directory -->
-<strdir value="data/run-interim_2x30d_po/"/>
+<strdir value="/home/ash/Documents/GitHub_Repositories/OFP-Ikamoana/data/SEAPODYM_data/run-test/data/run-interim_2x30d_po/"/>
 
 <!-- The mask file is located in the working directory  -->
 <str_file_mask value="po_interim_2deg_mask_short_noIO.txt"/>
@@ -135,7 +135,7 @@
 <strdir_forage value="forage/"/>
 
 <!-- The directory for fishing data -->
-<strdir_fisheries value="data/fisheries/"/>
+<strdir_fisheries value="/home/ash/Documents/GitHub_Repositories/OFP-Ikamoana/data/SEAPODYM_data/run-test/data/fisheries/"/>
 
 <!-- The fishing data files -->
 <file_catch_data>

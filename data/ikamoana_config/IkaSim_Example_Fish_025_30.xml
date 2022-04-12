@@ -1,24 +1,20 @@
 <?xml version="1.0"?>
 <ika_params>
 
-  <run_name>IkaSim_Example_025_30</run_name>
+  <run_name>IkaSim_Example_Fish_025_30</run_name>
 
   <directories>
-    <!-- Where the forcing data is stored/loaded -->
     <forcing_dir>/home/ash/Documents/GitHub_Repositories/OFP-Ikamoana/data/ikamoana_data/</forcing_dir>
-    <!-- Where the starting distribution of each cohort is stored -->
     <start_distribution>/home/ash/Documents/GitHub_Repositories/OFP-Ikamoana/data/ikamoana_data/</start_distribution>
-    <!-- Where the SEAPODYM configuration file is stored -->
     <seapodym_file>/home/ash/Documents/GitHub_Repositories/OFP-Ikamoana/data/SEAPODYM_data/run-test/data/po_freeglorys_0.25x30d_1998_2019/skj_ref2018_freeglorys_reanalysis_025x30d_vgpm_Fref.xml</seapodym_file>
   </directories>
 
   <domain>
     <time>
-      <!-- All of these parameters are in days -->
       <dt>30</dt>
-      <!-- <start>2008-02-15</start> -->
       <start>2000-01-15</start>
-      <sim_time>720</sim_time>
+      <!-- <sim_time>90</sim_time> -->
+      <sim_time>150</sim_time>
       <output_dt>30</output_dt>
     </time>
     <lat>
@@ -32,13 +28,10 @@
   </domain>
 
   <cohort_info>
-    <start_length>26.43</start_length>
-    <ageing>True</ageing>
+    <start_length>87.96</start_length>
+    <ageing>False</ageing>
     <number_of_cohorts>1000</number_of_cohorts>
-    <!-- This kind of file is 3D, ikamoana will select previous start_date/cohort_age. -->
-    <!-- If no file_extension is passed, default will be "nc" -->
     <start_dynamic_file file_extension="dym">skj_age</start_dynamic_file>
-    <!-- This type of file is 2D (no time axis). It is used for the basic initialization. -->
     <start_static_file>skj_age5.nc</start_static_file>
     <start_cell>
       <lon>150</lon>
@@ -46,32 +39,11 @@
     </start_cell>
   </cohort_info>
 
-<!-- DOCUMENTATION (mortality) :
 
-If there is no mortality tag in the XML document, mortality will not be
-calculated by IkaField.
-
-<selected_fisheries> :
-  If names in SEAPODYM configuration file and effort/catch files are not the
-  same, their must be a convertion between theim. Leave <effort_file_name>
-  empty if names are the same in both files.
-  Example :
-    <selected_fisheries>
-      <fishery name="name_in_SEAPODYM" effort_file_name="name_in_effort_file"/>
-    </selected_fisheries>
-<predict_effort> : default is False
-  Predict effort where effort is 0 but catch is a positiv value.
-<skiprows> : default value is 0
-  By default, in SEAPODYM, two lines are added at the begining of the file. These
-  lines indicate, respectively, the number of fisheries and, for each of these
-  fisheries, the number of entries in the text file. According to this, specify
-  how many lines have been added.
--->
-
-  <mortality>
+  <!-- <mortality>
     <selected_fisheries>
       <fishery name="P1" effort_file_name="1"/>
-      <!-- <fishery name="P21" effort_file_name="2"/>
+      <fishery name="P21" effort_file_name="2"/>
       <fishery name="P3" effort_file_name="3"/>
       <fishery name="S4" effort_file_name="4"/>
       <fishery name="S5" effort_file_name="5"/>
@@ -82,71 +54,19 @@ calculated by IkaField.
       <fishery name="S10" effort_file_name="10"/>
       <fishery name="S12" effort_file_name="12"/>
       <fishery name="S13" effort_file_name="13"/>
-      <fishery name="P15" effort_file_name="15"/> -->
+      <fishery name="P15" effort_file_name="15"/>
     </selected_fisheries>
     <predict_effort>False</predict_effort>
     <skiprows>0</skiprows>
-  </mortality>
+  </mortality> -->
 
-<!-- DOCUMENTATION (forcing) :
-
-
-
-<correct_epi_temp_with_vld> : default is False
-  Correct the epipelagic layer (L1) using the vertical gradient.
-  See Also : FeedingHabitat.correct_epi_temp_with_vld()
-<landmask_from_habitat> : default is False
-  Specify if the landmask is based on the SEAPODYM mask used to
-  compute feeding habitat or not.
-<shallow_sea_to_ocean> : default is False
-  Consider the shallow sea as ocean (True) or land (False).
-<indonesian_filter> : default is False
-  Apply the indonesian filter. See Also : FeedingHabitat.indonesianFilter()
-<vertical_movement> : default is False
-  Correction of rho by passive advection. May be temporary.
-<units> : default is 'm_per_s'
-  Parcels use meter.second⁻¹. SEAPODYM outputs are in miles.timestep⁻¹.
-  This is only to compare outputs and it will not work for Parcels simulations.
-  Use carefully.
-<diffusion_boost> : default is 0
-<diffusion_scale> : default is 1
-<taxis_scale> :
-<sig_scale> : default is 1
-<c_scale> : default is 1
-
-<files> : OPTIONAL
-  This tag contains every fields you want to add to the IkaSeapodym object.
-  The tags inside have the name that the user chooses to use for the simulation.
-  Example :
-  <files>
-    <U>/path_to_U/name.nc</U>
-    <V>/path_to_V/another_name.dym</V>
-  </files>
-  Attributs :
-    - files_only : bool, default is False
-        Specify if you want to use fields in files only (True) or add theim
-        to these calculated by IkaFields (False).
-  Warning : If a field tag contains attribut dataset="True" (default is False),
-    it is considered as a xarray Dataset and each DataArray inside is loaded
-    in ocean Fieldset.
--->
   <forcing>
 
-    <files files_only="False">
-      <!-- <ocean dataset="True">/home/ash/Documents/GitHub_Repositories/OFP-Ikamoana/data/ikamoana_data/IkaSim_Example_025_30/IkaSim_Example_025_30_720d.nc</ocean> -->
-      <!-- <ocean dataset="True">/home/ash/Documents/GitHub_Repositories/OFP-Ikamoana/data/ikamoana_data/IkaSim_Example_025_30/IkaSim_Example_025_30_90d.nc</ocean> -->
-      <!-- <ocean dataset="True">/home/ash/Documents/GitHub_Repositories/OFP-Ikamoana/data/ikamoana_data/IkaSim_Example_025_30/IkaSim_Example_025_30_30d.nc</ocean> -->
-      <!-- <ocean dataset="True">/home/ash/Documents/GitHub_Repositories/OFP-Ikamoana/data/ikamoana_data/IkaSim_Example_025_30/IkaSim_Example_025_30_30d_no_vertical.nc</ocean> -->
-      <!-- <H></H>
-      <Kx></Kx>
-      <Ky></Ky>
-      <dKx_dx></dKx_dx>
-      <dKy_dy></dKy_dy>
-      <Tx></Tx>
-      <Ty></Ty>
-      <U></U>
-      <V></V>
-      <F></F> -->
+    <files files_only="False" home_directory="/home/ash/Documents/GitHub_Repositories/OFP-Ikamoana/data/ikamoana_data/IkaSim_Example_025_30/">
+      <!-- <ocean dataset="True">IkaSim_Example_025_30_720d.nc</ocean> -->
+      <!-- <ocean dataset="True">IkaSim_Example_025_30_90d.nc</ocean> -->
+      <!-- <ocean dataset="True">IkaSim_Example_025_30_30d.nc</ocean> -->
+      <!-- <ocean dataset="True">IkaSim_Example_025_30_30d_no_vertical.nc</ocean> -->
     </files>
 
     <correct_epi_temp_with_vld>True</correct_epi_temp_with_vld>
