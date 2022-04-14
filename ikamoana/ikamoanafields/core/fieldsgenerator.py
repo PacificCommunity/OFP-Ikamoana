@@ -193,6 +193,8 @@ def gradient(
 
     ## NOTE : Parallelised execution may help to do it faster.
     # - Uses of Numba prange() over time axis ?
+    # - Use xarray.differentiate or np.gradient ? Not possible since we
+    #   use a landmask.
     for t in range(field.time.size):
         for lon in range(1, nlon-1):
             for lat in range(1, nlat-1):
@@ -210,14 +212,30 @@ def gradient(
                         dVdlat[t,lat,lon] = (data[t,lat+1,lon] - data[t,lat,lon]) / dlat[lat, lon]
                     else:
                         dVdlat[t,lat,lon] = (data[t,lat+1,lon] - data[t,lat-1,lon]) / (2*dlat[lat, lon])
-
+                else :
+                    dVdlat[t,lat,lon] = 0.
+                    dVdlon[t,lat,lon] = 0.
+        
+        # Border cells.
         for lon in range(nlon):
-            dVdlat[t,0,lon] = (data[t,1,lon] - data[t,0,lon]) / dlat[0,lon]
-            dVdlat[t,-1,lon] = (data[t,-1,lon] - data[t,-2,lon]) / dlat[-2,lon]
+            if landmask[0, lon] < 1:
+                dVdlat[t,0,lon] = (data[t,1,lon] - data[t,0,lon]) / dlat[0,lon]
+            else :
+                dVdlat[t,0,lon] = 0
+            if landmask[-1, lon] < 1:
+                dVdlat[t,-1,lon] = (data[t,-1,lon] - data[t,-2,lon]) / dlat[-2,lon]
+            else :
+                dVdlat[t,-1,lon] = 0.     
         for lat in range(nlat):
-            dVdlon[t,lat,0] = (data[t,lat,1] - data[t,lat,0]) / dlon[lat,-1]
-            dVdlon[t,lat,-1] = (data[t,lat,-1] - data[t,lat,-2]) / dlon[lat,-1]
-
+            if landmask[lat, 0] < 1:
+                dVdlon[t,lat,0] = (data[t,lat,1] - data[t,lat,0]) / dlon[lat,-1]
+            else :
+                dVdlon[t,lat,0] = 0
+            if landmask[lat, -1] < 1:
+                dVdlon[t,lat,-1] = (data[t,lat,-1] - data[t,lat,-2]) / dlon[lat,-1]
+            else :
+                dVdlon[t,lat,-1] = 0.
+                
     if field.name is None :
         field.name = 'Unnamed_DataArray'
     
