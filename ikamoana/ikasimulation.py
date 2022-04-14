@@ -8,8 +8,8 @@ import numpy as np
 import parcels
 import xarray as xr
 from parcels.particle import JITParticle
-from ikamoana.utils.feedinghabitatutils import seapodymFieldConstructor
-from ikamoana.utils.ikamoanafieldsutils import fieldToDataArray
+from ikamoana.utils import seapodymFieldConstructor
+from ikamoana.utils import convertToDataArray
 import os
 
 # NOTE : Unity used here are seconds and meters.
@@ -363,7 +363,7 @@ class IkaSimulation :
         for field in self.ocean.get_fields() :
             if (not isinstance(field, parcels.VectorField)
                     and not field.name == "start_distribution") :
-                fields_dict[field.name] = fieldToDataArray(field)
+                fields_dict[field.name] = convertToDataArray(field)
                      
         if to_dataset :
             file_name = "{}.nc".format(self.run_name)

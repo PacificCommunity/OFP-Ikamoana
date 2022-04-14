@@ -10,9 +10,9 @@ import os
 from ikamoana.ikafish import behaviours
 from ikamoana.ikamoanafields.ikamoanafields import IkamoanaFields
 from ikamoana.ikasimulation import IkaSimulation, KernelType
-from ikamoana.utils.feedinghabitatutils import (coordsAccess,
+from ikamoana.utils import (coordsAccess,
                                                 seapodymFieldConstructor)
-from ikamoana.utils.ikamoanafieldsutils import latitudeDirection
+from ikamoana.utils import latitudeDirection
 
 
 class IkaSeapodym(IkaSimulation) :
