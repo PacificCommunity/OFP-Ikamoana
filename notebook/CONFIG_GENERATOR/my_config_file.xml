@@ -1,0 +1,64 @@
+<?xml version="1.0" ?>
+<ika_params>
+	<run_name/>
+	<random_seed/>
+	<directories>
+		<forcing_dir>a</forcing_dir>
+		<start_distribution>b</start_distribution>
+		<seapodym_file>c</seapodym_file>
+	</directories>
+	<domain>
+		<time>
+			<dt>1</dt>
+			<start/>
+			<sim_time>1</sim_time>
+			<output_dt>0</output_dt>
+		</time>
+		<lat>
+			<min>0</min>
+			<max>0</max>
+		</lat>
+		<lon>
+			<min>0</min>
+			<max>0</max>
+		</lon>
+	</domain>
+	<cohort_info>
+		<start_length>0</start_length>
+		<ageing>False</ageing>
+		<number_of_cohorts>0</number_of_cohorts>
+		<start_cell>
+			<lon>0</lon>
+			<lat>0</lat>
+		</start_cell>
+	</cohort_info>
+	<mortality>
+		<selected_fisheries>
+			<fishery name="P1" effort_file_name="1"/>
+			<fishery name="P2"/>
+		</selected_fisheries>
+		<predict_effort>False</predict_effort>
+		<skiprows>0</skiprows>
+	</mortality>
+	<forcing>
+		<files files_only="False" home_directory="~/data">
+			<H dataset="False">~/data/hab.nc</H>
+		</files>
+		<correct_epi_temp_with_vld>False</correct_epi_temp_with_vld>
+		<landmask_from_habitat>False</landmask_from_habitat>
+		<shallow_sea_to_ocean>False</shallow_sea_to_ocean>
+		<indonesian_filter>False</indonesian_filter>
+		<vertical_movement>False</vertical_movement>
+		<diffusion_boost>0</diffusion_boost>
+		<diffusion_scale>1</diffusion_scale>
+		<c_scale>1</c_scale>
+		<taxis_scale>1</taxis_scale>
+		<units>m_per_s</units>
+		<field_interp_method>nearest</field_interp_method>
+	</forcing>
+	<kernels>
+		<kernel>TaxisRK4</kernel>
+		<kernel>IkAdvectionRK4</kernel>
+		<kernel>IkaDymMove</kernel>
+	</kernels>
+</ika_params>
