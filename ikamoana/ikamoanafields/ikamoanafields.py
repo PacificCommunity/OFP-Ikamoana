@@ -162,7 +162,10 @@ class IkamoanaFields :
                           self.feeding_habitat_structure.data_structure,
                           grad_lon, grad_lat, name=self.feeding_habitat.name)
 
-    def computeMortality(self, verbose: bool = False) -> xr.DataArray :
+    def computeMortality(
+            self, import_filepath: str = None, export_filepath:str = None,
+            verbose: bool = False
+            ) -> xr.DataArray :
         
         if not hasattr(self.ikamoana_fields_structure, "selected_fisheries") :
             raise ValueError("selected_fisheries can not be find. Make sure that"
@@ -185,15 +188,20 @@ class IkamoanaFields :
             predict_effort = ika_struct.predict_effort,
             verbose=verbose         
         )
-        effort_ds = fisherieseffort.effortByFishery(**param_dict)
+        
+        if import_filepath is not None :
+            effort_ds = xr.load_dataset(import_filepath)
+        else :
+            effort_ds = fisherieseffort.effortByFishery(**param_dict)
+        if export_filepath is not None :
+            effort_ds.to_netcdf(export_filepath)
 
         params_fisheries = self.ikamoana_fields_structure.f_param
 
         return core.fishingMortality(
             self.feeding_habitat_structure.data_structure, effort_ds,
             params_fisheries, convertion_tab=ika_struct.selected_fisheries)
-        
-#TODO : Rewrite documentation
+
     def computeDiffusion(
             self, landmask: xr.DataArray = None, lat_min: int = None,
             lat_max: int = None, lon_min: int = None, lon_max: int = None,
@@ -239,7 +247,8 @@ class IkamoanaFields :
             cohort_start: int = None, cohort_end: int = None,
             time_start: int = None, time_end: int = None, lat_min: int = None,
             lat_max: int = None, lon_min: int = None, lon_max: int = None,
-            south_to_north: bool = True, verbose: bool = False
+            south_to_north: bool = True, import_effort: str = None,
+            export_effort:str = None, verbose: bool = False
             ) -> Dict[str, xr.DataArray]:
         """This is the main function of this module. It is use to
         provide all the fields needed by the `ikamoana` module.
@@ -297,7 +306,8 @@ class IkamoanaFields :
                 
         mortality_dict = {}
         if hasattr(self.ikamoana_fields_structure, "selected_fisheries") :
-            mortality = self.computeMortality(verbose)
+            mortality = self.computeMortality(import_effort, export_effort,
+                                              verbose)
             mortality = latitudeDirection(mortality,south_to_north
                                           ).reindex_like(feeding_habitat)
             mortality_dict['F'] = mortality

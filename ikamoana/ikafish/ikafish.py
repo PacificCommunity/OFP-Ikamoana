@@ -39,8 +39,8 @@ class IkaFishDebug(JITParticle):
     active       = Variable("active", to_write=False, initial=1)
     prev_lon     = Variable('prev_lon', to_write=False)
     prev_lat     = Variable('prev_lat', to_write=False)
-    age          = Variable('age', to_write=False)
-    # Debug  
+    # Debug
+    age          = Variable('age')
     age_class    = Variable('age_class')
     loop_count   = Variable('loop_count')
     f_lat        = Variable('f_lat')

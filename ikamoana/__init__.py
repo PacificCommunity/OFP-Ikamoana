@@ -1,6 +1,7 @@
 
 from . import (dymfiles, feedinghabitat, fisherieseffort, ikafish,
                ikamoanafields, ikaseapodym, ikasimulation, utils)
+from .fisherieseffort import fisherieseffort
 from .dymfiles import dym2ToDataArray
 from .feedinghabitat import FeedingHabitat
 from .ikafish.ikafish import IkaFish, IkaFishDebug, IkaMix, IkaTag

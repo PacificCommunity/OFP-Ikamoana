@@ -11,10 +11,9 @@
 
   <domain>
     <time>
-      <dt>30</dt>
+      <dt>15</dt>
       <start>2000-01-15</start>
-      <!-- <sim_time>90</sim_time> -->
-      <sim_time>150</sim_time>
+      <sim_time>1096</sim_time>
       <output_dt>30</output_dt>
     </time>
     <lat>
@@ -28,14 +27,14 @@
   </domain>
 
   <cohort_info>
-    <start_length>87.96</start_length>
-    <ageing>False</ageing>
-    <number_of_cohorts>1000</number_of_cohorts>
+    <start_length>26.43</start_length>
+    <ageing>True</ageing>
+    <number_of_cohorts>10000</number_of_cohorts>
     <start_dynamic_file file_extension="dym">skj_age</start_dynamic_file>
     <start_static_file>skj_age5.nc</start_static_file>
     <start_cell>
-      <lon>150</lon>
-      <lat>40</lat>
+      <lon>180</lon>
+      <lat>20</lat>
     </start_cell>
   </cohort_info>
 

@@ -28,7 +28,7 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 
-from ikamoana.utils.feedinghabitatutils import dayLengthPISCES, seapodymFieldConstructor
+from ikamoana.utils import dayLengthPISCES, seapodymFieldConstructor
 
 # TODO : à terme, la lecture du fichier configuration de SEAPODYM
 # dépasse le cadre de l'habitat d'alimentation. il devrait être lu par

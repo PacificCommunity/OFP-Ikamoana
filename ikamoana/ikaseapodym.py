@@ -10,9 +10,9 @@ import os
 from ikamoana.ikafish import behaviours
 from ikamoana.ikamoanafields.ikamoanafields import IkamoanaFields
 from ikamoana.ikasimulation import IkaSimulation, KernelType
-from ikamoana.utils.feedinghabitatutils import (coordsAccess,
+from ikamoana.utils import (coordsAccess,
                                                 seapodymFieldConstructor)
-from ikamoana.utils.ikamoanafieldsutils import latitudeDirection
+from ikamoana.utils import latitudeDirection
 
 
 class IkaSeapodym(IkaSimulation) :
@@ -170,18 +170,36 @@ class IkaSeapodym(IkaSimulation) :
                 [float(x) for x in root.find('length').find(sp_name).text.split()])
             index = np.absolute(length_list-start_length).argmin()
             params["start_age"] = index
+
+            delta_time_seapodym = int(float(root.find('deltaT').attrib['value'])*86400)
+            params["delta_time_seapodym"] = delta_time_seapodym
         
-        def readMortality(params:dict):
+        def readMortality(ikamoana_root:ET.Element, params:dict):
+            if (ikamoana_root.find("mortality") is not None
+                    and ikamoana_root.find("mortality").find("effort_file") is not None) :
+                effort_file = ikamoana_root.find("mortality").find("effort_file")
+                params['import_effort'] = effort_file.attrib.pop('import', None) in ["true","True"]
+                params['export_effort'] = effort_file.attrib.pop('export', None) in ["true","True"]
+                effort_file_txt = effort_file.text if effort_file.text is not None else ""
+                if effort_file_txt == "" :
+                    effort_file_txt = "{}_effort".format(params["run_name"])
+                else :
+                    effort_file_txt = os.path.splitext(effort_file_txt)[0]
+                if not os.path.isabs(effort_file_txt) :
+                    effort_file_txt = os.path.join(params['forcing_dir'],
+                                                   effort_file_txt)
+                params['effort_file'] = "{}.nc".format(effort_file_txt)
+            
             tree = ET.parse(params['seapodym_file'])
-            root = tree.getroot()
-            species_name = root.find("sp_name").text
+            seapodym_root = tree.getroot()
+            species_name = seapodym_root.find("sp_name").text
 
             params["mortality_constants"] = {
-                'MPmax': float(root.find('Mp_mean_max').attrib[species_name]),
-                'MPexp': float(root.find('Mp_mean_exp').attrib[species_name]),
-                'MSmax': float(root.find('Ms_mean_max').attrib[species_name]),
-                'MSslope': float(root.find('Ms_mean_slope').attrib[species_name]),
-                'Mrange': float(root.find('M_mean_range').attrib[species_name])}
+                'MPmax': float(seapodym_root.find('Mp_mean_max').attrib[species_name]),
+                'MPexp': float(seapodym_root.find('Mp_mean_exp').attrib[species_name]),
+                'MSmax': float(seapodym_root.find('Ms_mean_max').attrib[species_name]),
+                'MSslope': float(seapodym_root.find('Ms_mean_slope').attrib[species_name]),
+                'Mrange': float(seapodym_root.find('M_mean_range').attrib[species_name])}
 
         tree = ET.parse(filepath)
         root = tree.getroot()
@@ -196,7 +214,7 @@ class IkaSeapodym(IkaSimulation) :
         readAge(params['seapodym_file'], params["start_length"], params)
 # NOTE : Do we have to add these parameters only when NaturalMortality
 # is in kernels list ?
-        readMortality(params)
+        readMortality(root, params)
 
         return params
     
@@ -228,7 +246,7 @@ class IkaSeapodym(IkaSimulation) :
         """
         
         def loadFieldsFromFiles():
-# TODO : use reshaping
+# TODO : reindex new fields ?
             forcing_files = self.ika_params["forcing_files"]
             forcing = {}
             for _, filepath in forcing_files["forcing_dataset"].items() :
@@ -252,11 +270,18 @@ class IkaSeapodym(IkaSimulation) :
             lonlims = np.int32(data_structure.findCoordIndexByValue(lonlims,'lon'))
             latlims = np.int32(data_structure.findCoordIndexByValue(latlims,'lat'))
             evolve = self.ika_params['ageing_cohort']
+            import_effort = (self.ika_params['effort_file']
+                             if self.ika_params.pop('import_effort', False) else None)
+            export_effort = (self.ika_params['effort_file']
+                             if self.ika_params.pop('export_effort', False) else None)
 
             return generator.computeIkamoanaFields(
                 from_habitat=from_habitat, evolve=evolve,
-                cohort_start=ages[0], cohort_end=None, time_start=start, time_end=end,
-                lon_min=lonlims[0], lon_max=lonlims[1], lat_min=latlims[1], lat_max=latlims[0])
+                cohort_start=ages[0], cohort_end=None,
+                time_start=start, time_end=end,
+                lon_min=lonlims[0], lon_max=lonlims[1],
+                lat_min=latlims[1], lat_max=latlims[0],
+                import_effort=import_effort, export_effort=export_effort)
         
         def readCohortDt():
             tree = ET.parse(self.ika_params['seapodym_file'])
@@ -534,9 +559,9 @@ class IkaSeapodym(IkaSimulation) :
         nb_particles = len(particles_latitude)
         variables = {"age_class":[self.ika_params["start_age"]]*nb_particles,
                      "age":[self.ika_params["start_age"]
-                            * self.ika_params["delta_time"]]*nb_particles,
+                            * self.ika_params["delta_time_seapodym"]]*nb_particles,
                      **particles_variables}
-
+        
         super().initializeParticleSet(
             particles_longitude, particles_latitude, particles_class,
             particles_starting_time, variables)

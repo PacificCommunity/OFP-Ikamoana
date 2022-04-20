@@ -2,7 +2,7 @@ import xml.etree.ElementTree as ET
 import numpy as np
 import os 
 
-from ikamoana.utils.ikamoanafieldsutils import tagReading
+from ikamoana.utils import tagReading
 
 class IkamoanaFieldsDataStructure :
 
