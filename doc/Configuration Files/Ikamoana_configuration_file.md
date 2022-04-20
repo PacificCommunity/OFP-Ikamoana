@@ -109,6 +109,7 @@ At least one of these methods must be chosen. If there is more than one tag in t
 
 ```xml
   <mortality>
+    <effort_file import="..." export="...">...</effort_file>
     <selected_fisheries>
       <fishery name="..." effort_file_name="..."/>
     </selected_fisheries>
@@ -118,6 +119,9 @@ At least one of these methods must be chosen. If there is more than one tag in t
 ```
 
 - `<mortality>` (*Optional*) : If there is no mortality tag in the configuration file, mortality will not be calculated by IkaField.
+- `<effort_file>` (*Optional*) : Default value is `forcing_dir`+`run_name`. This is the filepath to the effort dataset. It help to reduce the computation time of the mortality.
+  - Attribut `import` (*Optional*) : Default value is False.
+  - Attribut `export` (*Optional*) : Default value is False.
 - `<selected_fisheries>` : Used to select all fisheries that the user wishes to include in the calculation of the mortality field.
   - `<fishery>` :
     - Attribut `name` : Fishery name in SEAPODYM configuration file.

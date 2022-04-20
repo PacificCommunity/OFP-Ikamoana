@@ -33,6 +33,7 @@
 		</start_cell>
 	</cohort_info>
 	<mortality>
+		<effort_file import="False" export="False"/>
 		<selected_fisheries>
 			<fishery name="P1" effort_file_name="1"/>
 			<fishery name="P2"/>

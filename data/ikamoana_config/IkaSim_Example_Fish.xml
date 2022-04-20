@@ -11,10 +11,10 @@
 
   <domain>
     <time>
-      <dt>15</dt>
+      <dt>1</dt>
       <start>2000-01-15</start>
       <sim_time>1096</sim_time>
-      <output_dt>30</output_dt>
+      <output_dt>90</output_dt>
     </time>
     <lat>
       <min>-40</min>
@@ -42,10 +42,11 @@
 
   </cohort_info>
 
-  <!-- <mortality>
+  <mortality>
+    <effort_file import="True" export="False"></effort_file>
     <selected_fisheries>
       <fishery name="P1" effort_file_name="1"/>
-      <fishery name="P21" effort_file_name="2"/>
+      <!-- <fishery name="P21" effort_file_name="2"/>
       <fishery name="P3" effort_file_name="3"/>
       <fishery name="S4" effort_file_name="4"/>
       <fishery name="S5" Trueffort_file_name="8"/>
@@ -53,11 +54,11 @@
       <fishery name="S10" effort_file_name="10"/>
       <fishery name="S12" effort_file_name="12"/>
       <fishery name="S13" effort_file_name="13"/>
-      <fishery name="P15" effort_file_name="15"/>
+      <fishery name="P15" effort_file_name="15"/> -->
     </selected_fisheries>
     <predict_effort>False</predict_effort>
     <skiprows>0</skiprows>
-  </mortality> -->
+  </mortality>
 
   <forcing>
 
@@ -89,6 +90,7 @@
     <kernel>RandomWalkNonUniformDiffusion</kernel>
     <kernel>IkaDimMoveWithDiffusionReroll</kernel>
     <kernel>LandBlock</kernel>
+    <kernel>Age</kernel>
   </kernels>
 
   <random_seed></random_seed>

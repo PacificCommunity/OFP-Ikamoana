@@ -80,7 +80,18 @@ class IkaSimulation :
         
         self.run_name = run_name
         self.random_seed = random_seed
-        
+    
+    def _addField(
+            self, field, dims={"time":"time","lat":"lat","lon":"lon"},
+            name=None, time_extra=True, interp_method='nearest'
+            ):
+        """Add a field to the self ocean attribut."""
+
+        self.ocean.add_field(parcels.Field.from_xarray(
+            field, name=field.name if name is None else name,
+            dimensions=dims, allow_time_extrapolation=time_extra,
+            interp_method=interp_method))
+    
     def loadFields(
             self, fields: Union[xr.Dataset, parcels.FieldSet,
                                 Dict[str,Union[str,parcels.Field,xr.DataArray]]],

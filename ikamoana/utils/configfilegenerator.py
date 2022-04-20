@@ -103,7 +103,8 @@ class ConfigFileGenerator :
     
     def mortality(
             self, fishery_dict: Dict[str,str], skiprows: int = 0,
-            predict_effort: bool = False
+            predict_effort: bool = False, effort_file: str = "",
+            import_effort: bool = False, export_effort: bool = False
             ):
         """OPTIONAL function
         
@@ -113,6 +114,12 @@ class ConfigFileGenerator :
         
         mortality = ET.Element("mortality")
         
+        effort_file_attrs = {"import":str(import_effort),
+                             "export":str(export_effort)}
+        se_effort_file = ET.SubElement(mortality, "effort_file",
+                                       attrib=effort_file_attrs)
+        se_effort_file.text = str(effort_file)
+                
         e_selected_fisheries = ET.Element("selected_fisheries")
         for name, effort_file_name in fishery_dict.items() :
             se_fishery = ET.SubElement(e_selected_fisheries, "fishery")
