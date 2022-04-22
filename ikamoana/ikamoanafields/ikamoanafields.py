@@ -10,6 +10,43 @@ from . import core
 from ..utils import convertToNauticMiles
 
 class IkamoanaFields :
+    """
+    Encapsulates the simulation methods of the Parcels library. Is used
+    as a template by the IkaSeapodym class.
+
+    Attributes
+    ----------
+    feeding_habitat : DataArray | Dataset
+        Current feeding habitat from which all fields are computed.
+        
+    ikamoana_fields_structure : IkamoanaFieldsDataStructure
+        Contains the parameters defined in Ikamoana and Seapodym
+        configuration files.
+        
+    feeding_habitat_structure : FeedingHabitat
+        A class used to calculate the feeding habitat with the Seapodym
+        method.
+
+    Examples
+    --------
+    First example : Use functions one by one to compute each field. The
+    cohort is not evolving throught time.
+    
+    >>> my_ika_field = IkamoanaFields("~/ikamoana_config_file.xml")
+    >>> my_ika_field.computeFeedingHabitat(cohort=5)
+    >>> u, v = my_ika_field.current()
+    >>> tx, ty = my_ika_field.computeTaxis()
+    >>> dx, dy, dKxdx, dKydy = my_ika_field.computeDiffusion(
+    ...     current_u=u, current_v=v)
+    >>> mortality = my_ika_field.computeMortality()
+    
+    Second example : Use a wrapper to do all steps in one function.
+    
+    >>> my_ika_field = IkamoanaFields("~/ikamoana_config_file.xml")
+    >>> fields_dict = my_ika_field.computeIkamoanaFields(
+    ...     evolve=True, cohort_start=5, cohort_end=30,
+    ...     south_to_north=True, verbose=True)
+    """
 
 # -------------------------- CORE FUNCTIONS -------------------------- #
 
@@ -17,19 +54,23 @@ class IkamoanaFields :
             self, IKAMOANA_config_filepath : str,
             SEAPODYM_config_filepath : str = None,
             feeding_habitat : xr.DataArray = None, root_directory: str = None):
-        """Create a IkamoanaFields class. Can compute Taxis, Current, Diffusion,
-        and Mortality fields.
+        """Create a IkamoanaFields class. Can compute Taxis, Current,
+        Diffusion, and Mortality fields.
 
         Parameters
         ----------
         IKAMOANA_config_filepath : str
             Path to the IKAMOANA configuration XML file.
+            
         SEAPODYM_config_filepath : str, optional
             SEAPODYM configuration filepath can also be specified by
             user rather than in the IKAMOANA configuration file.
+            
         root_directory : str, optional
             If the SEAPODYM configuration file is not in the root of the
-            working directory, this (working) directory path must be specified.
+            working directory, this (working) directory path must be
+            specified.
+            
         feeding_habitat : xr.DataArray, optional
             If the feeding habitat has already been calculated, it can
             be passed directly to the constructor.
@@ -67,7 +108,7 @@ class IkamoanaFields :
             lat_min: int = None, lat_max: int = None,lon_min: int = None,
             lon_max: int = None
             ):
-        """This is a wrapper of the `FeedingHabitat.computeFeedingHabitat`."""
+        """This is a wrapper of `FeedingHabitat.computeFeedingHabitat`."""
     
         # Manually control argument because their are used in the
         # returned section.
@@ -91,7 +132,7 @@ class IkamoanaFields :
             time_start: int = None, time_end: int = None, lat_min: int = None,
             lat_max: int = None, lon_min: int = None, lon_max: int = None
             ):
-        """This is a wrapper of the `FeedingHabitat.computeEvolvingFeedingHabitat`."""
+        """This is a wrapper of `FeedingHabitat.computeEvolvingFeedingHabitat`."""
         
         # Manually control argument because their are used in the
         # returned section.
@@ -143,7 +184,15 @@ class IkamoanaFields :
                   minlon_idx:maxlon_idx+1]
         return u, v
 
-    def computeTaxis(self) -> xr.DataArray:
+    def computeTaxis(self) -> Tuple[xr.DataArray, xr.DataArray]:
+        """Generates Taxis fields based on feeding habitat.
+
+        Returns
+        -------
+        Tuple[xr.DataArray, xr.DataArray]
+            Tx (longitude taxis), Ty (latitude taxis).
+            
+        """
         
         hf_cond, ssto_cond = (self.ikamoana_fields_structure.landmask_from_habitat,
                               self.ikamoana_fields_structure.shallow_sea_to_ocean)
@@ -166,9 +215,32 @@ class IkamoanaFields :
             self, import_filepath: str = None, export_filepath:str = None,
             verbose: bool = False
             ) -> xr.DataArray :
+        """Computes the mortality field based on fishings effort.
+
+        Parameters
+        ----------
+        import_filepath : str, optional
+            If you want to import the effort file (as NetCDF).
+            
+        export_filepath : str, optional
+            If you want to export the effort file (as NetCDF).
+            
+        verbose : bool, optional
+
+        Returns
+        -------
+        xr.DataArray
+            Mortality field.
+
+        Raises
+        ------
+        ValueError
+            `selected_fisheries` can not be found. Make sure that you gave
+            mortality and selected_fisheries tags.
+        """
         
         if not hasattr(self.ikamoana_fields_structure, "selected_fisheries") :
-            raise ValueError("selected_fisheries can not be find. Make sure that"
+            raise ValueError("selected_fisheries can not be found. Make sure that"
                              " you gave mortality and selected_fisheries tags.")
         
         fh_struct = self.feeding_habitat_structure.data_structure
@@ -207,17 +279,19 @@ class IkamoanaFields :
             lat_max: int = None, lon_min: int = None, lon_max: int = None,
             current_u: xr.DataArray = None, current_v: xr.DataArray = None
             ) -> Tuple[xr.DataArray, xr.DataArray, xr.DataArray,xr.DataArray]:
-        """[summary]
+        """Computes the diffusions fields and their gradient.
 
         Parameters
         ----------
         landmask : xr.DataArray, optional
-            [description], by default None
+            A mask for the habitat values. Where 2 is shallow sea, 1 is
+            land or no data and 0 is deep ocean with habitat data. See
+            also `ikamoanafields.core.fieldsgenerator.landmask`.
 
         Returns
         -------
         Tuple[xr.DataArray, xr.DataArray, xr.DataArray,xr.DataArray]
-            [description]
+            Kx, Ky, dKxdx, dKydy
         """
         
         if landmask is None :    
@@ -250,10 +324,12 @@ class IkamoanaFields :
             south_to_north: bool = True, import_effort: str = None,
             export_effort:str = None, verbose: bool = False
             ) -> Dict[str, xr.DataArray]:
-        """This is the main function of this module. It is use to
-        provide all the fields needed by the `ikamoana` module.
-        Note that the starting distribution is given by the
-        `start_distribution()` function."""
+        """This is the main function of this module. It is used to
+        provide all the necessary fields for the `ikamoana` module. It
+        gathers all the above functions into one wrapper function and
+        that's why all the parameters are the same as those of the
+        previous functions.
+        """
 
         hf_cond, ssto_cond = (self.ikamoana_fields_structure.landmask_from_habitat,
                               self.ikamoana_fields_structure.shallow_sea_to_ocean)
