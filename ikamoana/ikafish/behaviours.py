@@ -167,11 +167,11 @@ def FishingMortality(particle, fieldset, time):
     particle.Fmor = fieldset.F[time, particle.depth, particle.lat, particle.lon]/particle.dt
 
 def NaturalMortality(particle, fieldset, time):
-    Mnat = fieldset.MPmax*math.exp(-fieldset.MPexp*particle.age_class) + fieldset.MSmax*math.pow(particle.age_class, fieldset.MSslope)
-    Mvar = Mnat * math.pow(1 - fieldset.Mrange, 1-fieldset.H[time, particle.depth, particle.lat, particle.lon]/2)
-    #particle.Nmor = (Mvar * (particle.dt / fieldset.SEAPODYM_dt))
-    #particle.Nmor = Mvar/fieldset.SEAPODYM_dt
-    particle.Nmor = Mvar/particle.dt
+    Mnat = fieldset.MPmax * math.exp(-fieldset.MPexp*particle.age_class) + fieldset.MSmax*math.pow(particle.age_class, fieldset.MSslope)
+    Mvar = Mnat * math.pow(1 - fieldset.Mrange,
+                           1 - fieldset.H[time, particle.depth, particle.lat, particle.lon] / 2)
+    particle.Nmor = Mvar/fieldset.cohort_dt
+
 
 def UpdateSurvivalProbNOnly(particle, fieldset, time):
     depletion = particle.SurvProb - particle.SurvProb * math.exp(-particle.Nmor)
