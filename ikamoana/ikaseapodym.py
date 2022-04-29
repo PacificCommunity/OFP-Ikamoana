@@ -39,7 +39,7 @@ class IkaSeapodym(IkaSimulation) :
     First example : Simple simulation using a configuration file. Both
     fields and particle set are saved to NetCDF.
     See also the documentation on configuration files in `doc` directory.
-    
+
     >>> my_sim = ikadym.IkaSeapodym(filepath="~/configuration_filepath.xml")
     >>> my_sim.loadFields()
     >>> my_sim.oceanToNetCDF(dir_path="~/ocean_fieldset", to_dataset=True)
@@ -50,7 +50,7 @@ class IkaSeapodym(IkaSimulation) :
     >>> my_sim.fish.show(field=my_sim.ocean.U)
     >>> my_sim.runKernels(save=True)
     """
-    
+
     def __init__(self, filepath: str):
         """Overrides `IkaSimulation.__init__()` by first reading a
         configuration file and then passing it all parameters.
@@ -58,23 +58,23 @@ class IkaSeapodym(IkaSimulation) :
         Parameters
         ----------
         filepath : str
-            Path to the IKAMOANA configuration file. Refere to the 
+            Path to the IKAMOANA configuration file. Refere to the
             documentation if you don't know what does this file must
             contains.
         """
-        
+
         parameter_file_dict = self._readConfigFile(filepath)
-        
+
         super().__init__(parameter_file_dict.pop("run_name"),
                          parameter_file_dict.pop("random_seed"))
-        
+
         self.ika_params = parameter_file_dict
         self.ika_params['ikamoana_file'] = filepath
-    
+
     def _readConfigFile(self, filepath:str) -> dict :
         """Reads a configuration file and returns a dictionary with all
         the parameters necessary for the initialization of this class."""
-        
+
         def readBasis(root:ET.Element, params:dict) :
             params['run_name'] = root.find('run_name').text
             params['random_seed'] = root.find('random_seed').text
@@ -82,12 +82,12 @@ class IkaSeapodym(IkaSimulation) :
                 params['run_name'] = None
             if params['random_seed'] == '':
                 params['random_seed'] = None
-                
+
         def readDirectories(root:ET.Element, params:dict) :
             params['start_distribution'] = root.find('start_distribution').text
             params['seapodym_file'] = root.find('seapodym_file').text
             params['forcing_dir'] = root.find('forcing_dir').text
-        
+
         def readDomain(root:ET.Element, params:dict) :
             time = root.find('time')
             params['start_time'] = np.datetime64(time.find('start').text)
@@ -102,7 +102,7 @@ class IkaSeapodym(IkaSimulation) :
                 'latlim': (np.float32(root.find('lat').find('min').text),
                            np.float32(root.find('lat').find('max').text))
             }
-        
+
         def readCohortInfo(root:ET.Element, params:dict) :
             params['start_length'] = float(root.find('start_length').text)
             tmp = root.find('ageing').text
@@ -120,16 +120,16 @@ class IkaSeapodym(IkaSimulation) :
                         params['start_dynamic_file_extension'] = "nc"
                     else :
                         params['start_dynamic_file_extension'] = tmp
-            
+
             if root.find('start_static_file') is not None :
                 params['start_static_file'] = (params['start_distribution']
                                                + root.find('start_static_file').text)
-                        
+
             if root.find('start_cell') is not None :
                 params['start_cell'] = {
                     "lon":float(root.find('start_cell').find('lon').text),
                     "lat":float(root.find('start_cell').find('lat').text)}
-            
+
         def readForcing(root:ET.Element, params:dict) :
             files = root.find("files")
             params['files_only'] = False
@@ -141,12 +141,12 @@ class IkaSeapodym(IkaSimulation) :
                                             in ["True", "true"])
                 else :
                     params['files_only'] = False
-                
+
                 home=""
                 if "home_directory"  in files.attrib :
                     home = files.attrib['home_directory']
                     params['files_home_directory'] = home
-                
+
                 for elmt in files :
                     if ("dataset" in elmt.attrib
                             and elmt.attrib["dataset"] in ["True","true"]):
@@ -157,14 +157,14 @@ class IkaSeapodym(IkaSimulation) :
                                        "forcing_dataset":forcing_dataset}
             tmp = root.find("field_interp_method").text
             params["fields_interp_method"] = "nearest" if tmp in [None, ""] else tmp
-        
+
         def readKernels(root:ET.Element, params:dict) :
             params['kernels'] = [i.text for i in root.findall('kernel')]
-        
+
         def readAge(seapodym_filepath:str, start_length:float, params:dict):
             tree = ET.parse(seapodym_filepath)
             root = tree.getroot()
-            
+
             sp_name = root.find('sp_name').text
             length_list = np.array(
                 [float(x) for x in root.find('length').find(sp_name).text.split()])
@@ -173,7 +173,7 @@ class IkaSeapodym(IkaSimulation) :
 
             delta_time_seapodym = int(float(root.find('deltaT').attrib['value'])*86400)
             params["delta_time_seapodym"] = delta_time_seapodym
-        
+
         def readMortality(ikamoana_root:ET.Element, params:dict):
             if (ikamoana_root.find("mortality") is not None
                     and ikamoana_root.find("mortality").find("effort_file") is not None) :
@@ -189,7 +189,7 @@ class IkaSeapodym(IkaSimulation) :
                     effort_file_txt = os.path.join(params['forcing_dir'],
                                                    effort_file_txt)
                 params['effort_file'] = "{}.nc".format(effort_file_txt)
-            
+
             tree = ET.parse(params['seapodym_file'])
             seapodym_root = tree.getroot()
             species_name = seapodym_root.find("sp_name").text
@@ -217,7 +217,7 @@ class IkaSeapodym(IkaSimulation) :
         readMortality(root, params)
 
         return params
-    
+
     def loadFields(
             self, from_habitat: xr.DataArray = None,
             fields_interp_method: str = None,
@@ -244,7 +244,7 @@ class IkaSeapodym(IkaSimulation) :
             Please refer to the Parcels documentation.
 
         """
-        
+
         def loadFieldsFromFiles():
 # TODO : reindex new fields ?
             forcing_files = self.ika_params["forcing_files"]
@@ -256,7 +256,7 @@ class IkaSeapodym(IkaSimulation) :
             for name, filepath in forcing_files["forcing_dataarray"].items() :
                 forcing[name] = seapodymFieldConstructor(filepath, dym_varname=name)
             return forcing
-        
+
         def generateFields():
             generator = IkamoanaFields(self.ika_params['ikamoana_file'])
             data_structure = generator.feeding_habitat_structure.data_structure
@@ -282,38 +282,38 @@ class IkaSeapodym(IkaSimulation) :
                 lon_min=lonlims[0], lon_max=lonlims[1],
                 lat_min=latlims[1], lat_max=latlims[0],
                 import_effort=import_effort, export_effort=export_effort)
-        
+
         def readCohortDt():
             tree = ET.parse(self.ika_params['seapodym_file'])
             root = tree.getroot()
             deltaT = float(root.find('deltaT').attrib["value"])
             return deltaT*24*60*60
-        
+
         if fields_interp_method is None :
             fields_interp_method = self.ika_params['fields_interp_method']
-        
+
         files_forcing = loadFieldsFromFiles()
-        
+
         generated_forcing = {} if self.ika_params["files_only"] else generateFields()
-        
+
         # If a key is defined in both generated_forcing and files_forcing,
         # only the value in files_forcing is conserved.
         forcing = {**generated_forcing, **files_forcing}
-        
+
         super().loadFields(fields=forcing, inplace=True,
                            landmask_interp_methode=landmask_interp_methode,
                            fields_interp_method=fields_interp_method,
                            allow_time_extrapolation=allow_time_extrapolation)
-        
+
         self.ocean.add_constant('cohort_dt', readCohortDt())
-        
+
         for cst, value in self.ika_params['mortality_constants'].items():
             self.ocean.add_constant(name=cst, value=value)
-    
+
     def _fromCellToStartField(self) -> xr.DataArray:
         """Generate a DataArray full of 0 except for one cell ("start_cell"
         tag in configuration file) which is initialized with value 1."""
-        
+
         grid_lon = self.ocean.U.grid.lon
         grid_lat = self.ocean.U.grid.lat
         shape = (1,len(grid_lat),len(grid_lon))
@@ -321,28 +321,28 @@ class IkaSeapodym(IkaSimulation) :
         coords = {'time': [self.ika_params['start_time']],
                   'lat': grid_lat, 'lon': grid_lon}
         dimensions = ('time','lat','lon')
-        
+
         start_dist = xr.DataArray(
             name="start_dist", data=start, coords=coords, dims=dimensions)
         self.start_coords = start_dist.coords #For density calculation later
         start_dist = parcels.Field.from_xarray(
             start_dist, name='start_dist', dimensions={d:d for d in dimensions},
             interp_method='nearest')
-        
+
         lat = self.ika_params["start_cell"]["lat"]
         lon = self.ika_params["start_cell"]["lon"]
         latidx = np.argmin(np.abs(start_dist.lat-lat))
         lonidx = np.argmin(np.abs(start_dist.lon-lon))
         start_dist.data[:,latidx,lonidx] = 1
         return start_dist
-    
+
     def _fromStartFieldToCoordinates(
             self, start_dist, particles_number, area_scale=True
             ) -> Tuple[np.ndarray, np.ndarray]:
         """Simple function returning random particle start positions using
         the density distribution saved in `start_dist`. Includes option
         for scaling density by grid cell size (default true)."""
-     
+
         def cell_area(lat,dx,dy):
             """For distributions from a density on a spherical grid, we
             need to rescale to a flat mesh"""
@@ -352,7 +352,7 @@ class IkaSeapodym(IkaSimulation) :
             dx_radian = (dx)*np.pi/180
             S = R*R*dx_radian*(np.sin(Phi2)-np.sin(Phi1))
             return S
-        
+
         def add_jitter(pos, width, min, max):
             value = pos + np.random.uniform(-width, width)
             while not (min <= value <= max):
@@ -369,7 +369,7 @@ class IkaSeapodym(IkaSimulation) :
             for l in range(len(grid.lat)):
                 area = cell_area(grid.lat[l],lonwidth,latwidth)
                 data[l,:] *= area
-                
+
         p = np.reshape(data, (1, data.size))
         inds = np.random.choice(
             data.size, particles_number, replace=True, p=p[0] / np.sum(p))
@@ -382,7 +382,7 @@ class IkaSeapodym(IkaSimulation) :
             lat[i] = add_jitter(lat[i], latwidth, grid.lat[0], grid.lat[-1])
 
         return lon, lat
-    
+
     def _rescaleFieldWithUCoordinates(self, field):
         """Sets the spatial boundaries of a field in the same way as
         `ocean.U`."""
@@ -397,7 +397,7 @@ class IkaSeapodym(IkaSimulation) :
         else :
             return field.isel(lat=slice(minlat_idx,maxlat_idx+1),
                               lon=slice(minlon_idx,maxlon_idx+1))
-    
+
     def initializeParticleSet(
             self, particles_longitude:Union[list,np.ndarray] = None,
             particles_latitude:Union[list,np.ndarray] = None,
@@ -417,7 +417,7 @@ class IkaSeapodym(IkaSimulation) :
         `start_static_file` method. Will use cohort age and start date
         to select the right density distribution in start_distribution
         directory.
-        
+
         If both `start_cell`, `start_static_file` and
         `start_dynamic_file` are defined in configuration file, specify
         which one you want to use in `method` attribut.
@@ -455,8 +455,8 @@ class IkaSeapodym(IkaSimulation) :
             `start_age` must be greater than 0. Initial distribution
             will use previous age cohort file.
         ValueError
-            Both start_cell, start_filestem and start_dynamic_file are 
-            defined in configuration file. Specify which one you want 
+            Both start_cell, start_filestem and start_dynamic_file are
+            defined in configuration file. Specify which one you want
             to use in method attribut.
         ValueError
             If you don't use start_cell, start_static_file or
@@ -464,29 +464,29 @@ class IkaSeapodym(IkaSimulation) :
             latitude positions for each particle using
             `particles_longitude` and `particles_latitude` attributs.
         """
-        
+
         # Internal functions
-        
+
         def initializeWithCell():
             start_field = self._fromCellToStartField()
             return self._fromStartFieldToCoordinates(start_field, particles_number)
-            
+
         def initializeWithStaticFile():
             start_field = seapodymFieldConstructor(self.ika_params["start_static_file"])
             start_field = latitudeDirection(start_field, south_to_north=True)
             start_field = self._rescaleFieldWithUCoordinates(start_field)
-            
+
             start_field = parcels.Field.from_xarray(
                 start_field, name="start_distribution",
                 dimensions={d:d for d in list(start_field.indexes)},
                 interp_method='nearest')
-            
+
             if hasattr(self.ocean, "start_distribution") :
                 delattr(self.ocean, "start_distribution")
             self.ocean.add_field(start_field, "start_distribution")
-            
+
             return self._fromStartFieldToCoordinates(start_field, particles_number)
-        
+
         def initializeWithDynamicFile():
             file_prefix = self.ika_params["start_dynamic_file"]
             start_age = self.ika_params['start_age'] - 1
@@ -494,12 +494,12 @@ class IkaSeapodym(IkaSimulation) :
             if start_age < 0:
                 raise ValueError("start_age must be greater than 0. Initial "
                                  "distribution will use previous age cohort file.")
-                
+
             start_field = seapodymFieldConstructor(
                 "{}{}.{}".format(file_prefix, start_age, file_extension),
                 dym_varname="{}{}".format(file_prefix, start_age))
             start_field = latitudeDirection(start_field, south_to_north=True)
-            
+
             timefun, _, _  = coordsAccess(start_field)
             mintime_idx = timefun(self.ika_params['start_time']) - 1
             start_field = start_field.isel(time=mintime_idx)
@@ -508,36 +508,36 @@ class IkaSeapodym(IkaSimulation) :
                 start_field, name="start_distribution",
                 dimensions={d:d for d in list(start_field.indexes)},
                 interp_method='nearest')
-            
+
             if hasattr(self.ocean, "start_distribution") :
                 delattr(self.ocean, "start_distribution")
             self.ocean.add_field(start_field, "start_distribution")
-            
+
             return self._fromStartFieldToCoordinates(start_field, particles_number)
-        
+
         # Verification : Is ParticleSet is already initialized ?
-        
+
         if hasattr(self, "fish") :
             delattr(self, "fish")
         if self.ocean.completed :
             self.ocean.completed = False
         if particles_number is None :
             particles_number = self.ika_params['number_of_cohorts']
-        
+
         if particles_longitude is None and particles_latitude is None :
 
             condition_cell = 'start_cell' in self.ika_params
             condition_static_file = 'start_static_file' in self.ika_params
             condition_dynamic_file = 'start_dynamic_file' in self.ika_params
             condition_multiple = (condition_cell+condition_static_file+condition_dynamic_file)>1
-            
+
             if condition_multiple and method not in ['start_cell','start_static_file',
                                                      'start_dynamic_file'] :
                 raise ValueError(
                     "Both start_cell, start_filestem and start_dynamic_file are "
                     "defined in configuration file. Specify which one you want "
                     "to use in method attribut.")
-            
+
             if ((condition_multiple and method == 'start_cell')
                     or (condition_cell and not condition_multiple)) :
                 particles_longitude, particles_latitude = initializeWithCell()
@@ -561,14 +561,15 @@ class IkaSeapodym(IkaSimulation) :
                      "age":[self.ika_params["start_age"]
                             * self.ika_params["delta_time_seapodym"]]*nb_particles,
                      **particles_variables}
-        
+
         super().initializeParticleSet(
             particles_longitude, particles_latitude, particles_class,
             particles_starting_time, variables)
-        
+
     def runKernels(
             self, kernels: Union[KernelType, Dict[str, KernelType]] = None,
-            recovery: Dict[int, KernelType] = None, delta_time: int = None,
+            recovery: Dict[int, KernelType] = None,
+            sample_kernels: list = [], delta_time: int = None,
             duration_time: int = None, save: bool = False, output_name: str = None,
             output_delta_time: int = None, verbose: bool = False, **kargs):
         """Execute a list of kernels functions defined in
@@ -608,7 +609,7 @@ class IkaSeapodym(IkaSimulation) :
             Default value is extract from the configuration file.
         verbose : bool, optional
             Boolean for providing a progress bar for the kernel
-            execution loop. 
+            execution loop.
         kargs : Any
             kargs is passed directly to ParticleSet.execute().
 
@@ -634,11 +635,11 @@ class IkaSeapodym(IkaSimulation) :
                 else :
                     raise ValueError(("{} kernel is not defined by "
                                       "behaviours.AllKernels.").format(k))
-        
+
         if recovery is None :
             recovery = {parcels.ErrorCode.ErrorOutOfBounds:behaviours.KillFish}
 
         super().runKernels(
-            kernels=behaviours_dict, delta_time=delta_time, duration_time=duration_time,
+            kernels=behaviours_dict, sample_kernels=sample_kernels, delta_time=delta_time, duration_time=duration_time,
             recovery=recovery, save=save, output_name=output_name,
             output_delta_time=output_delta_time, verbose=verbose, *kargs)
