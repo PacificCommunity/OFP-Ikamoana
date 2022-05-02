@@ -8,7 +8,7 @@ from parcels.particle import JITParticle, ScipyParticle, Variable
 
 class IkaFish(JITParticle):
         age          = Variable('age', to_write=False)
-        age_class    = Variable('age_class')
+        age_class    = Variable('age_class', to_write=False)
         # TODO : active is not used in kernels ? Should it be removed ?
         active       = Variable("active", to_write=False, initial=1)
         prev_lon     = Variable('prev_lon', to_write=False)
@@ -79,7 +79,7 @@ class IkaTag(IkaFish):
 
 
 class IkaMix(IkaTag):
-        TAL = Variable('TAL')
+        TAL = Variable('TAL', to_write=False)
         Mix3CapProb = Variable('Mix3CapProb')
         Mix6CapProb = Variable('Mix6CapProb')
         Mix9CapProb = Variable('Mix9CapProb')
