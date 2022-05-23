@@ -1,5 +1,7 @@
 import parcels.rng as ParcelsRandom
 import math
+import scipy
+from scipy.stats import vonmises
 
 # NOTE : No more SEAPODYM_dt ? Can we use particle.dt instead ?
 
@@ -21,12 +23,12 @@ def IkaDymMove(particle, fieldset, time):
     particle.prev_lat = particle.lat
     adv_x = particle.Ax + particle.Tx
     adv_y = particle.Ay + particle.Ty
-    
+
     if adv_x > 2:
         adv_x = 2
     if adv_y > 2:
         adv_y = 2
-    
+
     particle.lon = particle.lon + adv_x + particle.Dx + particle.Cx
     particle.lat = particle.lat + adv_y + particle.Dy + particle.Cy
 
@@ -35,12 +37,12 @@ def IkaDimMoveWithDiffusionReroll(particle, fieldset, time):
     particle.prev_lat = particle.lat
     adv_x = particle.Ax + particle.Tx
     adv_y = particle.Ay + particle.Ty
-    
+
     if adv_x > 2:
         adv_x = 2
     if adv_y > 2:
         adv_y = 2
-        
+
     particle.loop_count = 0
     jump_loop = 0
     sections = 8
@@ -88,7 +90,7 @@ def KillFish(particle, fieldset, time):
 
 def CalcLonLatScalers(particle, fieldset, time):
     """See also parcels.tools.converters.GeographicPolar converter."""
-    
+
     # Geographic _      source to target : m -> degree
     particle.f_lat = 1 / 1000. / 1.852 / 60.
     # GeographicPolar _ source to target : m -> degree
@@ -100,15 +102,15 @@ def IkAdvectionRK4(particle, fieldset, time):
     (u1, v1) = fieldset.UV[time, particle.depth, particle.lat, particle.lon]
     uv_lon1 = particle.lon + u1*.5*particle.dt
     uv_lat1 = particle.lat + v1*.5*particle.dt
-    
+
     (u2, v2) = fieldset.UV[time + .5 * particle.dt, particle.depth, uv_lat1, uv_lon1]
     uv_lon2 = particle.lon + u2*.5*particle.dt
     uv_lat2 = particle.lat + v2*.5*particle.dt
-    
+
     (u3, v3) = fieldset.UV[time + .5 * particle.dt, particle.depth, uv_lat2, uv_lon2]
     uv_lon3 = particle.lon + u3*particle.dt
     uv_lat3 = particle.lat + v3*particle.dt
-    
+
     (u4, v4) = fieldset.UV[time + particle.dt, particle.depth, uv_lat3, uv_lon3]
     particle.Ax = (u1 + 2*u2 + 2*u3 + u4) / 6. * particle.dt
     particle.Ay = (v1 + 2*v2 + 2*v3 + v4) / 6. * particle.dt
@@ -132,7 +134,7 @@ def TaxisRK4(particle, fieldset, time):
 
     tx4 = fieldset.Tx[time + particle.dt, particle.depth, t_lat3, t_lon3]
     ty4 = fieldset.Ty[time + particle.dt, particle.depth, t_lat3, t_lon3]
-    
+
     particle.Tx = (tx1 + 2*tx2 + 2*tx3 + tx4) / 6. * particle.dt * particle.f_lon
     particle.Ty = (ty1 + 2*ty2 + 2*ty3 + ty4) / 6. * particle.dt * particle.f_lat
 
@@ -149,8 +151,8 @@ def RandomWalkNonUniformDiffusion(particle, fieldset, time):
     # Convert
     dKxdx = dKxdx * particle.dt
     dKydy = dKydy * particle.dt
-    kx = kx * particle.dt 
-    ky = ky * particle.dt 
+    kx = kx * particle.dt
+    ky = ky * particle.dt
     # Compute
     particle.Rx_component = math.sqrt(2 * kx / r_var)
     particle.Ry_component = math.sqrt(2 * ky / r_var)
@@ -215,8 +217,113 @@ def Age(particle, fieldset, time):
     if (particle.age - (particle.age_class*fieldset.cohort_dt)) > (fieldset.cohort_dt):
         particle.age_class += 1
 
-# All Kernel dict, needed for dynamic kernel compilation
 
+###################### Interaction kernels ###########################
+
+def Iattraction(particle, fieldset, time, neighbors, mutator):
+    """Kernel determines the attraction strength of FADs,
+       determined by Logistic function"""
+    # The geometric function
+    #def geometric(x, p=fieldset.p):
+    #    return (1-p)**(x-1)*p
+
+    def f(particle, nom):  # define mutation function for mutator
+        particle.FADkap = nom
+
+    # if the FAD attraction strength is determined
+    # by the number of associated tuna
+    if(particle.ptype==1 and particle.id!=0):
+        nom = 0 # keeps track of number of associated tuna
+        for n in neighbors:
+            if n.ptype==0:
+                dist = ((particle.lat-n.lat)**2+(particle.lon-n.lon)**2)**0.5
+                if(dist <= fieldset.RtF):
+                    nom += 1
+        mutator[particle.id].append((f, [nom]))  # add mutation to the mutator
+        #particle.FADkap = nom
+        #fieldset.FADorders.data[0,0,particle.id] = nom
+        #fieldset.Forders.grid.time[0] = time # updating Field prey time
+
+    # Draw a fishing location near a FAD from the geometric distribution
+    # if(particle.id==0):#,time>0
+    #     if(fieldset.p==1. or fieldset.nfad==1):
+    #         fieldset.FADc.data[0,0,0] = 1
+    #         fieldset.FADc.grid.time[0] = time # updating Field prey time
+    #     elif(fieldset.p==0):
+    #         fieldset.FADc.data[0,0,0] = np.random.randint(1,fieldset.nfad+1)
+    #         fieldset.FADc.grid.time[0] = time # updating Field prey time
+    #     else:
+    #         probs = geometric(np.arange(fieldset.nfad))
+    #         fieldset.FADc.data[0,0,0] = random.choices(np.arange(fieldset.nfad), probs)[0] + 1
+    #         fieldset.FADc.grid.time[0] = time # updating Field prey time
+
+    return StateCode.Success
+
+def ItunaFAD(particle, fieldset, time, neighbors, mutator):
+    '''InterActionKernel that "pulls" all neighbor tuna particles of FADs
+    toward the FAD'''
+
+    distances = []
+    na_neighbors = []
+
+    # the swimming
+    if particle.ptype==0: # if tuna swims towards FAD
+        # Define the Logistic curve
+        def LogisticCurve(x, L=fieldset.lL, k=fieldset.lk, x0=fieldset.lx0):
+            # x is the number of associated tuna
+            res = 1 + L / (1+math.e**(-k*(x-x0)))
+            return res
+
+        DS = [0,0]
+        for n in neighbors:
+            if n.ptype==1:
+                pPos = np.array([particle.lat, particle.lon, particle.depth]) # n location
+                fPos = np.array([n.lat, n.lon, n.depth]) # FAD location
+                assert particle.depth==n.depth, 'this kernel is only supported in two dimensions for now'
+
+                Fvec = fPos - pPos
+                norm = np.linalg.norm(Fvec)
+                if(norm>0):
+                    DS[0] += Fvec[0] / norm * LogisticCurve(n.FADkap)
+                    DS[1] += Fvec[1] / norm * LogisticCurve(n.FADkap)
+
+        if(DS!=[0,0]):
+            VP = [0,0,0]
+            VP[0] = DS[0] * fieldset.kappaF
+            VP[1] = DS[1] * fieldset.kappaF
+            d_vec = VP
+            def f(particle, dlat, dlon, ddepth):
+                particle.Fy += dlat
+                particle.Fx += dlon
+
+            mutator[particle.id].append((f, d_vec))
+
+    return StateCode.Success
+
+def Imovement(particle, fieldset, time, neighbors, mutator):
+    '''InterActionKernel resolves all displacment vectors following
+    interactive and non-interactive kernel execution'''
+
+    def A(particle):
+        particle.lon += particle.Ax
+        particle.lat += particle.Ay
+    def S(p):
+        S = np.array(p.Tx+p.Dx+p.Cx,p.Ty+p.Dy+p.Cy)
+        Snorm = np.linalg.norm(S)
+        dlon = Snorm[0]+p.Fx
+        dlat = Snorm[1]+p.Fy
+        Smag = (S[0]**2+S[1]**2)**0.5
+
+        particle.lon += dlon*Smag
+        particle.lat += dlat*Smag
+
+    mutator[particle.id].append((A,))
+    if particle.ptype is 0:
+        mutator[particle.id].append((S,))
+
+    return StateCode.Success
+
+# All Kernel dict, needed for dynamic kernel compilation
 AllKernels = {'IkaDymMove':IkaDymMove,
               'IkaDimMoveWithDiffusionReroll': IkaDimMoveWithDiffusionReroll,
               'KillFish':KillFish,
@@ -233,3 +340,7 @@ AllKernels = {'IkaDymMove':IkaDymMove,
               'Age':Age,
               'MoveSouth':MoveSouth,
               'LandBlock':LandBlock}
+
+AllInteractions = {'Iattraction': Iattraction,
+                   'ItunaFAD': ItunaFAD,
+                   'Imovement': Imovement}

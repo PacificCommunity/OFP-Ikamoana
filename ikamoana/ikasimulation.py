@@ -276,12 +276,13 @@ class IkaSimulation :
                                       "But {} length is equal to {}"
                                       ).format(k, len(v)))
 
-        self.fish = parcels.ParticleSet.from_list(
+        self.fish = parcels.ParticleSet.from_list(interaction_distance=10,
             fieldset=self.ocean, lon=particles_longitude, lat=particles_latitude,
             pclass=particles_class, time=particles_starting_time, **particles_variables)
 
     def runKernels(
             self, kernels: Union[KernelType, Dict[str, KernelType]],
+            interactions: Union[KernelType, Dict[str, KernelType]],
             recovery: Dict[int, KernelType] = None,
             sample_kernels: list = [],
             delta_time: int = 1, duration_time: int = None, end_time: np.datetime64 = None,
@@ -352,9 +353,14 @@ class IkaSimulation :
         if not callable(kernels) : # then it should be a list or tuple
             run_kernels = reduce(lambda a, b : a+b,
                                  [self.fish.Kernel(k_fun) for k_fun in kernels])
+        if isinstance(interactions, dict) :
+            interactions = list(interactions.values())
+        if not callable(interactions) : # then it should be a list or tuple
+            run_interactions = reduce(lambda a, b : a+b,
+                                 [self.fish.InteractionKernel(k_fun) for k_fun in interactions])
 
         self.fish.execute(
-            run_kernels, endtime=end_time, runtime=duration_time, dt=delta_time,
+            pyfunc=run_kernels,pyfunc_inter=run_interactions, endtime=end_time, runtime=duration_time, dt=delta_time,
             recovery=recovery, output_file=particles_file, verbose_progress=verbose)
 
 # TOOLS -------------------------------------------------------------- #

@@ -629,9 +629,12 @@ class IkaSeapodym(IkaSimulation) :
 
         if kernels is None :
             behaviours_dict = {}
+            interactions_dict = {}
             for k in self.ika_params['kernels'] :
                 if k in behaviours.AllKernels :
                     behaviours_dict[k] = behaviours.AllKernels[k]
+                elif k in behaviours.AllInteractions :
+                    interactions_dict[k] = behaviours.AllInteractions[k]
                 else :
                     raise ValueError(("{} kernel is not defined by "
                                       "behaviours.AllKernels.").format(k))
@@ -640,6 +643,7 @@ class IkaSeapodym(IkaSimulation) :
             recovery = {parcels.ErrorCode.ErrorOutOfBounds:behaviours.KillFish}
 
         super().runKernels(
-            kernels=behaviours_dict, sample_kernels=sample_kernels, delta_time=delta_time, duration_time=duration_time,
+            kernels=behaviours_dict, interactions=interactions_dict,
+            sample_kernels=sample_kernels, delta_time=delta_time, duration_time=duration_time,
             recovery=recovery, save=save, output_name=output_name,
             output_delta_time=output_delta_time, verbose=verbose, *kargs)

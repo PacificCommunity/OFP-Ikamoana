@@ -26,13 +26,41 @@ class IkaFish(JITParticle):
         Ay           = Variable('Ay', to_write=False)
         Rx_component = Variable('Rx_component', to_write=False)
         Ry_component = Variable('Ry_component', to_write=False)
-        
+
 
         def __init__(self, *args, **kwargs):
             """Custom initialisation function which calls the base
             initialisation and adds the instance variable p"""
             super().__init__(*args, **kwargs)
-            
+
+class IkaFADFish(ScipyParticle):
+    ptype        = Variable('ptype', to_write=True)
+    FADkap       = Variable('FADkap', to_write=True)
+    age          = Variable('age', to_write=False)
+    age_class    = Variable('age_class', to_write=False)
+    prev_lon     = Variable('prev_lon', to_write=False)
+    prev_lat     = Variable('prev_lat', to_write=False)
+    loop_count   = Variable('loop_count', to_write=False)
+    f_lat        = Variable('f_lat', to_write=False)
+    f_lon        = Variable('f_lon', to_write=False)
+    Dx           = Variable('Dx', to_write=False)
+    Dy           = Variable('Dy', to_write=False)
+    Cx           = Variable('Cx', to_write=False)
+    Cy           = Variable('Cy', to_write=False)
+    Tx           = Variable('Tx', to_write=False, dtype=np.float64)
+    Ty           = Variable('Ty', to_write=False, dtype=np.float64)
+    Ax           = Variable('Ax', to_write=False)
+    Ay           = Variable('Ay', to_write=False)
+    Fx           = Variable('Fx', to_write=False)
+    Fy           = Variable('Fy', to_write=False)
+    Rx_component = Variable('Rx_component', to_write=False)
+    Ry_component = Variable('Ry_component', to_write=False)
+
+
+    def __init__(self, *args, **kwargs):
+        """Custom initialisation function which calls the base
+        initialisation and adds the instance variable p"""
+        super().__init__(*args, **kwargs)
 
 class IkaFishDebug(JITParticle):
     # Internal
@@ -86,10 +114,9 @@ class IkaMix(IkaTag):
         Mix3SurvProb = Variable('Mix3SurvProb', to_write=True, initial=1)
         Mix6SurvProb = Variable('Mix6SurvProb', to_write=True, initial=1)
         Mix9SurvProb = Variable('Mix9SurvProb', to_write=True, initial=1)
-        
+
 
         def __init__(self, *args, **kwargs):
             """Custom initialisation function which calls the base
             initialisation and adds the instance variable p"""
             super().__init__(*args, **kwargs)
-            
