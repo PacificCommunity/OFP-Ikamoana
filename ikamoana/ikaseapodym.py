@@ -314,8 +314,8 @@ class IkaSeapodym(IkaSimulation) :
         """Generate a DataArray full of 0 except for one cell ("start_cell"
         tag in configuration file) which is initialized with value 1."""
 
-        grid_lon = self.ocean.U.grid.lon
-        grid_lat = self.ocean.U.grid.lat
+        grid_lon = self.ocean.landmask.grid.lon
+        grid_lat = self.ocean.landmask.grid.lat
         shape = (1,len(grid_lat),len(grid_lon))
         start = np.zeros(shape, dtype=np.float32)
         coords = {'time': [self.ika_params['start_time']],
@@ -333,7 +333,16 @@ class IkaSeapodym(IkaSimulation) :
         lon = self.ika_params["start_cell"]["lon"]
         latidx = np.argmin(np.abs(start_dist.lat-lat))
         lonidx = np.argmin(np.abs(start_dist.lon-lon))
-        start_dist.data[:,latidx,lonidx] = 1
+
+        #Has the requested cell fallen on the landmask?
+        if self.ocean.landmask.data[0,latidx,lonidx] == 1:
+            print('Chosen start cell is on landmask!/nShifting to surrounding cells')
+            for i in [-1,0,1]:
+                for j in [-1,0,1]:
+                    if self.ocean.landmask.data[0,latidx+j,lonidx+i] != 1:
+                        start_dist.data[:,latidx+j,lonidx+i] = 1
+        else:
+            start_dist.data[:,latidx,lonidx] = 1
         return start_dist
 
     def _fromStartFieldToCoordinates(
