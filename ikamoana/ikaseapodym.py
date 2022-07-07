@@ -568,6 +568,7 @@ class IkaSeapodym(IkaSimulation) :
 
     def runKernels(
             self, kernels: Union[KernelType, Dict[str, KernelType]] = None,
+            interactions: Union[KernelType, Dict[str, KernelType]] = None,
             recovery: Dict[int, KernelType] = None,
             sample_kernels: list = [], delta_time: int = None,
             duration_time: int = None, save: bool = False, output_name: str = None,
@@ -638,6 +639,10 @@ class IkaSeapodym(IkaSimulation) :
                 else :
                     raise ValueError(("{} kernel is not defined by "
                                       "behaviours.AllKernels.").format(k))
+
+        # No interaction kernels requested by user
+        if len(interactions_dict) == 0:
+            interactions_dict = None
 
         if recovery is None :
             recovery = {parcels.ErrorCode.ErrorOutOfBounds:behaviours.KillFish}

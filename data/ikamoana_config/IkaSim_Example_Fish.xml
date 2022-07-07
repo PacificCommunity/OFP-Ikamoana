@@ -11,7 +11,7 @@
 
   <domain>
     <time>
-      <dt>1</dt>
+      <dt>86400</dt>
       <start>2000-01-15</start>
       <sim_time>1096</sim_time>
       <output_dt>90</output_dt>
