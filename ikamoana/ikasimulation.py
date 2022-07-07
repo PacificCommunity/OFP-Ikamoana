@@ -282,7 +282,7 @@ class IkaSimulation :
 
     def runKernels(
             self, kernels: Union[KernelType, Dict[str, KernelType]],
-            interactions: Union[KernelType, Dict[str, KernelType]],
+            interactions: Union[KernelType, Dict[str, KernelType]] = None,
             recovery: Dict[int, KernelType] = None,
             sample_kernels: list = [],
             delta_time: int = 1, duration_time: int = None, end_time: np.datetime64 = None,
@@ -334,8 +334,8 @@ class IkaSimulation :
                 output_name = "{}_particleFile".format(self.run_name)
             else :
                 output_name, _ = os.path.splitext(output_name)
-            particles_file = self.fish.ParticleFile(
-                name=("{}.nc").format(output_name), outputdt=output_delta_time)
+            particles_file = self.fish.ParticleFile(name=("{}.nc").format(output_name),
+                                outputdt=output_delta_time)
         else :
             particles_file = None
 
@@ -353,15 +353,21 @@ class IkaSimulation :
         if not callable(kernels) : # then it should be a list or tuple
             run_kernels = reduce(lambda a, b : a+b,
                                  [self.fish.Kernel(k_fun) for k_fun in kernels])
-        if isinstance(interactions, dict) :
-            interactions = list(interactions.values())
-        if not callable(interactions) : # then it should be a list or tuple
-            run_interactions = reduce(lambda a, b : a+b,
-                                 [self.fish.InteractionKernel(k_fun) for k_fun in interactions])
+        if interactions is None:
+            run_interactions = None
+        else:
+            if isinstance(interactions, dict) :
+                interactions = list(interactions.values())
+            if not callable(interactions) : # then it should be a list or tuple
+                run_interactions = reduce(lambda a, b : a+b,
+                                     [self.fish.InteractionKernel(k_fun) for k_fun in interactions])
 
         self.fish.execute(
             pyfunc=run_kernels,pyfunc_inter=run_interactions, endtime=end_time, runtime=duration_time, dt=delta_time,
             recovery=recovery, output_file=particles_file, verbose_progress=verbose)
+        #Write to file
+        if save :
+            particles_file.export()
 
 # TOOLS -------------------------------------------------------------- #
 

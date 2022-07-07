@@ -93,7 +93,7 @@ class IkaSeapodym(IkaSimulation) :
             params['start_time'] = np.datetime64(time.find('start').text)
             # All times are in seconds (converted from days)
             params['duration_time'] = int(float(time.find('sim_time').text)*86400)
-            params['delta_time'] = int(float(time.find('dt').text)*86400)
+            params['delta_time'] = int(float(time.find('dt').text)) #*86400)
             params['output_delta_time'] = int(float(time.find('output_dt').text)*86400)
 
             params['spatial_limits'] = {

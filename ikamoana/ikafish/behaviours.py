@@ -317,9 +317,9 @@ def Imovement(particle, fieldset, time, neighbors, mutator):
         particle.lon += dlon*Smag
         particle.lat += dlat*Smag
 
-    mutator[particle.id].append((A,))
+    mutator[particle.id].append((A,[]))
     if particle.ptype is 0:
-        mutator[particle.id].append((S,))
+        mutator[particle.id].append((S,[]))
 
     return StateCode.Success
 
