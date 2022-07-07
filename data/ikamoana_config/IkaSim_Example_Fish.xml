@@ -4,9 +4,9 @@
   <run_name>IkaSim_Example_Fish</run_name>
 
   <directories>
-    <forcing_dir>/home/ash/Documents/GitHub_Repositories/OFP-Ikamoana/data/ikamoana_data/</forcing_dir>
-    <start_distribution>/home/ash/Documents/GitHub_Repositories/OFP-Ikamoana/data/ikamoana_data/</start_distribution>
-    <seapodym_file>/home/ash/Documents/GitHub_Repositories/OFP-Ikamoana/data/SEAPODYM_data/run-test/skj_CLT_e5_3_est.xml</seapodym_file>
+    <forcing_dir>./../ikamoana_data/</forcing_dir>
+    <start_distribution>./../data/ikamoana_data/</start_distribution>
+    <seapodym_file>./../data/SEAPODYM_data/run-test/skj_CLT_e5_3_est.xml</seapodym_file>
   </directories>
 
   <domain>
