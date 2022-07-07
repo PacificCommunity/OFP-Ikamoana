@@ -32,3 +32,4 @@ dependencies:
   - pykdtree
   - zarr
   - scikit-learn
+  - parcels
