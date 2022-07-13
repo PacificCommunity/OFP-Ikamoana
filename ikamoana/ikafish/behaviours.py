@@ -372,7 +372,7 @@ AllKernels = {'IkaDymMove':IkaDymMove,
               'Age':Age,
               'MoveSouth':MoveSouth,
               'LandBlock':LandBlock,
-              'PreyInteraction':PreyDeplete}
+              'PreyInteraction':PreyInteraction}
 
 AllInteractions = {'Iattraction': Iattraction,
                    'ItunaFAD': ItunaFAD,
