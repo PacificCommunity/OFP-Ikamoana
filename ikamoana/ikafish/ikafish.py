@@ -62,7 +62,7 @@ class IkaFADFish(ScipyParticle):
         initialisation and adds the instance variable p"""
         super().__init__(*args, **kwargs)
 
-class IkaFishDebug(JITParticle):
+class IkaFishDebug(ScipyParticle):
     # Internal
     active       = Variable("active", to_write=False, initial=1)
     prev_lon     = Variable('prev_lon', to_write=False)
