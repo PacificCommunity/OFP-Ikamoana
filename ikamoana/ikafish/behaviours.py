@@ -218,7 +218,7 @@ def Age(particle, fieldset, time):
         particle.age_class += 1
 
 
-###################### Interaction kernels ###########################
+###################### Particle-Particle Interaction kernels #####################
 
 def Iattraction(particle, fieldset, time, neighbors, mutator):
     """Kernel determines the attraction strength of FADs,
@@ -318,10 +318,42 @@ def Imovement(particle, fieldset, time, neighbors, mutator):
         particle.lat += dlat*Smag
 
     mutator[particle.id].append((A,[]))
-    if particle.ptype is 0:
+    if(particle.ptype==0):
         mutator[particle.id].append((S,[]))
 
     return StateCode.Success
+
+###################### Particle-Field Interaction kernels #####################
+
+def PreyInteraction(particle, fieldset, time):
+    # Determine index of particle in Prey field
+    xi = (np.abs(np.array(fieldset.P.lon)-particle.lon)).argmin()
+    yi = (np.abs(np.array(fieldset.P.lat)-particle.lat)).argmin()
+
+    # field depletion
+    deplete = min(fieldset.P[particle], fieldset.deplete/(86400)*particle.dt)
+    assert deplete>= 0
+    fieldset.P.data[0, yi, xi] -= deplete
+    fieldset.P.grid.time[0] = time # updating Field P time
+
+    # restore the prey field
+    if(particle.id==0):
+        tau = fieldset.restore * 86400 # conversion from days to seconds
+        frac = (1/np.e)**(particle.dt/tau) #
+
+        # determine the difference of the interactive and H field
+        gridlon, gridlat = np.meshgrid(fieldset.H.lon[:], fieldset.H.lat[:])
+        points = np.swapaxes(np.vstack((gridlat.flatten(), gridlon.flatten())), 0,1)
+        values = fieldset.H.data[0].flatten()
+        grid_x, grid_y = np.meshgrid(fieldset.P.lon,fieldset.P.lat)
+        dataH = griddata(points, values, (grid_y, grid_x), method='nearest')
+        diff = dataH - fieldset.P.data[0]
+
+        # allow diff>0 when temproally varying Prey fields are allowed:
+        diff[diff<0] = 0
+        assert (diff>=0).all()
+        fieldset.P.data[0,:] += diff[:] * (1-frac)
+        fieldset.P.grid.time[0] = time # updating Field P time
 
 # All Kernel dict, needed for dynamic kernel compilation
 AllKernels = {'IkaDymMove':IkaDymMove,
@@ -339,7 +371,8 @@ AllKernels = {'IkaDymMove':IkaDymMove,
               'getRegion':getRegion,
               'Age':Age,
               'MoveSouth':MoveSouth,
-              'LandBlock':LandBlock}
+              'LandBlock':LandBlock,
+              'PreyInteraction':PreyDeplete}
 
 AllInteractions = {'Iattraction': Iattraction,
                    'ItunaFAD': ItunaFAD,
