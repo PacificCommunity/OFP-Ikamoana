@@ -1,4 +1,4 @@
-name: ikamoana_env
+name: ika
 channels:
   - defaults
   - conda-forge
@@ -32,4 +32,4 @@ dependencies:
   - pykdtree
   - zarr
   - scikit-learn
-  - parcels
+  - pandas=1.3.4
