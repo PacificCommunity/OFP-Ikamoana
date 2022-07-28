@@ -326,32 +326,33 @@ def Imovement(particle, fieldset, time, neighbors, mutator):
 ###################### Particle-Field Interaction kernels #####################
 
 def PreyInteraction(particle, fieldset, time):
-    # Determine index of particle in Prey field
+    # Determine location index of particle in Prey field
     xi = (np.abs(np.array(fieldset.P.lon)-particle.lon)).argmin()
     yi = (np.abs(np.array(fieldset.P.lat)-particle.lat)).argmin()
 
     # field depletion
     deplete = min(fieldset.P[particle], fieldset.deplete/(86400)*particle.dt)
-    assert deplete>= 0
+    assert deplete >= 0
     fieldset.P.data[0, yi, xi] -= deplete
     fieldset.P.grid.time[0] = time # updating Field P time
 
-    # restore the prey field
+    # restore the P field
     if(particle.id==0):
+        # restoring time scale
         tau = fieldset.restore * 86400 # conversion from days to seconds
-        frac = (1/np.e)**(particle.dt/tau) #
-
-        # determine the difference of the interactive and H field
+        frac = (1/np.e)**(particle.dt/tau) # fraction restored per time step
+        # time interpolation of H field
+        ti = fieldset.H.time_index(time)
+        tint_H = fieldset.H.temporal_interpolate_fullfield(ti[0], time)
+        # determine the difference between the prey and interpolated H field
         gridlon, gridlat = np.meshgrid(fieldset.H.lon[:], fieldset.H.lat[:])
         points = np.swapaxes(np.vstack((gridlat.flatten(), gridlon.flatten())), 0,1)
-        values = fieldset.H.data[0].flatten()
+        values = tint_H.flatten()
         grid_x, grid_y = np.meshgrid(fieldset.P.lon,fieldset.P.lat)
-        dataH = griddata(points, values, (grid_y, grid_x), method='nearest')
+        dataH = griddata(points, values, (grid_y, grid_x), method='linear')
         diff = dataH - fieldset.P.data[0]
 
-        # allow diff>0 when temproally varying Prey fields are allowed:
-        diff[diff<0] = 0
-        assert (diff>=0).all()
+        # update interactive prey field and its time
         fieldset.P.data[0,:] += diff[:] * (1-frac)
         fieldset.P.grid.time[0] = time # updating Field P time
 
