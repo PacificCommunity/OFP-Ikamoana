@@ -36,8 +36,8 @@
     <start_static_file>skj_age5.nc</start_static_file>
 
     <start_cell>
-      <lon>150</lon>
-      <lat>28</lat>
+      <lon>152</lon>
+      <lat>27</lat>
     </start_cell>
 
   </cohort_info>
