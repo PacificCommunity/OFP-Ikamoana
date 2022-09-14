@@ -2,6 +2,7 @@ import parcels.rng as ParcelsRandom
 import math
 import scipy
 from scipy.stats import vonmises
+import numpy as np
 
 # NOTE : No more SEAPODYM_dt ? Can we use particle.dt instead ?
 
@@ -226,21 +227,21 @@ def Iattraction(particle, fieldset, time, neighbors, mutator):
     # The geometric function
     #def geometric(x, p=fieldset.p):
     #    return (1-p)**(x-1)*p
-
+    #print("In Iattraction")
     def f(particle, nom):  # define mutation function for mutator
         particle.FADkap = nom
 
     # if the FAD attraction strength is determined
     # by the number of associated tuna
-    if(particle.ptype==1 and particle.id!=0):
+    if particle.ptype==1 and particle.id!=0:
         nom = 0 # keeps track of number of associated tuna
         for n in neighbors:
             if n.ptype==0:
                 dist = ((particle.lat-n.lat)**2+(particle.lon-n.lon)**2)**0.5
-                if(dist <= fieldset.RtF):
+                if dist <= fieldset.RtF:
                     nom += 1
         mutator[particle.id].append((f, [nom]))  # add mutation to the mutator
-        #particle.FADkap = nom
+    #print('out')
         #fieldset.FADorders.data[0,0,particle.id] = nom
         #fieldset.Forders.grid.time[0] = time # updating Field prey time
 
@@ -265,7 +266,7 @@ def ItunaFAD(particle, fieldset, time, neighbors, mutator):
 
     distances = []
     na_neighbors = []
-
+    #print('InItunaFAD')
     # the swimming
     if particle.ptype==0: # if tuna swims towards FAD
         # Define the Logistic curve
@@ -274,20 +275,30 @@ def ItunaFAD(particle, fieldset, time, neighbors, mutator):
             res = 1 + L / (1+math.e**(-k*(x-x0)))
             return res
 
+        #Reset the particle FAD vector
+        particle.Fx = 0
+        particle.Fy = 0
         DS = [0,0]
         for n in neighbors:
+            #if neighbour is a FAD, determine the normalised FAD and add to Fx/Fy
             if n.ptype==1:
                 pPos = np.array([particle.lat, particle.lon, particle.depth]) # n location
                 fPos = np.array([n.lat, n.lon, n.depth]) # FAD location
                 assert particle.depth==n.depth, 'this kernel is only supported in two dimensions for now'
 
-                Fvec = fPos - pPos
-                norm = np.linalg.norm(Fvec)
-                if(norm>0):
-                    DS[0] += Fvec[0] / norm * LogisticCurve(n.FADkap)
-                    DS[1] += Fvec[1] / norm * LogisticCurve(n.FADkap)
+                Fvec = [f-p for f,p in zip(fPos, pPos)]
+                Fmag = math.sqrt(math.pow(Fvec[0],2)+math.pow(Fvec[1],2))
+                if Fmag == 0:
+                    Fnorm = [0,0]
+                else:
+                    Fnorm = [Fvec[0]/Fmag,
+                            Fvec[1]/Fmag]
+                #if Fnorm>0 :
+                DS[0] += Fnorm[0] * LogisticCurve(n.FADkap)
+                DS[1] += Fnorm[1] * LogisticCurve(n.FADkap)
 
-        if(DS!=[0,0]):
+        if DS!=[0,0]:
+            #if FAD vector is non-zero, add mutator to update Fx/Fy
             VP = [0,0,0]
             VP[0] = DS[0] * fieldset.kappaF
             VP[1] = DS[1] * fieldset.kappaF
@@ -297,30 +308,36 @@ def ItunaFAD(particle, fieldset, time, neighbors, mutator):
                 particle.Fx += dlon
 
             mutator[particle.id].append((f, d_vec))
-
+    #print('out')
     return StateCode.Success
 
 def Imovement(particle, fieldset, time, neighbors, mutator):
     '''InterActionKernel resolves all displacment vectors following
     interactive and non-interactive kernel execution'''
-
-    def A(particle):
-        particle.lon += particle.Ax
-        particle.lat += particle.Ay
-    def S(p):
-        S = np.array(p.Tx+p.Dx+p.Cx,p.Ty+p.Dy+p.Cy)
-        Snorm = np.linalg.norm(S)
+    #print('InImovement')
+    def A(drifter): #Advection mutator
+        drifter.lon += drifter.Ax
+        drifter.lat += drifter.Ay
+    def S(p): #Swimming mutator
+        S = np.array([p.Tx+p.Dx+p.Cx,p.Ty+p.Dy+p.Cy])
+        Smag = math.sqrt(math.pow(S[0],2)+math.pow(S[1],2))
+        if Smag == 0:
+            Snorm = [0,0]
+        else:
+            Snorm = [S[0]/Smag,
+                    S[1]/Smag]
+        #add normalised FAD vector to normalised swimming vector
         dlon = Snorm[0]+p.Fx
         dlat = Snorm[1]+p.Fy
         Smag = (S[0]**2+S[1]**2)**0.5
 
-        particle.lon += dlon*Smag
-        particle.lat += dlat*Smag
-
+        p.lon += dlon*Smag
+        p.lat += dlat*Smag
+    #all particles are advected by flow
     mutator[particle.id].append((A,[]))
-    if(particle.ptype==0):
+    if particle.ptype == 0: #just fish swim
         mutator[particle.id].append((S,[]))
-
+    #print('out')
     return StateCode.Success
 
 ###################### Particle-Field Interaction kernels #####################
