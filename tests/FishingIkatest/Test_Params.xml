@@ -1,0 +1,72 @@
+<?xml version="1.0" ?>
+<ika_params>
+	<run_name>FAD_Test</run_name>
+	<random_seed/>
+	<directories>
+		<forcing_dir>/nethome/3830241/ikamoana/Sdata/po_freeglorys_0.25x30d_1998_2019/</forcing_dir>
+		<start_distribution>/nethome/3830241/ikamoana/OFP-Ikamoana/data/ikamoana_data/</start_distribution>
+		<seapodym_file>/nethome/3830241/ikamoana/Sdata/po_freeglorys_0.25x30d_1998_2019/skj_ref2018_freeglorys_reanalysis_025x30d_vgpm_Fref.xml</seapodym_file>
+	</directories>
+	<domain>
+		<time>
+			<!--dt>43200</dt-->
+			<dt>3600</dt>
+			<start>2006-08-15</start>
+			<sim_time>30</sim_time>
+			<output_dt>1</output_dt>
+		</time>
+		<lat>
+			<min>-2</min>
+			<max>2</max>
+		</lat>
+		<lon>
+			<min>170</min>
+			<max>172</max>
+		</lon>
+	</domain>
+	<cohort_info>
+		<start_length>26</start_length>
+		<ageing>True</ageing>
+		<number_of_cohorts>100</number_of_cohorts>
+		<start_dynamic_file file_extension="dym">skj_age</start_dynamic_file>
+	</cohort_info>
+	<forcing>
+		<files files_only="True" home_directory="/nethome/3830241/ikamoana/OFP-Ikamoana/tests/smallIkatest/FAD_Test/">
+			<U dataset="False">FAD_Test_U.nc</U>
+			<V dataset="False">FAD_Test_V.nc</V>
+			<H dataset="False">FAD_Test_H.nc</H>
+			<Kx dataset="False">FAD_Test_Kx.nc</Kx>
+			<Ky dataset="False">FAD_Test_Ky.nc</Ky>
+			<Tx dataset="False">FAD_Test_Tx.nc</Tx>
+			<Ty dataset="False">FAD_Test_Ty.nc</Ty>
+			<dKx_dx dataset="False">FAD_Test_dKx_dx.nc</dKx_dx>
+			<dKy_dy dataset="False">FAD_Test_dKy_dy.nc</dKy_dy>
+			<landmask dataset="False">FAD_Test_landmask.nc</landmask>
+		</files>
+		<correct_epi_temp_with_vld>True</correct_epi_temp_with_vld>
+		<landmask_from_habitat>False</landmask_from_habitat>
+		<shallow_sea_to_ocean>True</shallow_sea_to_ocean>
+		<indonesian_filter>True</indonesian_filter>
+		<vertical_movement>True</vertical_movement>
+		<diffusion_boost>0</diffusion_boost>
+		<diffusion_scale>1</diffusion_scale>
+		<c_scale>1</c_scale>
+		<taxis_scale>1</taxis_scale>
+		<units>m_per_s</units>
+		<field_interp_method>nearest</field_interp_method>
+	</forcing>
+	<kernels>
+		<kernel>CalcLonLatScalers</kernel>
+		<kernel>Iattraction</kernel>
+		<kernel>IkAdvectionRK4</kernel>
+		<kernel>TaxisRK4</kernel>
+		<kernel>RandomWalkNonUniformDiffusion</kernel>
+		<kernel>Age</kernel>
+		<kernel>Iattraction</kernel>
+		<kernel>ItunaFAD</kernel>
+		<kernel>Imovement</kernel>
+		<kernel>FishingMortalityFADsim</kernel>
+		<kernel>UpdateSurvivalProb</kernel>
+		<kernel>dyingFish</kernel>
+	</kernels>
+</ika_params>
