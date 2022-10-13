@@ -56,6 +56,13 @@ class IkaFADFish(ScipyParticle):
     Rx_component = Variable('Rx_component', to_write=False)
     Ry_component = Variable('Ry_component', to_write=False)
 
+    CapProb = Variable('CapProb', to_write=False)
+    SurvProb = Variable('SurvProb', initial=1, to_write=True)
+    depletionF = Variable('depletionF', to_write=False)
+    depletionN = Variable('depletionN', to_write=False)
+    Fmor = Variable('Fmor', to_write=False)
+    Nmor = Variable('Nmor', to_write=False)
+    Zint = Variable('Zint', to_write=False)
 
     def __init__(self, *args, **kwargs):
         """Custom initialisation function which calls the base
