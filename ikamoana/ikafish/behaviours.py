@@ -2,6 +2,7 @@ import parcels.rng as ParcelsRandom
 import math
 import scipy
 from scipy.stats import vonmises
+import parcels.rng as ParcelsRandom
 import numpy as np
 from copy import copy
 
@@ -101,6 +102,7 @@ def IkAdvectionRK4(particle, fieldset, time):
     """Advection of particles using fourth-order Runge-Kutta integration.
     Function needs to be converted to Kernel object before execution"""
     (u1, v1) = fieldset.UV[time, particle.depth, particle.lat, particle.lon]
+
     uv_lon1 = particle.lon + u1*.5*particle.dt
     uv_lat1 = particle.lat + v1*.5*particle.dt
 
@@ -115,6 +117,7 @@ def IkAdvectionRK4(particle, fieldset, time):
     (u4, v4) = fieldset.UV[time + particle.dt, particle.depth, uv_lat3, uv_lon3]
     particle.Ax = (u1 + 2*u2 + 2*u3 + u4) / 6. * particle.dt
     particle.Ay = (v1 + 2*v2 + 2*v3 + v4) / 6. * particle.dt
+
 
 def TaxisRK4(particle, fieldset, time):
     """Method inspired by IkAdvectionRK4."""
@@ -162,12 +165,35 @@ def RandomWalkNonUniformDiffusion(particle, fieldset, time):
     particle.Cx = dKxdx * particle.f_lon
     particle.Cy = dKydy * particle.f_lat
 
+def Faugeras(particle, fieldset, time):
+    # Tuna swimming based on Faugeras and Maury (2007)
+    if(particle.ptype == 0):
+        def LogisticCurve(x, L=fieldset.pL, k=15, x0=0.7):
+            # x is the stomach fullness
+            x = 1 - x # make it stomach emptiness
+            res = L / (1+math.e**(-k*(x-x0)))
+            return res
+
+        gradx = (fieldset.P[time,0,particle.lat, particle.lon+fieldset.gres] -
+                 fieldset.P[time,0,particle.lat, particle.lon-fieldset.gres])
+        grady = (fieldset.P[time,0,particle.lat+fieldset.gres, particle.lon] -
+                 fieldset.P[time,0,particle.lat-fieldset.gres, particle.lon])
+
+        mu = np.arctan2(grady, gradx) # mean angle based on prey field gradient
+
+        kappaM = fieldset.alpha * np.linalg.norm([gradx*fieldset.gres, grady*fieldset.gres]) # standard deviation angle
+        angle = ParcelsRandom.vonmisesvariate(mu, kappaM)
+
+        # the particle displacement
+        particle.Tx = fieldset.kappaP * np.cos(angle) * LogisticCurve(particle.St)
+        particle.Ty = fieldset.kappaP * np.sin(angle) * LogisticCurve(particle.St)
+
 ######################## Mortality Kernels #########################
 
 def dyingFish(particle, fieldset, time):
     if(particle.ptype==0):
         rnumber = np.random.beta(fieldset.betaa, fieldset.betab)
-        if(particle.SurvProb < 0):#rnumber):
+        if(False):#particle.SurvProb < 0):#rnumber):
             particle.delete()
 
 
@@ -371,6 +397,36 @@ def Imovement(particle, fieldset, time, neighbors, mutator):
         mutator[particle.id].append((S,[]))
     return StateCode.Success
 
+def ImovementFaugeras(particle, fieldset, time, neighbors, mutator):
+    '''InterActionKernel resolves all displacment vectors following
+    interactive and non-interactive kernel execution'''
+    def A(drifter): #Advection mutator
+        drifter.lon += drifter.Ax
+        drifter.lat += drifter.Ay
+    def S(p): #Swimming mutator
+        S = np.array([p.Fx+p.Tx+p.Dx+p.Cx,p.Fy+p.Ty+p.Dy+p.Cy])
+        Smag = math.sqrt(math.pow(S[0],2)+math.pow(S[1],2))
+        if Smag == 0:
+            Snorm = [0,0]
+        else:
+            Snorm = [S[0]/Smag,
+                    S[1]/Smag]
+        #add normalised FAD vector to normalised swimming vector
+        dlon = S[0]
+        dlat = S[1]
+
+        # zonal and meriodional converters (meter to latitude)
+        converter = np.array([1852*60, 1852*60*np.cos(p.lat*math.pi/180)])
+        Vmax = fieldset.Vmax / converter
+        Vmag = Vmax*(1-fieldset.P[0, 0, p.lat, p.lon])
+        p.lon += dlon*Vmag[0]*particle.dt
+        p.lat += dlat*Vmag[1]*particle.dt
+    #all particles are advected by flow
+    mutator[particle.id].append((A,[]))
+    if particle.ptype == 0: #only fish swim
+        mutator[particle.id].append((S,[]))
+    return StateCode.Success
+
 ###################### Particle-Field Interaction kernels #####################
 
 def PreyDepletion(particle, fieldset, time):
@@ -383,7 +439,83 @@ def PreyDepletion(particle, fieldset, time):
     if(deplete<0):
         print('DEPLETE SMALLER THAN 0')
 
-    fieldset.P.data[0, yi, xi] -= deplete
+    fieldset.F.data[0, yi, xi] -= deplete
+    fieldset.F.grid.time[0] = time # updating Field F time
+
+    # These functions are age dependent, so will have to be implemented
+    # in the kernel that displaces the tuna particle.
+    def l(a, linf=87.96, Agemin=3., k=2.564600347374714):
+        # skipjack:
+        #     k = 2.564600347374714
+        #     linf = 87.96 (cm?)
+        #     a0 = 3 (years)
+        return linf * (1-math.e**(-k * (a-Agemin)))
+
+    def weight(age, p=3, q=0.2):
+        # skipjack:
+        #     p = 
+        #     q = 
+        return q*l(age)**p
+
+    def _sigmaStar(age, sigma_0=2.388505133695817,
+                   sigma_K=3.255065398014956,
+                   Agemax=11):
+        """Return sigmaStar (the termal tolerance intervals, i.e. standard
+        deviation) for each cohorts."""
+        w = weight(age)
+        mw = weight(Agemax)
+
+        return sigma_0 + ((sigma_K - sigma_0)
+                          * (w / mw))
+
+    def _tStar(age, T_star_1=31.13068425631411,
+               T_star_K=27.54999999968445,
+               bT=2.564600347374714,
+               Agemax=11) :
+        """Return T_star (optimal temperature, i.e. mean) for each cohorts"""
+        length = l(age)
+        mlength = l(Agemax)
+        return T_star_1 - ((T_star_1 - T_star_K)
+                           * ((length / mlength)**bT))
+
+    def f4(age, T):
+        res = math.e**(-(T-_tStar(age))**2 / (2*_sigmaStar(age)**2))
+        return res
+
+    def f5(O2, O2s=3.76, gamma=10**-4):
+        # bigeye: O2s=1.49, gamma=0.001
+        # skipjack: O2s=3.76, gamma=10**-4
+        return 1 / (1+gamma**(O2-O2s))
+
+    def theta(age, O2, T):
+        # oxygen O2 and temperature T should
+        # be obtained from their fields.
+        return f4(age, T)*f5(O2)
+
+    def scaleP(data):
+        phi = 22.5 * np.pi/180.
+        a = 0.07
+        e = 1. / np.cos(phi)
+        b = a * np.sqrt(e*e - 1)
+
+        # coordinate center
+        # shift is to have all y>=0
+        x0 = 1.0-0.00101482322788
+        y0 = 1.0
+        # equation for hyperbola
+        sinsq = np.sin(phi) * np.sin(phi)
+        cossq = 1.0-sinsq
+        rasq  = 1.0 / (a*a)
+        rbsq  = 1.0 / (b*b)
+        A = sinsq*rasq - cossq*rbsq
+        B = -2.0 * (data-x0) * np.cos(phi) * np.sin(phi) * (rasq+rbsq)
+        C = 1.0 - (data-x0) * (data-x0) * (sinsq*rbsq - cossq*rasq)
+
+        return (y0+(B+np.sqrt(B*B-4.0*A*C))/(2*A))
+
+    fieldset.P.data[0, yi, xi] = scaleP(theta(particle.age,
+        fieldset.O2[time, particle.depth, particle.lat, particle.lon],
+        fieldset.T[time, particle.depth, particle.lat, particle.lon]) * fieldset.F.data[0, yi, xi])
     fieldset.P.grid.time[0] = time # updating Field P time
 
 def PreyAdvectionMICRestore(particle, fieldset, time):
@@ -448,7 +580,7 @@ def PreyAdvectionMICRestore(particle, fieldset, time):
             Vx : float
                 x-component of the velocity field.
             Vz : float
-                z-component of the velocity field.        
+                y-component of the velocity field.        
             Lx1, Lx2 : float
                 Model extension from Lx1 - Lx2.
             Lz1, Lz2 : float
@@ -523,7 +655,7 @@ def PreyAdvectionMICRestore(particle, fieldset, time):
                 T[mask] = T0[mask] 
             return T
 
-        def set_land(fieldset, VV, i=1):
+        def set_land(fieldset, VV, i=0):
             if(i==0):
                 VV[np.where(fieldset.Land.data[0].astype(bool))] = 0
             else:
@@ -540,34 +672,62 @@ def PreyAdvectionMICRestore(particle, fieldset, time):
             Uv = interpolator(fieldset, fieldset.U, tracer=False)
             Vv = interpolator(fieldset, fieldset.V, tracer=False)
 
-            Uv = set_land(fieldset, Uv, 0)
-            Vv = set_land(fieldset, Vv, 0)
+#            Uv = set_land(fieldset, Uv, 0)
+#            Vv = set_land(fieldset, Vv, 0)
 
             Uv /= (1852*60*np.cos(fieldset.P.lat*np.pi/180))
             Vv /= (1852*60)
             lons, lats = (fieldset.P.lon[:], fieldset.P.lat[:])
             X, Y = np.meshgrid(lons, lats)
-            T = np.clip(Adv_2D(Tr, 1, particle.dt, Dx, Dy, Uv, Vv,
+            T = Adv_2D(Tr, 1, particle.dt, Dx, Dy, Uv, Vv,
                        lons[0], lons[-1], lats[0], lats[-1],
-                       lons, lats, X, Y), 0, 1)
-            return T 
-        if(True): # Advection
-            fieldset.P.data[0] = AO(fieldset.P.data[0])
-        if(False): # Restoring towards H field
-            dataH = interpolator(fieldset, fieldset.H)
-            tau = fieldset.restore * 86400 # conversion from days to seconds
-            frac = (1/np.e)**(particle.dt/tau) # fraction restored per time step
-            diff = dataH - fieldset.P.data[0]
-            # update interactive prey field and its time
-            fieldset.P.data[0,:] += diff[:] * (1-frac)
+                       lons, lats, X, Y)
+            return T
 
-        if(True): # Add P field according to source field
-            Ps = interpolator(fieldset, fieldset.epi_mnk_pp, op2=True)
-            daytosec = 86400
-            Ps /= daytosec
-            fieldset.P.data[0] = np.clip(fieldset.P.data[0] + Ps * particle.dt, 0, 1)
 
-        fieldset.P.grid.time[0] = time # updating Field P time
+        def interpolatorBC(fieldset, field, tracer=True, op2=False):
+            # time interpolation of F field
+            ti = field.time_index(time)
+            tint_field = field.temporal_interpolate_fullfield(ti[0], time)
+
+            values = tint_field.flatten()
+            gridlon, gridlat = np.meshgrid(field.lon[:], field.lat[:])
+            gridlon, gridlat = (gridlon.flatten(), gridlat.flatten())
+
+            grid_x_west, grid_y_west = np.meshgrid(fieldset.P.lon[0],fieldset.P.lat)
+            grid_x_east, grid_y_east = np.meshgrid(fieldset.P.lon[-1],fieldset.P.lat)
+            grid_x_south, grid_y_south = np.meshgrid(fieldset.P.lon,fieldset.P.lat[0])
+            grid_x_north, grid_y_north = np.meshgrid(fieldset.P.lon,fieldset.P.lat[-1])
+            if(op2):
+                values[np.where(values<0)] = 0
+                values[np.where(np.isnan(values)==0)] = 0
+            elif(False):#tracer): # remove land data before interpolation
+                values, gridlon, gridlat = remove_land(fieldset,
+                                                       gridlon,
+                                                       gridlat,
+                                                       values.flatten())
+
+
+            points = np.swapaxes(np.vstack((gridlat, gridlon)), 0, 1)
+            dataEast = interpolate.griddata(points, values, (grid_y_west, grid_x_west), method='linear')
+            dataWest = interpolate.griddata(points, values, (grid_y_east, grid_x_east), method='linear')
+            dataSouth = interpolate.griddata(points, values, (grid_y_south, grid_x_south), method='linear')
+            dataNorth = interpolate.griddata(points, values, (grid_y_north, grid_x_north), method='linear')
+
+            return dataEast, dataWest, dataSouth, dataNorth
+
+        # Update domain boundaries
+        west, east, south, north = interpolatorBC(fieldset, fieldset.epi_mnk_pb)
+        fieldset.F.data[0,:,0] = west[:,0]
+        fieldset.F.data[0,:,-1] = east[:,0]
+        fieldset.F.data[0,0] = south[0]
+        fieldset.F.data[0,-1] = north[0]
+
+        # Advect F field by flow
+        fieldset.F.data[0,1:-1,1:-1] = AO(fieldset.F.data[0])[1:-1,1:-1]
+
+        fieldset.F.grid.time[0] = time # updating Field P time
+
 
 def PreyAdvectionFournierSibertRestore(particle, fieldset, time):
     if(particle.id==0):# and (fieldset.Pdiff.data[0]!=0).any()): # only once per time step
@@ -582,6 +742,29 @@ def PreyAdvectionFournierSibertRestore(particle, fieldset, time):
             glat = glat[ocean]
             vals = vals[ocean]
             return vals, glon, glat
+
+        def BCs_fromland(vel, direction='x'):
+            land = (vel==0)
+            if(direction=='x'):
+                # left closed:
+                LC = np.zeros(land.shape)
+                LC[:,:1] = 1
+                LC[:,1:][np.where(land[:,:-1])] = 1
+                # right closed:
+                RC = np.zeros(land.shape)
+                RC[:,-1:] = 1
+                RC[:,:-1][np.where(land[:,1:])] = 1
+                return land, LC, RC
+            elif(direction=='y'):
+                # bottom closed:
+                BC = np.zeros(land.shape)
+                BC[:1] = 1
+                BC[1:][np.where(land[:,:-1])] = 1
+                # upper closed:
+                UC = np.zeros(land.shape)
+                UC[-1:] = 1
+                UC[:-1][np.where(land[:,1:])] = 1
+                return land, BC, UC
 
         def interpolator(fieldset, field, tracer=True, op2=False):
             # time interpolation of H field
@@ -605,112 +788,304 @@ def PreyAdvectionFournierSibertRestore(particle, fieldset, time):
 
             points = np.swapaxes(np.vstack((gridlat, gridlon)), 0, 1)
             dataI = interpolate.griddata(points, values, (grid_y, grid_x), method='linear')
-#            else:
-#                dataI = interpolate.griddata(points, values, (grid_y, grid_x), method='nearest')
 
             return dataI
 
+        def compA(sig, u, d):
+            land, LC, RC = BCs_fromland(u, direction='x')
+            sh = u.shape[1]
+            A = np.zeros((u.shape[0], sh, sh))
+            dt = particle.dt
+            for j in range(u.shape[0]):
+                idxrc1 = np.logical_and(u[j]>0,
+                                        RC[j]==1)
+                idxrc2 = np.logical_and(u[j]<0,
+                                        RC[j]==1)
+                idxlc1 = np.logical_and(u[j]>0,
+                                        LC[j]==1)
+                idxlc2 = np.logical_and(u[j]<0,
+                                        LC[j]==1)
+                idxopen1 = (u[j]>0)
+                idxopen2 = (u[j]<0)
+                a = np.zeros(sh-1)
+                b = np.zeros(sh)
+                c = np.zeros(sh-1)
+                for i in range(u.shape[1]):
+                    if(land[j,i]):
+                        b[i] = 2/dt
+                    elif(idxrc1[i]):
+                        a[i-1] = -(u[j, i-1]/d - (sig[j,i]+sig[j,i-1])/(2*d**2))
+                        b[i] = 2/dt + (sig[j,i]+sig[j,i-1])/(2*d**2)
+                    elif(idxrc2[i]):
+                        a[i-1] = -(sig[j,i]+sig[j, i-1]) / (2*d**2)
+                        b[i] = 2/dt - u[j,i]/d + (sig[j,i]+sig[j,i-1])/(2*d**2)
+                    elif(idxlc1[i]):
+                        b[i] = 2/dt + u[j,i]/d + (sig[j,i+1]+sig[j,i])/(2*d**2)
+                        c[i] = -(sig[j,i]+sig[j,i+1])/(2*d**2)
+                    elif(idxlc2[i]):
+                        b[i] = 2/dt + (sig[j,i+1]+sig[j,i])/(2*d**2)
+                        c[i] = (u[j, i+1]/d - (sig[j,i]+sig[j,i+1])/(2*d**2))
+                    elif(idxopen1[i]):
+                        a[i-1] = (-u[j, i-1]/d - (sig[j,i]+sig[j,i-1])/(2*d**2))
+                        b[i] = 2/dt + u[j,i]/d + (sig[j, i+1]+2*sig[j,i]+sig[j,i-1])/2*d**2
+                        c[i] = -(sig[j,i]+sig[j,i+1])/(2*d**2)
+                    elif(idxopen2[i]):
+                        a[i-1] = -(sig[j,i]+sig[j, i-1]) / (2*d**2)
+                        b[i] = 2/dt - u[j,i]/d + (sig[j, i+1]+2*sig[j,i]+sig[j,i-1])/2*d**2
+                        c[i] = (u[j, i+1]/d - (sig[j,i]+sig[j,i+1])/(2*d**2))
+                    else:
+                        print('A no bc applies')
+                A[j] += np.diag(a,-1)
+                A[j] += np.diag(b)
+                A[j] += np.diag(c,1)
+        
+            return A
+        
+        def compB(sig, N, v, dd):
+            land, BC, UC = BCs_fromland(v, direction='y')
+            sh = land.shape[0]
 
-        def d2x(sig, u, d):
-            result = (sig[:,:-2] + 2*sig[:,1:-1] + sig[:,2:]) / (2*math.pow(d,2))
-            result += particle.dt
-            idx = np.where(u[:,1:-1]>0)
-            result[idx] += u[:,1:-1][idx]/d
-            idx = np.where(u[:,1:-1]<0)
-            result[idx] -= u[:,1:-1][idx]/d
+            B = np.zeros((land.shape[1], sh, sh))
+            g = np.zeros((sh, land.shape[1]))
+            dt = particle.dt
+            for i in range(v.shape[1]):
+                idxrc1 = np.logical_and(v[:,i]>0,
+                                        BC[:,i]==1)
+                idxrc2 = np.logical_and(v[:,i]<0,
+                                        BC[:,i]==1)
+                idxlc1 = np.logical_and(v[:,i]>0,
+                                        UC[:,i]==1)
+                idxlc2 = np.logical_and(v[:,i]<0,
+                                        UC[:,i]==1)
+                idxopen1 = (v[:, i]>0)
+                idxopen2 = (v[:, i]<0)
+                d = np.zeros(sh-1)
+                e = np.zeros(sh)
+                f = np.zeros(sh-1)
+                for j in range(v.shape[0]):
+                    if(land[j,i]):
+                        e[j] = 2/dt
+                    elif(idxrc1[j]):
+                        d[j-1] = -(v[j+1, i]/dd + (sig[j,i]+sig[j+1,i])/(2*dd**2))
+                        e[j] = 2/dt + (sig[j,i]+sig[j+1,i])/(2*dd**2)
+                    elif(idxrc2[j]):
+                        d[j-1] = -(sig[j,i]+sig[j+1, i]) / (2*dd**2)
+                        e[j] = 2/dt - v[j,i]/dd + (sig[j,i]+sig[j+1,i])/(2*dd**2)
+                    elif(idxlc1[j]):
+                        e[j] = 2/dt + v[j,i]/dd + (sig[j-1,i]+sig[j,i])/(2*dd**2)
+                        f[j-1] = -(sig[j,i]+sig[j-1,i])/(2*dd**2)
+                    elif(idxlc2[j]):
+                        e[j] = 2/dt + (sig[j-1,i]+sig[j,i])/(2*dd**2)
+                        f[j-1] = (v[j-1, i]/dd - (sig[j,i]+sig[j-1,i])/(2*dd**2))
+                    elif(idxopen1[j]):
+                        d[j-1] = (-v[j-1, i]/dd - (sig[j,i]+sig[j-1,i])/(2*dd**2))
+                        e[j] = 2/dt + v[j,i]/dd + (sig[j+1, i]+2*sig[j,i]+sig[j,i-1])/2*dd**2
+                        f[j] = -(sig[j,i]+sig[j+1,i])/(2*dd**2)
+                    elif(idxopen2[j]):
+                        d[j-1] = -(sig[j,i]+sig[j-1, i]) / (2*dd**2)
+                        e[j] = 2/dt + -v[j,i]/dd + (sig[j+1, i]+2*sig[j,i]+sig[j-1,i])/2*dd**2
+                        f[j] = (v[j+1, i]/dd - (sig[j,i]+sig[j+1,i])/(2*dd**2))
+                    else:
+                        print('B no bc applies')
 
-            return result
+                B[i] += np.diag(d,-1)
+                B[i] += np.diag(e)
+                B[i] += np.diag(f,1)
+                g[:,i] = np.append(-d*N[:-1,i],0) + (4/dt-e)*N[:,i] - np.append(0,f*N[1:,i])                
+            return B, g
 
-        def d2y(sig, v, d):
-            result = (sig[:-2] + 2*sig[1:-1] + sig[2:]) / (2*math.pow(d,2))
-            result += particle.dt
-
-            idx = np.where(v[1:-1]>0)
-            result[idx] += v[1:-1][idx]/d
-            idx = np.where(v[1:-1]<0)
-            result[idx] -= v[1:-1][idx]/d
-
-            return result
 
         def GaussElim(A,b):
             fac = lu_factor(A)
             res = lu_solve(fac, b)
             return res
 
-        def prepGaussElim(Amatrix, b, direction='x'):
-            result = np.zeros(b.shape)
+        def prepGaussElim(A, b, direction='x'):
             if(direction=='x'):
-                for j in range(b.shape[0]):
-                    g = b[j,1:-1]
-                    A = np.diag(Amatrix[j])
-                    res = GaussElim(A, g)
-                    result[j,1:-1] = res
-            elif(direction=='y'):
-                for i in range(b.shape[1]):
-                    h = b[1:-1,i]
-                    A = np.diag(Amatrix[:,i])
-                    result[1:-1,i] = GaussElim(A, h)
-            return result
-
-        def Adv_2D(T0, nt, dt, dx, dz, Vx, Vz, Lx1, Lx2, Lz1, Lz2, x, z, X, Z):
-            sig = np.ones(Vx.shape) * 0
-#            print('start AO')
-
-            # first in the x-direction:
-            Am = d2x(sig, Vx, dx)
-            N = prepGaussElim(Am, T0)
-#            print('x direction complete')
-            Am2 = d2y(sig, Vz, dz)
-            N = prepGaussElim(Am2, N, direction='y')
-#            print('y direction complete')
-
+                N = np.zeros((A.shape[0], A.shape[1]))
+                for j in range(A.shape[0]):
+                    N[j] = GaussElim(A[j], b[j])
+            if(direction=='y'):
+                N = np.zeros((A.shape[1], A.shape[0]))
+                for i in range(A.shape[0]):
+                    N[:,i] = GaussElim(A[i], b[:,i])
             return N
 
-        def set_land(fieldset, VV, i=1):
-            if(i==0):
-                VV[np.where(fieldset.Land.data[0].astype(bool))] = 0
-            else:
-                VV[i:][np.where(fieldset.Land.data[0,:-i].astype(bool))] = 0
-                VV[:-i][np.where(fieldset.Land.data[0, i:].astype(bool))] = 0
-                VV[:,i:][np.where(fieldset.Land.data[0, :,:-i].astype(bool))] = 0
-                VV[:,:-i][np.where(fieldset.Land.data[0, :, i:].astype(bool))] = 0
-            return VV
+        def calch(N, A):
+            dt = particle.dt
+            h = np.zeros((A.shape[0], A.shape[1]))
+            for j in range(A.shape[0]):
+                a = np.diagonal(A[j], 1)
+                b = np.diagonal(A[j])
+                c = np.diagonal(A[j], -1)
+                h[j] = np.append(-a*N[j,:-1],0) + (4/dt - b)*N[j,:] + np.append(0,-c*N[j,1:])            
+            return h
+
+        def Adv_2D(T0, nt, dt, dx, dz, Vx, Vz, Lx1, Lx2, Lz1, Lz2, x, z, X, Z):
+            sig = np.ones(Vx.shape) * 0 # use zero diffusion
+
+            B, g = compB(sig, T0, Vz, dz)
+            assert not (B==0).all(), 'B only consists of zeros'
+            A = compA(sig, Vx, dx)
+            assert not (A==0).all(), 'A only consists of zeros'
+            N = prepGaussElim(A, g)
+            h = calch(N, A)
+            N = prepGaussElim(B, h, direction='y')
+            return N
 
         def AO(T):
             Tr = T.copy()
             Dx = 0.1
             Dy = 0.1
+
             Uv = interpolator(fieldset, fieldset.U, tracer=False)
             Vv = interpolator(fieldset, fieldset.V, tracer=False)
 
-            Uv = set_land(fieldset, Uv, 0)
-            Vv = set_land(fieldset, Vv, 0)
-
-            Uv /= (1852*60*np.cos(fieldset.P.lat*np.pi/180))
+            #Uv = set_land(fieldset, Uv, 0)
+            #Vv = set_land(fieldset, Vv, 0)
+            if(len(fieldset.P.lat[:].shape)==1):
+                lons, lats = np.meshgrid(fieldset.P.lon[:], fieldset.P.lat[:])
+            else:
+                lons, lats = (fieldset.P.lon[:], fieldset.P.lat[:])
+            X, Y = (lons, lats)
+            Uv /= (1852*60*np.cos(lats*np.pi/180))
             Vv /= (1852*60)
-            lons, lats = (fieldset.P.lon[:], fieldset.P.lat[:])
-            X, Y = np.meshgrid(lons, lats)
             T = np.clip(Adv_2D(Tr, 1, particle.dt, Dx, Dy, Uv, Vv,
                        lons[0], lons[-1], lats[0], lats[-1],
                        lons, lats, X, Y), 0, 1)
             return T 
-        if(True): # Advection
-            fieldset.P.data[0] = AO(fieldset.P.data[0])
-        if(False): # Restoring towards H field
-            dataH = interpolator(fieldset, fieldset.H)
-            tau = fieldset.restore * 86400 # conversion from days to seconds
-            frac = (1/np.e)**(particle.dt/tau) # fraction restored per time step
-            diff = dataH - fieldset.P.data[0]
-            # update interactive prey field and its time
-            fieldset.P.data[0,:] += diff[:] * (1-frac)
+        # Advection
+        fieldset.P.data[0, 1:-1, 1:-1] = AO(fieldset.P.data[0])[1:-1,1:-1]
+        # change domain boundaries
 
-        if(False): # Add P field according to source field
-            Ps = interpolator(fieldset, fieldset.epi_mnk_pp, op2=True)
-            daytosec = 86400
-            Ps /= daytosec
-            fieldset.P.data[0] = np.clip(fieldset.P.data[0] + Ps * particle.dt, 0, 1)
-#            fieldset.P.data[0] = np.clip(fieldset.P.data[0], 0, 1)
+
+def UpdatePfield(particle, fieldset, time):
+    if(particle.id==0):# and (fieldset.Pdiff.data[0]!=0).any()): # only once per time step
+        def interpolator(fieldset, field, tracer=True, op2=False, tint=True):
+            if(tint):
+            # time interpolation of H field
+                ti = field.time_index(time)
+                tint_field = field.temporal_interpolate_fullfield(ti[0], time)
+            else:
+                tint_field = field.data
+
+            values = tint_field.flatten()
+            gridlon, gridlat = np.meshgrid(field.lon[:], field.lat[:])
+            gridlon, gridlat = (gridlon.flatten(), gridlat.flatten())
+
+            grid_x, grid_y = np.meshgrid(fieldset.P.lon,fieldset.P.lat)
+            if(op2):
+                values[np.where(values<0)] = 0
+                #values[np.where(np.isnan(values)==0)] = 0
+            elif(True):#tracer): # remove land data before interpolation
+                values, gridlon, gridlat = remove_land(fieldset,
+                                                       gridlon,
+                                                       gridlat,
+                                                       values.flatten())
+
+
+            points = np.swapaxes(np.vstack((gridlat, gridlon)), 0, 1)
+            dataI = interpolate.griddata(points, values, (grid_y, grid_x), method='linear')
+            return dataI
+
+        def lamb(T, alpha=0.0002, tmax=3.5*10**2*particle.dt):
+            res = (math.e**(alpha*T)) / tmax
+            return res
+
+        # These functions are age dependent, so will have to be implemented
+        # in the kernel that displaces the tuna particle.
+        def l(a, linf=87.96, Agemin=3., k=2.564600347374714):
+            # skipjack:
+            #     k = 2.564600347374714
+            #     linf = 87.96 (cm?)
+            #     a0 = 3 (years)
+            return linf * (1-math.e**(-k * (a-Agemin)))
+
+        def weight(age, p=3, q=0.2):
+            # skipjack:
+            #     p =
+            #     q =
+            return q*l(age)**p
+
+        def _sigmaStar(age, sigma_0=2.388505133695817,
+                       sigma_K=3.255065398014956,
+                       Agemax=11):
+            """Return sigmaStar (the termal tolerance intervals, i.e. standard
+            deviation) for each cohorts."""
+            w = weight(age)
+            mw = weight(Agemax)
+
+            return sigma_0 + ((sigma_K - sigma_0)
+                              * (w / mw))
+
+        def _tStar(age, T_star_1=31.13068425631411,
+                   T_star_K=27.54999999968445,
+                   bT=2.564600347374714,
+                   Agemax=11) :
+            """Return T_star (optimal temperature, i.e. mean) for each cohorts"""
+            length = l(age)
+            mlength = l(Agemax)
+            return T_star_1 - ((T_star_1 - T_star_K)
+                               * ((length / mlength)**bT))
+
+        def f4(age, T):
+            res = math.e**(-(T-_tStar(age))**2 / (2*_sigmaStar(age)**2))
+            return res
+
+        def f5(O2, O2s=3.76, gamma=10**-4):
+            # bigeye: O2s=1.49, gamma=0.001
+            # skipjack: O2s=3.76, gamma=10**-4
+            res =  1. / (1+gamma**(np.array(O2)-O2s))
+            return res
+
+        def theta(age, O2, T):
+            # oxygen O2 and temperature T should
+            # be obtained from their fields.
+            return f4(age, T)*f5(O2)
+
+        def scaleP(data):
+            phi = 22.5 * np.pi/180.
+            a = 0.07
+            e = 1. / np.cos(phi)
+            b = a * np.sqrt(e*e - 1)
+
+            # coordinate center
+            # shift is to have all y>=0
+            x0 = 1.0-0.00101482322788
+            y0 = 1.0
+            # equation for hyperbola
+            sinsq = np.sin(phi) * np.sin(phi)
+            cossq = 1.0-sinsq
+            rasq  = 1.0 / (a*a)
+            rbsq  = 1.0 / (b*b)
+            A = sinsq*rasq - cossq*rbsq
+            B = -2.0 * (data-x0) * np.cos(phi) * np.sin(phi) * (rasq+rbsq)
+            C = 1.0 - (data-x0) * (data-x0) * (sinsq*rbsq - cossq*rasq)
+
+            return (y0+(B+np.sqrt(B*B-4.0*A*C))/(2*A))
+
+        # Add P field according to source field
+        Ps = interpolator(fieldset, fieldset.epi_mnk_pp, op2=True)
+        daytosec = 86400
+        Ps /= daytosec
+        fieldset.F.data[0] += Ps * particle.dt
+
+        # Reduce F according to the T field
+        T = interpolator(fieldset, fieldset.T, tint=False)
+        fieldset.F.data[0] -= fieldset.F.data[0] * np.clip(lamb(T), a_min=0, a_max=1) * particle.dt
+
+        # Set land values to 0
+        fieldset.F.data[0][np.where(fieldset.Land.data[0].astype(bool))] = 0
+         # Update P field according to the changed F field
+        O2 = interpolator(fieldset, fieldset.O2, tint=False)
+        fieldset.P.data[0] = scaleP(theta(particle.age,
+                                           O2.data,
+                                           T.data) * fieldset.F.data[0])
+
+
+        fieldset.F.grid.time[0] = time # updating Field P time
         fieldset.P.grid.time[0] = time # updating Field P time
+
 
 
 
@@ -736,9 +1111,12 @@ AllKernels = {'IkaDymMove':IkaDymMove,
               'PreyAdvectionFournierSibertRestore':PreyAdvectionFournierSibertRestore,
               'PreyAdvectionMICRestore':PreyAdvectionMICRestore,
               'dyingFish':dyingFish,
-              'FishingMortalityFADsim':FishingMortalityFADsim
+              'FishingMortalityFADsim':FishingMortalityFADsim,
+              'UpdatePfield':UpdatePfield,
+              'Faugeras':Faugeras,
               }
 
 AllInteractions = {'Iattraction': Iattraction,
                    'ItunaFAD': ItunaFAD,
-                   'Imovement': Imovement}
+                   'Imovement': Imovement,
+                   'ImovementFaugeras': ImovementFaugeras}

@@ -222,7 +222,8 @@ class IkaSeapodym(IkaSimulation) :
             self, from_habitat: xr.DataArray = None,
             fields_interp_method: str = None,
             landmask_interp_methode: str = 'nearest',
-            allow_time_extrapolation: bool = True):
+            allow_time_extrapolation: bool = True,
+            O2T: bool = False):
         """Compute (or load) a feeding habitat using the FeedingHabitat
         class then call the IkaFields class to generate Diffusion and
         Advection fields.
@@ -260,6 +261,7 @@ class IkaSeapodym(IkaSimulation) :
         def generateFields():
             generator = IkamoanaFields(self.ika_params['ikamoana_file'])
             data_structure = generator.feeding_habitat_structure.data_structure
+
             ages = data_structure.findCohortByLength(self.ika_params['start_length'])
             start = data_structure.findIndexByDatetime(self.ika_params['start_time'])[0]
             end = data_structure.findIndexByDatetime(
@@ -281,7 +283,8 @@ class IkaSeapodym(IkaSimulation) :
                 time_start=start, time_end=end,
                 lon_min=lonlims[0], lon_max=lonlims[1],
                 lat_min=latlims[1], lat_max=latlims[0],
-                import_effort=import_effort, export_effort=export_effort)
+                import_effort=import_effort, export_effort=export_effort,
+                O2T=O2T)
 
         def readCohortDt():
             tree = ET.parse(self.ika_params['seapodym_file'])

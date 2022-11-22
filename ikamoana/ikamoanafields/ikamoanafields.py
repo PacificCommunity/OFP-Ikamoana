@@ -158,7 +158,6 @@ class IkamoanaFields :
         Tuple[xr.DataArray, xr.DataArray]
             U, V
         """
-
         u = fhcf.seapodymFieldConstructor(
             self.feeding_habitat_structure.data_structure.root_directory
             + self.ikamoana_fields_structure.u_file,  dym_varname='u_L1')
@@ -183,6 +182,61 @@ class IkamoanaFields :
             v = v[mintime_idx:maxtime_idx+1, minlat_idx:maxlat_idx+1,
                   minlon_idx:maxlon_idx+1]
         return u, v
+
+    def temperature(self) -> Tuple[xr.DataArray, xr.DataArray]:
+        """Load temperature forcing from NetCDFs or Dymfiles. No unit
+        convertion is applied here.
+
+        Returns
+        -------
+        Tuple[xr.DataArray, xr.DataArray]
+            T
+        """
+
+        T =  fhcf.seapodymFieldConstructor(self.feeding_habitat_structure.data_structure.root_directory
+            + '*_temperature_L1_*.dym', "temperature_L1")
+        T = latitudeDirection(T, south_to_north=True)
+
+        if self.feeding_habitat is not None:
+            # NOTE : We assume that U and V have same coordinates.
+            timefun, latfun, lonfun = coordsAccess(T)
+            minlon_idx = lonfun(min(self.feeding_habitat.coords['lon'].data))
+            maxlon_idx = lonfun(max(self.feeding_habitat.coords['lon'].data))
+            minlat_idx = latfun(min(self.feeding_habitat.coords['lat'].data))
+            maxlat_idx = latfun(max(self.feeding_habitat.coords['lat'].data))
+            mintime_idx = timefun(min(self.feeding_habitat.coords['time'].data))
+            maxtime_idx = timefun(max(self.feeding_habitat.coords['time'].data))
+            T = T[mintime_idx:maxtime_idx+1, minlat_idx:maxlat_idx+1,
+                  minlon_idx:maxlon_idx+1]
+        return T
+
+    def oxygen(self) -> Tuple[xr.DataArray, xr.DataArray]:
+        """Load oxygen forcing from NetCDFs or Dymfiles. No unit
+        convertion is applied here.
+
+        Returns
+        -------
+        Tuple[xr.DataArray, xr.DataArray]
+            T
+        """
+
+        O2 = fhcf.seapodymFieldConstructor(
+            self.feeding_habitat_structure.data_structure.root_directory
+            + '*_O2_L1_*.dym',  dym_varname='O2_L1')
+        O2 = latitudeDirection(O2, south_to_north=True)
+
+        if self.feeding_habitat is not None:
+            # NOTE : We assume that U and V have same coordinates.
+            timefun, latfun, lonfun = coordsAccess(O2)
+            minlon_idx = lonfun(min(self.feeding_habitat.coords['lon'].data))
+            maxlon_idx = lonfun(max(self.feeding_habitat.coords['lon'].data))
+            minlat_idx = latfun(min(self.feeding_habitat.coords['lat'].data))
+            maxlat_idx = latfun(max(self.feeding_habitat.coords['lat'].data))
+            mintime_idx = timefun(min(self.feeding_habitat.coords['time'].data))
+            maxtime_idx = timefun(max(self.feeding_habitat.coords['time'].data))
+            O2 = O2[mintime_idx:maxtime_idx+1, minlat_idx:maxlat_idx+1,
+                  minlon_idx:maxlon_idx+1]
+        return O2
 
     def computeTaxis(self) -> Tuple[xr.DataArray, xr.DataArray]:
         """Generates Taxis fields based on feeding habitat.
@@ -293,7 +347,7 @@ class IkamoanaFields :
         Tuple[xr.DataArray, xr.DataArray, xr.DataArray,xr.DataArray]
             Kx, Ky, dKxdx, dKydy
         """
-        
+
         if landmask is None :    
             hf_cond, ssto_cond = (
                 self.ikamoana_fields_structure.landmask_from_habitat,
@@ -322,7 +376,8 @@ class IkamoanaFields :
             time_start: int = None, time_end: int = None, lat_min: int = None,
             lat_max: int = None, lon_min: int = None, lon_max: int = None,
             south_to_north: bool = True, import_effort: str = None,
-            export_effort:str = None, verbose: bool = False
+            export_effort:str = None, verbose: bool = False,
+            O2T: bool = False
             ) -> Dict[str, xr.DataArray]:
         """This is the main function of this module. It is used to
         provide all the necessary fields for the `ikamoana` module. It
@@ -348,7 +403,6 @@ class IkamoanaFields :
                 
         ## TODO : add possibility to invert latitudinal values (V * -1)
         u, v = self.current()
-                
         taxis_lon, taxis_lat = self.computeTaxis()
         
         landmask = core.landmask(
@@ -359,6 +413,10 @@ class IkamoanaFields :
                 
         diffusion_x, diffusion_y, dKxdx, dKydy = self.computeDiffusion(
             landmask[0], lat_min, lat_max, lon_min, lon_max, u, v)
+
+        if(O2T):
+            T = self.temperature()
+            O2 = self.oxygen()
         
         feeding_habitat = latitudeDirection(self.feeding_habitat,south_to_north)
         diffusion_x = latitudeDirection(diffusion_x,south_to_north)
@@ -370,6 +428,10 @@ class IkamoanaFields :
         landmask = latitudeDirection(landmask,south_to_north)
         u = latitudeDirection(u,south_to_north)
         v = latitudeDirection(v,south_to_north)
+        if(O2T):
+            T = latitudeDirection(T,south_to_north)
+            O2 = latitudeDirection(O2,south_to_north)
+
         
         if evolve :
             feeding_habitat = feeding_habitat.drop_vars('cohorts')
@@ -407,10 +469,15 @@ class IkamoanaFields :
             taxis_lat = convertionSimple(taxis_lat)
             u = convertionSimple(u)
             v = convertionSimple(v)
-        
-        return {'H':feeding_habitat, 'landmask':landmask,
-                'Kx':diffusion_x, 'Ky':diffusion_y,
-                'dKx_dx':dKxdx, 'dKy_dy':dKydy,
-                'Tx':taxis_lon, 'Ty':taxis_lat,
-                'U':u, 'V':v,
+
+        result = {'H':feeding_habitat, 'landmask':landmask,
+                  'Kx':diffusion_x, 'Ky':diffusion_y,
+                  'dKx_dx':dKxdx, 'dKy_dy':dKydy,
+                  'Tx':taxis_lon, 'Ty':taxis_lat,
+                  'U':u, 'V':v,
                 **mortality_dict}
+        if(O2T):
+            result['T'] = T
+            result['O2'] = O2
+
+        return result

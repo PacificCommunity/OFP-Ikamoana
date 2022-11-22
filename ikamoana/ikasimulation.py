@@ -275,10 +275,11 @@ class IkaSimulation :
                                       "a length equal to the number of particles. "
                                       "But {} length is equal to {}"
                                       ).format(k, len(v)))
+        self.fish = parcels.ParticleSet.from_list(fieldset=self.ocean, lon=particles_longitude, lat=particles_latitude,
+                pclass=particles_class, time=particles_starting_time,
+                interaction_distance=10**4, **particles_variables)
+       # interaction distance of 10**4 is the same as 0.1 degree ?
 
-        self.fish = parcels.ParticleSet.from_list(interaction_distance=10,
-            fieldset=self.ocean, lon=particles_longitude, lat=particles_latitude,
-            pclass=particles_class, time=particles_starting_time, **particles_variables)
 
     def runKernels(
             self, kernels: Union[KernelType, Dict[str, KernelType]],
@@ -338,7 +339,6 @@ class IkaSimulation :
                                 outputdt=output_delta_time)
         else :
             particles_file = None
-
         for sk in sample_kernels:
             if sk in behaviours.AllKernels :
                 sampler = behaviours.AllKernels[sk]
@@ -361,14 +361,13 @@ class IkaSimulation :
             if not callable(interactions) : # then it should be a list or tuple
                 run_interactions = reduce(lambda a, b : a+b,
                                      [self.fish.InteractionKernel(k_fun) for k_fun in interactions])
-
         self.fish.execute(
-            pyfunc=run_kernels,pyfunc_inter=run_interactions, endtime=end_time, runtime=duration_time, dt=delta_time,
+            pyfunc=run_kernels, pyfunc_inter=run_interactions, endtime=end_time, runtime=duration_time, dt=delta_time,
             recovery=recovery, output_file=particles_file, verbose_progress=verbose)
         #Write to file
         if save :
-            particles_file.export()
-
+#            particles_file.export()
+            particles_file.close()
 # TOOLS -------------------------------------------------------------- #
 
     def oceanToNetCDF(self, dir_path: str = None, to_dataset: bool = False):

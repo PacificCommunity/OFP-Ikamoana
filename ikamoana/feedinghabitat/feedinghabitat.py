@@ -260,7 +260,6 @@ class FeedingHabitat :
         cohorts_mean_weight = self.data_structure.species_dictionary[
             'cohorts_mean_weight']
         max_weight = np.max(cohorts_mean_weight)
-
         return sigma_0 + ((sigma_K - sigma_0)
                           * (cohorts_mean_weight / max_weight))
 
@@ -270,7 +269,6 @@ class FeedingHabitat :
         cohorts_mean_length = self.data_structure.species_dictionary[
             'cohorts_mean_length']
         max_length = np.max(cohorts_mean_length)
-
         return T_star_1 - ((T_star_1 - T_star_K)
                            * ((cohorts_mean_length / max_length)**bT))
 

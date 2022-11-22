@@ -58,6 +58,7 @@ class IkaFADFish(ScipyParticle):
 
     CapProb = Variable('CapProb', to_write=False)
     SurvProb = Variable('SurvProb', initial=1, to_write=True)
+    St = Variable('St', initial=0.5, to_write=True)
     depletionF = Variable('depletionF', to_write=False)
     depletionN = Variable('depletionN', to_write=False)
     Fmor = Variable('Fmor', to_write=False)
