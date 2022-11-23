@@ -400,6 +400,7 @@ def Imovement(particle, fieldset, time, neighbors, mutator):
 def ImovementFaugeras(particle, fieldset, time, neighbors, mutator):
     '''InterActionKernel resolves all displacment vectors following
     interactive and non-interactive kernel execution'''
+
     def A(drifter): #Advection mutator
         drifter.lon += drifter.Ax
         drifter.lat += drifter.Ay
@@ -512,7 +513,6 @@ def PreyDepletion(particle, fieldset, time):
         C = 1.0 - (data-x0) * (data-x0) * (sinsq*rbsq - cossq*rasq)
 
         return (y0+(B+np.sqrt(B*B-4.0*A*C))/(2*A))
-
     fieldset.P.data[0, yi, xi] = scaleP(theta(particle.age,
         fieldset.O2[time, particle.depth, particle.lat, particle.lon],
         fieldset.T[time, particle.depth, particle.lat, particle.lon]) * fieldset.F.data[0, yi, xi])
@@ -672,13 +672,10 @@ def PreyAdvectionMICRestore(particle, fieldset, time):
             Uv = interpolator(fieldset, fieldset.U, tracer=False)
             Vv = interpolator(fieldset, fieldset.V, tracer=False)
 
-#            Uv = set_land(fieldset, Uv, 0)
-#            Vv = set_land(fieldset, Vv, 0)
-
-            Uv /= (1852*60*np.cos(fieldset.P.lat*np.pi/180))
-            Vv /= (1852*60)
             lons, lats = (fieldset.P.lon[:], fieldset.P.lat[:])
             X, Y = np.meshgrid(lons, lats)
+            Uv /= (1852*60*np.cos(Y*np.pi/180))
+            Vv /= (1852*60)
             T = Adv_2D(Tr, 1, particle.dt, Dx, Dy, Uv, Vv,
                        lons[0], lons[-1], lats[0], lats[-1],
                        lons, lats, X, Y)
