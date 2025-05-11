@@ -1,0 +1,11 @@
+dask==2022.4.1
+matplotlib==3.4.3
+netCDF4==1.7.2
+numpy==1.23.5
+pandas==1.4.2
+parcels==2.3.0
+progressbar33==2.4
+python_dateutil==2.9.0.post0
+scikit_learn==1.6.1
+scipy==1.15.2
+xarray==2022.3.0

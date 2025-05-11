@@ -4,9 +4,9 @@
   <run_name>IkaSim_Example_Fish</run_name>
 
   <directories>
-    <forcing_dir>/home/ash/Documents/GitHub_Repositories/OFP-Ikamoana/data/ikamoana_data/</forcing_dir>
-    <start_distribution>/home/ash/Documents/GitHub_Repositories/OFP-Ikamoana/data/ikamoana_data/</start_distribution>
-    <seapodym_file>/home/ash/Documents/GitHub_Repositories/OFP-Ikamoana/data/SEAPODYM_data/run-test/skj_CLT_e5_3_est.xml</seapodym_file>
+    <forcing_dir>./../data/ikamoana_data/</forcing_dir>
+    <start_distribution>../data/ikamoana_data/</start_distribution>
+    <seapodym_file>../data/SEAPODYM_data/run-test/newparfile.xml</seapodym_file>
   </directories>
 
   <domain>
@@ -49,9 +49,9 @@
       <!-- <fishery name="P21" effort_file_name="2"/>
       <fishery name="P3" effort_file_name="3"/>
       <fishery name="S4" effort_file_name="4"/>
-      <fishery name="S5" Trueffort_file_name="8"/>
+      <fishery name="S5" Trueffort_file_name="8"/> -->
       <fishery name="L9" effort_file_name="9"/>
-      <fishery name="S10" effort_file_name="10"/>
+      <!-- <fishery name="S10" effort_file_name="10"/>
       <fishery name="S12" effort_file_name="12"/>
       <fishery name="S13" effort_file_name="13"/>
       <fishery name="P15" effort_file_name="15"/> -->
@@ -65,7 +65,7 @@
     <files files_only="False">
     </files>
 
-    <correct_epi_temp_with_vld>True</correct_epi_temp_with_vld>
+    <correct_epi_temp_with_vld>False</correct_epi_temp_with_vld>
     <landmask_from_habitat>False</landmask_from_habitat>
     <shallow_sea_to_ocean>True</shallow_sea_to_ocean>
     <indonesian_filter>True</indonesian_filter>

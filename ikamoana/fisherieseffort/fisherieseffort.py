@@ -312,7 +312,8 @@ def groupByFisheries(
     effort_df = effort_df.groupby(
         [_labels['fishery_name'],'time',_labels['latitude'],_labels['longitude']]
         ).aggregate(
-            {_labels['gear']:np.unique, _labels['resolution']:np.unique,
+            # {_labels['gear']:np.unique, _labels['resolution']:np.unique,
+            {_labels['gear']:lambda x: list(np.unique(x)), _labels['resolution']:lambda x: list(np.unique(x)),
              _labels['effort']:np.sum})
     
     if not multi_index :

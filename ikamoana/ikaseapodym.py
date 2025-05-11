@@ -10,7 +10,7 @@ import os
 from ikamoana.ikafish import behaviours
 from ikamoana.ikamoanafields.ikamoanafields import IkamoanaFields
 from ikamoana.ikasimulation import IkaSimulation, KernelType
-from ikamoana.utils import (coordsAccess,
+from ikamoana.utils import (coordsAccess, standardiseCoords,
                                                 seapodymFieldConstructor)
 from ikamoana.utils import latitudeDirection
 
@@ -482,11 +482,12 @@ class IkaSeapodym(IkaSimulation) :
 
         def initializeWithStaticFile():
             start_field = seapodymFieldConstructor(self.ika_params["start_static_file"])
+            start_field = standardiseCoords(start_field)
             start_field = latitudeDirection(start_field, south_to_north=True)
             start_field = self._rescaleFieldWithUCoordinates(start_field)
 
             start_field = parcels.Field.from_xarray(
-                start_field, name="start_distribution",
+                start_field.sel(Time=self.ika_params['start_time'], method='nearest'), name="start_distribution",
                 dimensions={d:d for d in list(start_field.indexes)},
                 interp_method='nearest')
 

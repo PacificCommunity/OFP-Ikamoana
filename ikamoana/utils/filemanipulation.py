@@ -34,7 +34,7 @@ def seapodymFieldConstructor(
     if exists(filepath) :
         #NetCDF
         if filepath.lower().endswith(('.nc', '.cdf')) :
-            return xr.open_dataarray(filepath)
+            return xr.open_dataset(filepath)#xr.open_dataarray(filepath)
         #DymFile
         if filepath.lower().endswith('.dym') :
             if dym_varname is None :
@@ -44,6 +44,24 @@ def seapodymFieldConstructor(
                                       attributs = dym_attributs)
     else :
         raise ValueError("No such file : {}".format(filepath))
+    
+def standardiseCoords(da: xr.DataArray) -> xr.DataArray:
+    for cname in da.coords:
+        if cname == 'longitude':
+            da = da.rename({'longitude':'lon'})
+        if cname == 'latitude':
+            da = da.rename({'latitude':'lat'})
+    
+    #check for main data variables
+    multi_dim_vars = {name: var for name, var in da.data_vars.items() if len(var.dims) > 1}
+    if len(multi_dim_vars) > 1:
+        print("Warning, netcdf has been loaded with multiple data variables! Only using the first")
+    main_var_key = list(multi_dim_vars)[0]
+    main_data = multi_dim_vars[main_var_key]
+
+    main_data = main_data.rename('data')
+
+    return xr.Dataset({'data': main_data}, coords=da.coords).squeeze()
     
 def tagReading(
         root: ET.Element, tags: Union[str,List[str]],

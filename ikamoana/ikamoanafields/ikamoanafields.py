@@ -1,6 +1,7 @@
 from typing import Dict, List, Tuple, Union
 
 import xarray as xr
+import numpy as np
 from ikamoana.utils import coordsAccess, latitudeDirection
 
 from ..feedinghabitat import FeedingHabitat
@@ -90,6 +91,8 @@ class IkamoanaFields :
             raise TypeError((
                 "feeding_habitat must be a Xarray.DataArray or None."
                 "Current type is : {}").format(type(feeding_habitat)))
+        
+        self.layer_accessibility = None
 
         self.ikamoana_fields_structure = core.IkamoanaFieldsDataStructure(
             IKAMOANA_config_filepath, SEAPODYM_config_filepath,
@@ -116,7 +119,7 @@ class IkamoanaFields :
             self.feeding_habitat_structure.controlArguments(
                 time_start, time_end, lat_min, lat_max, lon_min, lon_max))
 
-        feeding_habitat = (
+        feeding_habitat, layer_access = (
             self.feeding_habitat_structure.computeFeedingHabitat(
                 cohort, time_start, time_end, lat_min, lat_max, lon_min,
                 lon_max, False))
@@ -125,6 +128,12 @@ class IkamoanaFields :
         feeding_habitat_da = feeding_habitat[fh_name]
         feeding_habitat_da.attrs.update(feeding_habitat.attrs)
         self.feeding_habitat = latitudeDirection(feeding_habitat_da,
+                                                 south_to_north=True)
+        
+        acc_name = list(layer_access.var()).pop()
+        layer_access_da = layer_access[acc_name]
+        layer_access_da.attrs.update(layer_access.attrs)
+        self.layer_accessibility = latitudeDirection(layer_access_da,
                                                  south_to_north=True)
         
     def computeEvolvingFeedingHabitat(
@@ -140,11 +149,13 @@ class IkamoanaFields :
             self.feeding_habitat_structure.controlArguments(
                 time_start, time_end, lat_min, lat_max, lon_min, lon_max))
 
-        feeding_habitat = (
+        feeding_habitat, layer_access = (
             self.feeding_habitat_structure.computeEvolvingFeedingHabitat(
                 cohort_start, cohort_end, time_start, time_end, lat_min,
                 lat_max, lon_min, lon_max, False))
         self.feeding_habitat = latitudeDirection(feeding_habitat,
+                                                 south_to_north=True)
+        self.layer_accessibility = latitudeDirection(layer_access,
                                                  south_to_north=True)
 
 ## TODO later : Take into account L1 is a simplification.
@@ -158,31 +169,58 @@ class IkamoanaFields :
         Tuple[xr.DataArray, xr.DataArray]
             U, V
         """
+        AllCurrents_U = []
+        AllCurrents_V = []
 
-        u = fhcf.seapodymFieldConstructor(
-            self.feeding_habitat_structure.data_structure.root_directory
-            + self.ikamoana_fields_structure.u_file,  dym_varname='u_L1')
-        v = fhcf.seapodymFieldConstructor(
-            self.feeding_habitat_structure.data_structure.root_directory
-            + self.ikamoana_fields_structure.v_file,  dym_varname='v_L1')
+        for l in range(3):
+            u = fhcf.seapodymFieldConstructor(
+                self.feeding_habitat_structure.data_structure.root_directory
+                + getattr(self.ikamoana_fields_structure, 'L'+str(l+1)+'_u_file'),  dym_varname='u_L'+str(l+1))
+            v = fhcf.seapodymFieldConstructor(
+                self.feeding_habitat_structure.data_structure.root_directory
+                + getattr(self.ikamoana_fields_structure, 'L'+str(l+1)+'_v_file'),  dym_varname='v_L'+str(l+1))
+            
+            u = latitudeDirection(u, south_to_north=True)
+            v = latitudeDirection(v, south_to_north=True)
+
+            if self.feeding_habitat is not None:
+                # NOTE : We assume that U and V have same coordinates.
+                timefun, latfun, lonfun = coordsAccess(u)
+                minlon_idx = lonfun(min(self.feeding_habitat.coords['lon'].data))
+                maxlon_idx = lonfun(max(self.feeding_habitat.coords['lon'].data))
+                minlat_idx = latfun(min(self.feeding_habitat.coords['lat'].data))
+                maxlat_idx = latfun(max(self.feeding_habitat.coords['lat'].data))
+                mintime_idx = timefun(min(self.feeding_habitat.coords['time'].data))
+                maxtime_idx = timefun(max(self.feeding_habitat.coords['time'].data))
+                u = u[mintime_idx:maxtime_idx+1, minlat_idx:maxlat_idx+1,
+                    minlon_idx:maxlon_idx+1]
+                v = v[mintime_idx:maxtime_idx+1, minlat_idx:maxlat_idx+1,
+                    minlon_idx:maxlon_idx+1]
+                
+                #Weight these current velocities by layer accessibility
+                #check values before and after to see how much they've changed
+                weighted_u = u * self.layer_accessibility.isel(layer=l)
+                weighted_v = v * self.layer_accessibility.isel(layer=l)
+            AllCurrents_U.append(weighted_u)
+            AllCurrents_V.append(weighted_v)
+
+        av_u = np.sum(np.nan_to_num(AllCurrents_U, nan=0), axis=0)
+        av_v = np.sum(np.nan_to_num(AllCurrents_V, nan=0), axis=0)
         
-        u = latitudeDirection(u, south_to_north=True)
-        v = latitudeDirection(v, south_to_north=True)
+        av_u = xr.DataArray(
+            data=av_u,
+            name='Averaged_Currents_U',
+            coords=u.coords,
+            dims=u.dims
+        )
+        av_v = xr.DataArray(
+            data=av_v,
+            name='Averaged_Currents_V',
+            coords=v.coords,
+            dims=v.dims
+        )
 
-        if self.feeding_habitat is not None:
-            # NOTE : We assume that U and V have same coordinates.
-            timefun, latfun, lonfun = coordsAccess(u)
-            minlon_idx = lonfun(min(self.feeding_habitat.coords['lon'].data))
-            maxlon_idx = lonfun(max(self.feeding_habitat.coords['lon'].data))
-            minlat_idx = latfun(min(self.feeding_habitat.coords['lat'].data))
-            maxlat_idx = latfun(max(self.feeding_habitat.coords['lat'].data))
-            mintime_idx = timefun(min(self.feeding_habitat.coords['time'].data))
-            maxtime_idx = timefun(max(self.feeding_habitat.coords['time'].data))
-            u = u[mintime_idx:maxtime_idx+1, minlat_idx:maxlat_idx+1,
-                  minlon_idx:maxlon_idx+1]
-            v = v[mintime_idx:maxtime_idx+1, minlat_idx:maxlat_idx+1,
-                  minlon_idx:maxlon_idx+1]
-        return u, v
+        return av_u, av_v
 
     def computeTaxis(self) -> Tuple[xr.DataArray, xr.DataArray]:
         """Generates Taxis fields based on feeding habitat.

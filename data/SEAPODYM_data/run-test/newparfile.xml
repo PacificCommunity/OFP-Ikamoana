@@ -117,7 +117,7 @@
 <!--================= -->
 
 <!-- Working Directory -->
-<strdir value="/home/ash/Documents/GitHub_Repositories/OFP-Ikamoana/data/SEAPODYM_data/run-test/data/run-interim_2x30d_po/"/>
+<strdir value="data/run-interim_2x30d_po/"/>
 
 <!-- The mask file is located in the working directory  -->
 <str_file_mask value="po_interim_2deg_mask_short_noIO.txt"/>
@@ -135,7 +135,7 @@
 <strdir_forage value="forage/"/>
 
 <!-- The directory for fishing data -->
-<strdir_fisheries value="/home/ash/Documents/GitHub_Repositories/OFP-Ikamoana/data/SEAPODYM_data/run-test/data/fisheries/"/>
+<strdir_fisheries value="data/fisheries/"/>
 
 <!-- The fishing data files -->
 <file_catch_data>

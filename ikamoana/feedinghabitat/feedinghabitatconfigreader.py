@@ -28,7 +28,7 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 
-from ikamoana.utils import dayLengthPISCES, seapodymFieldConstructor
+from ikamoana.utils import dayLengthPISCES, daylength_nauticaltwilight, seapodymFieldConstructor
 
 # TODO : à terme, la lecture du fichier configuration de SEAPODYM
 # dépasse le cadre de l'habitat d'alimentation. il devrait être lu par
@@ -139,7 +139,7 @@ def _daysLength(coords, model=None, float_32=True) :
     buffer_list = []
     for day in days_of_year :
         for lat in latitude :
-            day_length = dayLengthPISCES(day, lat)
+            day_length = daylength_nauticaltwilight(day, lat)
             if float_32 :
                 day_length = np.float32(day_length)
             buffer_list.extend([day_length] * len(longitude))

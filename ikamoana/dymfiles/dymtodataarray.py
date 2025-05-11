@@ -46,7 +46,7 @@ def dym2ToDataArray(
         datestr_list.append(datestr)
         filval = np.NaN
         outdata = inDym.readData(k+1)
-        outdata[outdata==0] = filval
+        outdata[outdata==-999] = filval
         outdata_list.append(outdata)
         
     # Xarray DataArray creation

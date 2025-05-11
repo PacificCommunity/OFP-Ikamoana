@@ -101,7 +101,7 @@
 <strdir_fisheries value="data/fisheries/"/>
 
 <file_catch_data>
-       <nb_files skj="1"/>  <skj file1="skj_catch_17f_PO_config2.txt"/>
+       <nb_files skj="1"/>  <skj file1="skj_fisheries_data_2021_Nov17.txt"/>
 </file_catch_data>
 
 <flex_regstruc value="1"/>
