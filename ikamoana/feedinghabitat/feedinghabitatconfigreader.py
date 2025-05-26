@@ -444,6 +444,7 @@ def loadFromXml(
 
     output_directory = root_directory + root.find('strdir_output').attrib['value']
     layers_number = int(root.find('nb_layer').attrib['value'])
+    init_time = '%s-%s' % (int(root.find('save_first_date').attrib['year']), int(root.find('save_first_date').attrib['month']))
 
     # Variables Filepaths #####################################################
     (temperature_filepaths, oxygen_filepaths, forage_filepaths, sst_filepath,
@@ -472,6 +473,7 @@ def loadFromXml(
     return dict(root_directory=root_directory,
                 output_directory=output_directory,
                 layers_number=layers_number,
+                init_time=init_time,
                 cohorts_number=cohorts_number,
                 partial_oxygen_time_axis=partial_oxygen_time_axis,
                 global_mask=global_mask,

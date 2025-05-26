@@ -171,6 +171,7 @@ class HabitatDataStructure :
         self.root_directory           = kargs['root_directory']
         self.output_directory         = kargs['output_directory']
         self.layers_number            = kargs['layers_number']
+        self.init_time                = kargs['init_time']
         self.cohorts_number           = kargs['cohorts_number']
         self.partial_oxygen_time_axis = kargs['partial_oxygen_time_axis']
         self.global_mask              = kargs['global_mask']

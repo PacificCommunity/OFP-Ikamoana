@@ -559,12 +559,21 @@ def fishingMortality(
             return lambda length : selectivityLimitOne(
                 length, sigma=sigma
             )
+        
+    def catchability(q, slope, time, init_time, dt) :
+        #Time needs to be number of timesteps since the initial time period of SEAPODYM
+        if slope != 0.0:
+            t = int((time - init_time) / np.timedelta64(1, 'D') / dt)
+            q = q * (1+slope*t)
+        return q
 
     ## NOTE : Original code
     # E_scaler = (1.0/30.0)*7.0
     # F_scaler = 30.0 / 7.0 / 7.0
 
     length_fun = fh_structure.findLengthByCohort
+    init_year, init_month = fh_structure.init_time.split('-')
+    init_time = np.datetime64(f'{init_year}-{init_month.zfill(2)}-15')
 
     fishing_mortality = {}
     for p_name, params in fisheries_parameters.items() :
@@ -588,11 +597,15 @@ def fishingMortality(
                     (tmp,np.repeat(c_nb-1, effort_ds.time.data.size-tmp.size)))
             else :
                 age = start_age
-
             for t in range(effort_ds.time.data.size) :
                 # length in cm
                 length = length_fun(age[t]) if evolving else length_fun(age)
-                f_data[t,:,:] = data[t,:,:] * q * selectivity_fun(length)
+                #Calc catchability as a dynamic function of time
+                time_q = catchability(q, params['dyn'], effort_ds.time.data[t], 
+                                 init_time, fh_structure.parameters_dictionary["deltaT"])
+                f_data[t,:,:] = data[t,:,:] * time_q * selectivity_fun(length)
+                # HARD CODED transform from monthly F to per second
+                f_data[t,:,:] = f_data[t,:,:] / (30*24*60*60)
 
             fishing_mortality[f_name] = xr.DataArray(
                 f_data,

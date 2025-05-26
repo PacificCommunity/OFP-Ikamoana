@@ -179,6 +179,8 @@ class IkamoanaFieldsDataStructure :
                 "function_type":int(root.find("s_sp_fishery").find(f).find(
                     "function_type").attrib["value"]),
                 "q":float(root.find("q_sp_fishery").find(f).attrib[species_name]),
+                "dyn":float(root.find('q_sp_fishery').find(f).find(
+                    "variable").attrib['dyn']),
                 "variable":float(root.find(
                     "s_sp_fishery").find(f).attrib[species_name]),
                 "length_threshold":float(root.find('s_sp_fishery').find(f).find(

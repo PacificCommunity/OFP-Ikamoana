@@ -164,7 +164,7 @@ def RandomWalkNonUniformDiffusion(particle, fieldset, time):
 
 def FishingMortality(particle, fieldset, time):
     # particle.Fmor = fieldset.F[time, particle.depth, particle.lat, particle.lon]/fieldset.SEAPODYM_dt
-    particle.Fmor = fieldset.F[time, particle.depth, particle.lat, particle.lon]/particle.dt
+    particle.Fmor = fieldset.F[time, particle.depth, particle.lat, particle.lon]#/particle.dt
 
 def NaturalMortality(particle, fieldset, time):
     Mnat = fieldset.MPmax * math.exp(-fieldset.MPexp*particle.age_class) + fieldset.MSmax*math.pow(particle.age_class, fieldset.MSslope)

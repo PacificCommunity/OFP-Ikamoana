@@ -423,7 +423,7 @@ class IkamoanaFields :
             mortality = self.computeMortality(import_effort, export_effort,
                                               verbose)
             mortality = latitudeDirection(mortality,south_to_north
-                                          ).reindex_like(feeding_habitat)
+                                          ).reindex_like(feeding_habitat, method='nearest')
             mortality_dict['F'] = mortality
         
         if self.ikamoana_fields_structure.units == 'nm_per_timestep' :
