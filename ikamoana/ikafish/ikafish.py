@@ -66,9 +66,9 @@ class IkaTag(IkaFish):
         region = Variable('region')
         CapProb = Variable('CapProb')
         SurvProb = Variable('SurvProb', initial=1)
-        depletionF = Variable('depletionF', to_write=False)
+        depletionF = Variable('depletionF', to_write=True)
         depletionN = Variable('depletionN', to_write=False)
-        Fmor = Variable('Fmor', to_write=False)
+        Fmor = Variable('Fmor', to_write=True)
         Nmor = Variable('Nmor', to_write=False)
         Zint = Variable('Zint', to_write=False)
 
@@ -77,6 +77,14 @@ class IkaTag(IkaFish):
             initialisation and adds the instance variable p"""
             super().__init__(*args, **kwargs)
 
+class IkaTemp(IkaTag):
+        TAL = Variable('TAL', to_write=False)
+        SST = Variable('SST', to_write=True)
+
+        def __init__(self, *args, **kwargs):
+            """Custom initialisation function which calls the base
+            initialisation and adds the instance variable p"""
+            super().__init__(*args, **kwargs)
 
 class IkaMix(IkaTag):
         TAL = Variable('TAL', to_write=False)

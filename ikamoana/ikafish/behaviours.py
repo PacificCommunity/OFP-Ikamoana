@@ -208,6 +208,9 @@ def UpdateMixingPeriod(particle, fieldset, time):
 def getRegion(particle, fieldset, time):
     particle.region = fieldset.region[time, particle.depth, particle.lat, particle.lon]
 
+def getSST(particle, fieldset, time):
+    particle.SST = fieldset.temperature_L1[time, particle.depth, particle.lat, particle.lon]
+
 ###################### Internal state kernels ########################
 
 def Age(particle, fieldset, time):
@@ -230,6 +233,7 @@ AllKernels = {'IkaDymMove':IkaDymMove,
               'UpdateSurvivalProb':UpdateSurvivalProb,
               'UpdateMixingPeriod':UpdateMixingPeriod,
               'getRegion':getRegion,
+              'getSST':getSST,
               'Age':Age,
               'MoveSouth':MoveSouth,
               'LandBlock':LandBlock}
