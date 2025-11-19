@@ -8,7 +8,7 @@ from parcels.particle import JITParticle, ScipyParticle, Variable
 
 class IkaFish(JITParticle):
         age          = Variable('age', to_write=False)
-        age_class    = Variable('age_class', to_write=False)
+        age_class    = Variable('age_class', to_write=True)
         # TODO : active is not used in kernels ? Should it be removed ?
         active       = Variable("active", to_write=False, initial=1)
         prev_lon     = Variable('prev_lon', to_write=False)
@@ -93,3 +93,8 @@ class IkaMix(IkaTag):
             initialisation and adds the instance variable p"""
             super().__init__(*args, **kwargs)
             
+class IkaSampler(IkaFish):
+        region = Variable('region')
+        Habitat = Variable('Habitat')
+        RawHabitat = Variable('RawHabitat')
+        abs_age = Variable('abs_age')

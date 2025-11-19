@@ -9,7 +9,7 @@ from .. import dymfiles as df
 
 
 def seapodymFieldConstructor(
-        filepath: str, dym_varname : str = None, dym_attributs : dict = None
+        filepath: str, dym_varname : str = None, dym_attributs : dict = None, dymformat: str = 'dym2'
         ) -> xr.DataArray :
     """
     Return a Seapodym field as a DataArray using NetCDF or Dym method
@@ -41,7 +41,8 @@ def seapodymFieldConstructor(
                 dym_varname = filepath
             return df.dym2ToDataArray(infilepath = filepath,
                                       varname = dym_varname,
-                                      attributs = dym_attributs)
+                                      attributs = dym_attributs,
+                                      dymformat = dymformat)
     else :
         raise ValueError("No such file : {}".format(filepath))
     

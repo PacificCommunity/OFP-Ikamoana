@@ -208,12 +208,24 @@ def UpdateMixingPeriod(particle, fieldset, time):
 def getRegion(particle, fieldset, time):
     particle.region = fieldset.region[time, particle.depth, particle.lat, particle.lon]
 
+def getTemp(particle, fieldset, time):
+    particle.temp = fieldset.temp[time, particle.depth, particle.lat, particle.lon]
+
+def getRawHabitat(particle, fieldset, time):
+    particle.RawHabitat = fieldset.RawH[time, particle.depth, particle.lat, particle.lon]
+
+def getHabitat(particle, fieldset, time):
+    particle.Habitat = fieldset.H[time, particle.depth, particle.lat, particle.lon]
+
 ###################### Internal state kernels ########################
 
 def Age(particle, fieldset, time):
     particle.age += particle.dt
     if (particle.age - (particle.age_class*fieldset.cohort_dt)) > (fieldset.cohort_dt):
         particle.age_class += 1
+
+def WriteAge(particle, fieldset, time):
+    particle.abs_age = particle.age
 
 # All Kernel dict, needed for dynamic kernel compilation
 
@@ -230,6 +242,9 @@ AllKernels = {'IkaDymMove':IkaDymMove,
               'UpdateSurvivalProb':UpdateSurvivalProb,
               'UpdateMixingPeriod':UpdateMixingPeriod,
               'getRegion':getRegion,
+              'getHabitat':getHabitat,
+              'getRawHabitat':getRawHabitat,
+              'WriteAge':WriteAge,
               'Age':Age,
               'MoveSouth':MoveSouth,
               'LandBlock':LandBlock}

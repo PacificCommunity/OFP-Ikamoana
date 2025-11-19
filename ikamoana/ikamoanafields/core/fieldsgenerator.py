@@ -433,14 +433,15 @@ def diffusion(
         
         #######################################################
         # NOTE : Patrick's method -> SEAPODYM + conversion to m².s⁻¹ :
-        #d_inf = (d_speed*t_length*dt_seconds)**2 / (4.0*deltaT)
+        #BET model does not use allometric relationship of D_Inf to length
+        d_inf = (d_speed*t_length*dt_seconds)**2 / (4.0*deltaT)
         #Update to MSS calculation from 2024 SKJ solution, to be consistent with
         #non-linear relationship to length, with fixed slope parameter
         #d_inf = (d_speed*lmax*(t_length/lmax)**0.6)**2 / (4.0*deltaT)
-        d_inf = (d_speed*lmax*(t_length/lmax)**0.6 *3600*24.0*deltaT/1852)**2 / (4.0*deltaT)
+        #d_inf = (d_speed*lmax*(t_length/lmax)**0.6 *3600*24.0*deltaT/1852)**2 / (4.0*deltaT)
         # Conversion in model unit
-        d_inf *= (1852)**2 / dt_seconds
-        #d_inf /= dt_seconds
+        #d_inf *= (1852)**2 / dt_seconds
+        d_inf /= dt_seconds
         #######################################################
         
         d_max = ika_structure.sigma_K * d_inf

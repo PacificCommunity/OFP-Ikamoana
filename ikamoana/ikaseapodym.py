@@ -222,7 +222,8 @@ class IkaSeapodym(IkaSimulation) :
             self, from_habitat: xr.DataArray = None,
             fields_interp_method: str = None,
             landmask_interp_methode: str = 'nearest',
-            allow_time_extrapolation: bool = True):
+            allow_time_extrapolation: bool = True,
+            all_env_fields: bool = False):
         """Compute (or load) a feeding habitat using the FeedingHabitat
         class then call the IkaFields class to generate Diffusion and
         Advection fields.
@@ -276,7 +277,7 @@ class IkaSeapodym(IkaSimulation) :
                              if self.ika_params.pop('export_effort', False) else None)
 
             return generator.computeIkamoanaFields(
-                from_habitat=from_habitat, evolve=evolve,
+                from_habitat=from_habitat, evolve=evolve, all_env_fields=all_env_fields,
                 cohort_start=ages[0], cohort_end=None,
                 time_start=start, time_end=end,
                 lon_min=lonlims[0], lon_max=lonlims[1],
@@ -482,7 +483,7 @@ class IkaSeapodym(IkaSimulation) :
 
         def initializeWithStaticFile():
             start_field = seapodymFieldConstructor(self.ika_params["start_static_file"])
-            start_field = standardiseCoords(start_field)
+            #start_field = standardiseCoords(start_field)
             start_field = latitudeDirection(start_field, south_to_north=True)
             start_field = self._rescaleFieldWithUCoordinates(start_field)
 

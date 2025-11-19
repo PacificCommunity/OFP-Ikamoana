@@ -93,6 +93,7 @@ class IkamoanaFields :
                 "Current type is : {}").format(type(feeding_habitat)))
         
         self.layer_accessibility = None
+        self.unscaled_feeding_habitat = None
 
         self.ikamoana_fields_structure = core.IkamoanaFieldsDataStructure(
             IKAMOANA_config_filepath, SEAPODYM_config_filepath,
@@ -119,7 +120,7 @@ class IkamoanaFields :
             self.feeding_habitat_structure.controlArguments(
                 time_start, time_end, lat_min, lat_max, lon_min, lon_max))
 
-        feeding_habitat, layer_access = (
+        feeding_habitat, layer_access, unscaled_feeding = (
             self.feeding_habitat_structure.computeFeedingHabitat(
                 cohort, time_start, time_end, lat_min, lat_max, lon_min,
                 lon_max, False))
@@ -135,6 +136,12 @@ class IkamoanaFields :
         layer_access_da.attrs.update(layer_access.attrs)
         self.layer_accessibility = latitudeDirection(layer_access_da,
                                                  south_to_north=True)
+
+        unscaled_fh_name = list(unscaled_feeding.var()).pop()
+        unscaled_feeding_da = feeding_habitat[unscaled_fh_name]
+        unscaled_feeding_da.attrs.update(unscaled_feeding.attrs)
+        self.unscaled_feeding_habitat = latitudeDirection(unscaled_feeding_da,
+                                                          south_to_north=True)
         
     def computeEvolvingFeedingHabitat(
             self, cohort_start: int = None, cohort_end: int = None,
@@ -149,7 +156,7 @@ class IkamoanaFields :
             self.feeding_habitat_structure.controlArguments(
                 time_start, time_end, lat_min, lat_max, lon_min, lon_max))
 
-        feeding_habitat, layer_access = (
+        feeding_habitat, layer_access, unscaled_feeding_habitat = (
             self.feeding_habitat_structure.computeEvolvingFeedingHabitat(
                 cohort_start, cohort_end, time_start, time_end, lat_min,
                 lat_max, lon_min, lon_max, False))
@@ -157,9 +164,10 @@ class IkamoanaFields :
                                                  south_to_north=True)
         self.layer_accessibility = latitudeDirection(layer_access,
                                                  south_to_north=True)
+        self.unscaled_feeding_habitat = latitudeDirection(unscaled_feeding_habitat,
+                                                  south_to_north=True)
 
-## TODO later : Take into account L1 is a simplification.
-# Should use accessibility + forage distribution + current L1/L2/L3
+# accessibility + forage distribution + current L1/L2/L3
     def current(self) -> Tuple[xr.DataArray, xr.DataArray]:
         """Load current forcing from NetCDFs or Dymfiles. No unit
         convertion is applied here.
@@ -198,7 +206,6 @@ class IkamoanaFields :
                     minlon_idx:maxlon_idx+1]
                 
                 #Weight these current velocities by layer accessibility
-                #check values before and after to see how much they've changed
                 weighted_u = u * self.layer_accessibility.isel(layer=l)
                 weighted_v = v * self.layer_accessibility.isel(layer=l)
             AllCurrents_U.append(weighted_u)
@@ -360,7 +367,7 @@ class IkamoanaFields :
             time_start: int = None, time_end: int = None, lat_min: int = None,
             lat_max: int = None, lon_min: int = None, lon_max: int = None,
             south_to_north: bool = True, import_effort: str = None,
-            export_effort:str = None, verbose: bool = False
+            export_effort:str = None, all_env_fields:bool = False, verbose: bool = False
             ) -> Dict[str, xr.DataArray]:
         """This is the main function of this module. It is used to
         provide all the necessary fields for the `ikamoana` module. It
@@ -397,7 +404,9 @@ class IkamoanaFields :
                 
         diffusion_x, diffusion_y, dKxdx, dKydy = self.computeDiffusion(
             landmask[0], lat_min, lat_max, lon_min, lon_max, u, v)
-        
+
+
+        unscaled_feeding_habitat = latitudeDirection(self.unscaled_feeding_habitat,south_to_north)
         feeding_habitat = latitudeDirection(self.feeding_habitat,south_to_north)
         diffusion_x = latitudeDirection(diffusion_x,south_to_north)
         diffusion_y = latitudeDirection(diffusion_y,south_to_north)
@@ -410,6 +419,7 @@ class IkamoanaFields :
         v = latitudeDirection(v,south_to_north)
         
         if evolve :
+            unscaled_feeding_habitat = unscaled_feeding_habitat.drop_vars('cohorts')
             feeding_habitat = feeding_habitat.drop_vars('cohorts')
             diffusion_x = diffusion_x.drop_vars('cohorts')
             diffusion_y = diffusion_y.drop_vars('cohorts')
@@ -445,10 +455,15 @@ class IkamoanaFields :
             taxis_lat = convertionSimple(taxis_lat)
             u = convertionSimple(u)
             v = convertionSimple(v)
-        
-        return {'H':feeding_habitat, 'landmask':landmask,
+
+        All_Fields = {'H':feeding_habitat, 'landmask':landmask,
                 'Kx':diffusion_x, 'Ky':diffusion_y,
                 'dKx_dx':dKxdx, 'dKy_dy':dKydy,
                 'Tx':taxis_lon, 'Ty':taxis_lat,
                 'U':u, 'V':v,
                 **mortality_dict}
+
+        if all_env_fields is True:
+            All_Fields['RawH'] = unscaled_feeding_habitat
+
+        return All_Fields

@@ -176,12 +176,12 @@ class FeedingHabitat :
         if (time_start is not None) and (time_end is not None) and (time_start > time_end) :
             time_start, time_end = time_end, time_start
 
-        time_start = None if time_start is None else int(time_start) 
-        time_end = None if time_end is None else int(time_end) 
-        lat_min = None if lat_min is None else int(lat_min) 
-        lat_max = None if lat_max is None else int(lat_max) 
-        lon_min = None if lon_min is None else int(lon_min) 
-        lon_max = None if lon_max is None else int(lon_max) 
+        time_start = None if time_start is None else int(time_start)
+        time_end = None if time_end is None else int(time_end)
+        lat_min = None if lat_min is None else int(lat_min)
+        lat_max = None if lat_max is None else int(lat_max)
+        lon_min = None if lon_min is None else int(lon_min)
+        lon_max = None if lon_max is None else int(lon_max)
 
         return time_start, time_end, lat_min, lat_max, lon_min, lon_max
 
@@ -233,12 +233,12 @@ class FeedingHabitat :
         to time, latitude and longitude"""
 
         time_start = time_start if time_start is None else int(time_start)
-        time_end = time_end if time_end is None else int(time_end)+1 
+        time_end = time_end if time_end is None else int(time_end)+1
         lat_min = lat_min if lat_min is None else int(lat_min)
-        lat_max = lat_max if lat_max is None else int(lat_max)+1 
+        lat_max = lat_max if lat_max is None else int(lat_max)+1
         lon_min = lon_min if lon_min is None else int(lon_min)
         lon_max = lon_max if lon_max is None else int(lon_max)+1
-        
+
         return data_array.sel(
             time=data_array.time.data[time_start:time_end],
             lat=data_array.lat.data[lat_min:lat_max],
@@ -252,9 +252,9 @@ class FeedingHabitat :
         tmp = self.data_structure.global_mask[mask]
 
         lat_min = lat_min if lat_min is None else int(lat_min)
-        lat_max = lat_max if lat_max is None else int(lat_max)+1 
+        lat_max = lat_max if lat_max is None else int(lat_max)+1
         lon_min = lon_min if lon_min is None else int(lon_min)
-        lon_max = lon_max if lon_max is None else int(lon_max)+1 
+        lon_max = lon_max if lon_max is None else int(lon_max)+1
 
         return tmp[:, lat_min:lat_max, lon_min:lon_max]
 
@@ -368,7 +368,7 @@ class FeedingHabitat :
             time_start,time_end,lat_min,lat_max,lon_min,lon_max)
 
         night_length = np.ones_like(days_length) - days_length
-        
+
         mask_L1 = self._selSubMask('mask_L1', lat_min, lat_max, lon_min, lon_max)
         mask_L2 = self._selSubMask('mask_L2', lat_min, lat_max, lon_min, lon_max)
         mask_L3 = self._selSubMask('mask_L3', lat_min, lat_max, lon_min, lon_max)
@@ -384,9 +384,9 @@ class FeedingHabitat :
                 night_length * np.sum(all_forage[night_forage_layers[l]], axis=0),
                 out=np.zeros_like(days_length),
                 where=all_masks[l]))
-            
+
         return forage_layers
-    
+
     def _getForageFields(self,
                          time_start: int = None, time_end: int = None,
                          lat_min: int = None, lat_max: int = None,
@@ -432,11 +432,11 @@ class FeedingHabitat :
         hmlmeso += 0.000001 # New SKJ solution includes small adjustment
         hmlmeso *= self.data_structure.parameters_dictionary['eF_list'][5]
 
-        forage = np.stack([epi, 
+        forage = np.stack([epi,
                            umeso, mumeso,
-                           lmeso, mlmeso, hmlmeso], 
+                           lmeso, mlmeso, hmlmeso],
                            axis=0)
-        
+
         return forage
 
     def _accessibility(self, temp: np.ndarray = None, oxy: np.ndarray = None,
@@ -444,7 +444,7 @@ class FeedingHabitat :
                        time_start: int = None, time_end: int = None,
                        lat_min: int = None, lat_max: int = None,
                        lon_min: int = None, lon_max: int = None) -> np.ndarray :
-            
+
         #Compute and save layer accessibility (to be used elsewhere)
         #equivalent to f_accessibility function in SEAPODYM
         days_length = self._selSubDataArray(
@@ -458,10 +458,10 @@ class FeedingHabitat :
         mask_L1 = self._selSubMask('mask_L1', lat_min, lat_max, lon_min, lon_max)
         mask_L2 = self._selSubMask('mask_L2', lat_min, lat_max, lon_min, lon_max)
         mask_L3 = self._selSubMask('mask_L3', lat_min, lat_max, lon_min, lon_max)
-        all_masks = np.stack([mask_L1, mask_L2, mask_L3], axis=0)   
+        all_masks = np.stack([mask_L1, mask_L2, mask_L3], axis=0)
 
         lf_access = np.zeros(temp.shape)
-        
+
         sumL = 0
         for l in range(3):
             f_access = temp[l] * oxy[l] + 1e-4
@@ -486,12 +486,12 @@ class FeedingHabitat :
         topography = self.data_structure.topography[
             lat_min:lat_max if lat_max is None else lat_max+1,
             lon_min:lon_max if lon_max is None else lon_max+1]
-        
-        with xr.set_options(keep_attrs=True): 
+
+        with xr.set_options(keep_attrs=True):
             result = habitat * topography
-            
+
         return result
-    
+
 ###############################################################################
 # ---------------------------------  MAIN  ---------------------------------- #
 ###############################################################################
@@ -565,6 +565,7 @@ class FeedingHabitat :
 
         result = {}
         access = {}
+        unscaled_fh_result = {}
         mask_L1 = self._selSubMask(
             'mask_L1', lat_min, lat_max, lon_min, lon_max)
 
@@ -575,17 +576,18 @@ class FeedingHabitat :
             fh_temperature = self._temperature(
                 cohort_number, time_start, time_end, lat_min, lat_max,
                 lon_min, lon_max)
-            
+
+            unscaled_fh = np.sum(
+                        fh_forage * (fh_temperature * fh_oxygen + 1e-4),
+                        axis=0)
+
             name = 'Feeding_Habitat_Cohort_%d'%(cohort_number)
 
             result_np_array = np.where(
                 mask_L1,
-                self._scaling(
-                    np.sum(
-                        fh_forage * (fh_temperature * fh_oxygen + 1e-4),
-                        axis=0)),
+                self._scaling(unscaled_fh),
                 np.NaN)
-            
+
             name_access = 'Accessibility_Cohort_%d'%(cohort_number)
             cohort_accessibility = self._accessibility(fh_temperature, fh_oxygen, all_forage,
                 time_start, time_end, lat_min, lat_max, lon_min, lon_max)
@@ -626,8 +628,34 @@ class FeedingHabitat :
                 dims=["layer", "time", "lat", "lon"],
                 attrs=result_xr_data_array.attrs
             )
+
+            name_unscaled = 'Unscaled_Feeding_Habitat_Cohort_%d'%(cohort_number)
+            unscaled_fh_xr_data_array = xr.DataArray(
+                unscaled_fh,
+                name=name_unscaled,
+                coords=dict(
+                    lon=self.data_structure.coords['lon'].data[
+                        lon_min:lon_max if lon_max is None else lon_max + 1],
+                    lat=self.data_structure.coords['lat'].data[
+                        lat_min:lat_max if lat_max is None else lat_max + 1],
+                    time=self.data_structure.coords['time'].data[
+                         time_start:time_end if time_end is None else time_end + 1]),
+                dims=["time", "lat", "lon"],
+                attrs={
+                    'Cohort number': cohort_number,
+                    'Age start (days)': self.data_structure.species_dictionary[
+                        'cohorts_starting_age'][cohort_number],
+                    'Age end (days)': self.data_structure.species_dictionary[
+                        'cohorts_final_age'][cohort_number],
+                    'Length (cm)': self.data_structure.species_dictionary[
+                        'cohorts_mean_length'][cohort_number],
+                    'Weight (kg)': self.data_structure.species_dictionary[
+                        'cohorts_mean_weight'][cohort_number]}
+            )
+
             result[name] = result_xr_data_array
             access[name_access] = access_data_array
+            unscaled_fh_result[name_unscaled] = unscaled_fh_xr_data_array
 
         dataset_attributs = dict(
             time_start=time_start, time_end=time_end,
@@ -635,13 +663,14 @@ class FeedingHabitat :
             lon_min=lon_min, lon_max=lon_max,
             )
         dataset_attributs.update(self.data_structure.parameters_dictionary)
-        
+
         result = xr.Dataset(result, attrs=dataset_attributs)
         result = self._applyTopography(result, lat_min, lat_max, lon_min, lon_max)
         access = xr.Dataset(access, attrs=dataset_attributs)
         access = self._applyTopography(access, lat_min, lat_max, lon_min, lon_max)
-        
-        return result, access
+        unscaled_fh_result = xr.Dataset(unscaled_fh_result, attrs=dataset_attributs)
+        unscaled_fh_result = self._applyTopography(unscaled_fh_result, lat_min, lat_max, lon_min, lon_max)
+        return result, access, unscaled_fh_result
 
     def computeEvolvingFeedingHabitat(
             self, cohort_start: int = None, cohort_end: int = None,
@@ -733,11 +762,12 @@ class FeedingHabitat :
         cohort_axis = []
         final_array = []
         final_access = []
+        final_unscaled = []
         for i in range(max_size) :
             # Oldest cohort with many time steps
             if (cohort_array[i:].size == 1) and (time_array[i:].size > 1) :
                 cohort_axis.extend([cohort_array[i]] * time_array[i:].size)
-                habitat, access = self.computeFeedingHabitat(
+                habitat, access, unscaled_habitat = self.computeFeedingHabitat(
                     cohorts=cohort_array[i],
                     time_start=time_array[i], time_end=time_array[-1],
                     lat_min=lat_min, lat_max=lat_max,
@@ -745,11 +775,12 @@ class FeedingHabitat :
                     control_arg=False)
                 final_array.append(habitat.to_array().data[0,:,:,:])
                 final_access.append(access.to_array().data[0,:,:,:])
+                final_unscaled.append(unscaled_habitat.to_array().data[0, :, :, :])
 
             # Others
             else :
                 cohort_axis.append(cohort_array[i])
-                habitat, access = self.computeFeedingHabitat(
+                habitat, access, unscaled_habitat = self.computeFeedingHabitat(
                     cohorts=cohort_array[i],
                     time_start=time_array[i], time_end=time_array[i],
                     lat_min=lat_min, lat_max=lat_max,
@@ -757,11 +788,40 @@ class FeedingHabitat :
                     control_arg=False)
                 final_array.append(habitat.to_array().data[0,:,:,:])
                 final_access.append(access.to_array().data[0,:,:,:])
-        
+                final_unscaled.append(unscaled_habitat.to_array().data[0,:,:,:])
+
         final_array = np.concatenate(final_array)
         final_array = self._applyTopography(final_array, lat_min, lat_max, lon_min, lon_max)
         final_access = np.concatenate(final_access, axis=1)
         final_access = self._applyTopography(final_access, lat_min, lat_max, lon_min, lon_max)
+        final_unscaled = np.concatenate(final_unscaled)
+        final_unscaled = self._applyTopography(final_unscaled, lat_min, lat_max, lon_min, lon_max)
+
+        print(np.shape(final_array))
+        print(np.shape(final_access))
+        print(np.shape(final_unscaled))
+
+        final_unscaled = xr.DataArray(
+            data=final_unscaled,
+            name='Unscaled_Feeding_Habitat_Cohort_%d_to_%d'%(cohort_array[0], cohort_array[-1]),
+            dims=('time', 'lat', 'lon'),
+            coords=dict(
+                time=self.data_structure.coords['time'].data[
+                    time_array[0]:time_array[-1]+1],
+                lat=self.data_structure.coords['lat'].data[
+                    lat_min:lat_max if lat_max is None else lat_max+1],
+                lon=self.data_structure.coords['lon'].data[
+                    lon_min:lon_max if lon_max is None else lon_max+1],
+                cohorts=("time", cohort_axis)),
+            attrs=dict(
+                description="Unscaled feeding habitat of a cohort that evolves over time.",
+                cohort_start=cohort_axis[0],cohort_end=cohort_axis[-1],
+                time_start=time_array[0],time_end=time_array[-1],
+                lat_min=lat_min,lat_max=lat_max,
+                lon_min=lon_min,lon_max=lon_max,
+                # Simple way to merge dictionary
+                **self.data_structure.parameters_dictionary)
+        )
 
         final_habitat = xr.DataArray(
             data=final_array,
@@ -805,15 +865,15 @@ class FeedingHabitat :
                 # Simple way to merge dictionary
                 **self.data_structure.parameters_dictionary)
         )
-        return final_habitat, final_access
+        return final_habitat, final_access, final_unscaled
 
     def correctEpiTempWithVld(self) :
         """
         SEAPODYM Description :
         - SeapodymCoupled_OnReadForcing.cpp, line 66
-        
+
         Warning : This function must be used after `indonesianFilter()`.
-        
+
         Correct the T_epi temperature by the vertical gradieng magnitude.
         Improves fit in EPO and shallow-thermocline zones.
         Was tested only for SKJ.
@@ -833,13 +893,13 @@ class FeedingHabitat :
         print("Warning : This function (correctEpiTempWithVld) was only tested"
               " for Skipjack.\n It will also add +1 to sigma_min. Cf. function"
               " documentation for more details.")
-        
+
         sst = self.data_structure.variables_dictionary['sst']
         temperature_L1 = self.data_structure.variables_dictionary['temperature_L1']
         vld = self.data_structure.variables_dictionary['vld']
-        
+
         # NOTE : If we use coordinates to compare/sum/multiply etc...
-        # it can have some errors due to values mismatch. 
+        # it can have some errors due to values mismatch.
         dTdz = np.divide(
             2.0 * (sst.data - temperature_L1.data), vld.data,
             #(1000.0 * self.data_structure.variables_dictionary['vld']),
@@ -853,49 +913,49 @@ class FeedingHabitat :
         self.data_structure.variables_dictionary['temperature_L1'] = xr.DataArray(
             data=data, coords=temperature_L1.coords, attrs=temperature_L1.attrs
         )
-        
+
     def indonesianFilter(self):
         """
         SEAPODYM Description :
         - dv_feeding_habitat.cpp, line 96
         - map.cpp, line 55
-        
+
         Warning : This function must be used before
         `correctEpiTempWithVld()`.
-        
+
         Uses condition : Pacific ocean domain and coarse resolution
-        (< 1 degree). 
+        (< 1 degree).
         To make the buffer zone in IO part of the Pacific ocean domain.
         This allows avoiding the problems of high densities in shallow
         waters and complex current system of Indonesian region which is
         not resolved on coarse resolutions.
         Note, this method can be sabstituted by topographic index.
-        
+
         .. SEAPODYM C++ Documentation :
             Original is from SEAPODYM, Senina et al. (2020). Adapted to
             python by J. Lehodey (2022).
-        
+
         """
         sst = self.data_structure.variables_dictionary['sst']
         temp1 = self.data_structure.variables_dictionary['temperature_L1']
         temp2 = self.data_structure.variables_dictionary['temperature_L2']
-      
+
         # if (i<param->lontoi(118) && j<=param->lattoj(-3))
         loc_1 = (slice(None), slice(-3), slice(118))
         sst.loc[loc_1] = np.minimum(sst.loc[loc_1], 22)
         temp1.loc[loc_1] = np.minimum(temp1.loc[loc_1], 20)
         temp2.loc[loc_1] = np.minimum(temp2.loc[loc_1], 15)
-        
+
         # if (i<param->lontoi(130) && j>param->lattoj(3))
         loc_2 = (slice(None), slice(3,None), slice(130))
         sst.loc[loc_2] = np.minimum(sst.loc[loc_2], 24)
-        
+
         # if (i<param->lontoi(140) && j>=param->lattoj(-3))
         loc_3 = (slice(None), slice(-3,None), slice(140))
         sst.loc[loc_3] = np.minimum(sst.loc[loc_3], 24)
         temp1.loc[loc_3] = np.minimum(temp1.loc[loc_3], 20)
         temp2.loc[loc_3] = np.minimum(temp2.loc[loc_3], 15)
-        
+
         # if (i<param->lontoi(146) && j>=param->lattoj(-8))
         loc_4 = (slice(None), slice(-8,None), slice(146))
         sst.loc[loc_4] = np.minimum(sst.loc[loc_4], 22)
