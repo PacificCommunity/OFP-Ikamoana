@@ -31,7 +31,7 @@ import numpy as np
 import pandas as pd
 import scipy as sp
 import xarray as xr
-from sklearn import linear_model
+#from sklearn import linear_model
 
 _labels = {
     'fishery_name':'f',
@@ -507,98 +507,98 @@ def plotByGear(
     plt.grid(True)
     plt.show()
 
-def _predictEffort(
-        fishery: pd.DataFrame, conserve_no_catch: bool = False,
-        conserve_empty: bool = False, gear_to_choose: str = 'K',
-        catch_label: str = 'C', gear_label: str = 'gr',
-        effort_label: str = 'E'
-        ) -> pd.DataFrame :
-    """
-    Predict effort (where effort is null but catch is not) using linear
-    regression. Will use the `gear_to_choose` gear as model for the
-    regression (only when effort and catch are not equal to zero).
-    """
+# def _predictEffort(
+#         fishery: pd.DataFrame, conserve_no_catch: bool = False,
+#         conserve_empty: bool = False, gear_to_choose: str = 'K',
+#         catch_label: str = 'C', gear_label: str = 'gr',
+#         effort_label: str = 'E'
+#         ) -> pd.DataFrame :
+#     """
+#     Predict effort (where effort is null but catch is not) using linear
+#     regression. Will use the `gear_to_choose` gear as model for the
+#     regression (only when effort and catch are not equal to zero).
+#     """
     
-    model = fishery[(fishery[gear_label]==gear_to_choose)
-                    & (fishery[effort_label]!=0) & (fishery[catch_label]!=0)]
+#     model = fishery[(fishery[gear_label]==gear_to_choose)
+#                     & (fishery[effort_label]!=0) & (fishery[catch_label]!=0)]
     
-    effort_to_predict = pd.DataFrame(fishery[~fishery.index.isin(model.index)])
+#     effort_to_predict = pd.DataFrame(fishery[~fishery.index.isin(model.index)])
     
-    no_catch_but_effort = effort_to_predict[(effort_to_predict[effort_label]!=0)
-                               & (effort_to_predict[catch_label]==0)]
+#     no_catch_but_effort = effort_to_predict[(effort_to_predict[effort_label]!=0)
+#                                & (effort_to_predict[catch_label]==0)]
 
-    nothing = effort_to_predict[(effort_to_predict[effort_label]==0)
-                               & (effort_to_predict[catch_label]==0)]
+#     nothing = effort_to_predict[(effort_to_predict[effort_label]==0)
+#                                & (effort_to_predict[catch_label]==0)]
     
-    if effort_to_predict.size != 0 :
-        effort_to_predict = effort_to_predict[(effort_to_predict[catch_label]!=0)]
+#     if effort_to_predict.size != 0 :
+#         effort_to_predict = effort_to_predict[(effort_to_predict[catch_label]!=0)]
         
-        regr = linear_model.LinearRegression()
-        fun = regr.fit(np.array(model[catch_label])[:,np.newaxis],
-                    np.array(model[effort_label]))
+#         regr = linear_model.LinearRegression()
+#         fun = regr.fit(np.array(model[catch_label])[:,np.newaxis],
+#                     np.array(model[effort_label]))
         
-        effort_to_predict.drop(effort_label, axis=1)
-        effort_to_predict[effort_label] = fun.predict(
-            np.array(effort_to_predict[catch_label])[:,np.newaxis])
+#         effort_to_predict.drop(effort_label, axis=1)
+#         effort_to_predict[effort_label] = fun.predict(
+#             np.array(effort_to_predict[catch_label])[:,np.newaxis])
         
-    df_to_return = [model, effort_to_predict]
-    if conserve_no_catch : df_to_return.append(no_catch_but_effort)
-    if conserve_empty :df_to_return.append(nothing)
+#     df_to_return = [model, effort_to_predict]
+#     if conserve_no_catch : df_to_return.append(no_catch_but_effort)
+#     if conserve_empty :df_to_return.append(nothing)
     
-    return pd.concat(df_to_return)
+#     return pd.concat(df_to_return)
 
-def predictEffortAllFisheries(
-        fishery: dict, conserve_no_catch: bool = True,
-        conserve_empty: bool = True, gear_to_choose: dict = {9:'K'},
-        catch_label: str = 'C', gear_label: str = 'gr',
-        effort_label: str = 'E') -> dict :
-    """Predict effort (where effort is null but catch is not) using linear
-    regression.
+# def predictEffortAllFisheries(
+#         fishery: dict, conserve_no_catch: bool = True,
+#         conserve_empty: bool = True, gear_to_choose: dict = {9:'K'},
+#         catch_label: str = 'C', gear_label: str = 'gr',
+#         effort_label: str = 'E') -> dict :
+#     """Predict effort (where effort is null but catch is not) using linear
+#     regression.
 
-    Parameters
-    ----------
-    fishery : dict
-        Key are fisheries name and value are Dataframe containing
-        catch and effort entries.
-    conserve_no_catch : bool, optional
-        Conserve or not entries with catch equal to zero.
-    conserve_empty : bool, optional
-        Conserve or not entries with catch and effort equal to zero.
-    gear_to_choose : dict, optional
-        Keys are fisheries name you want to perform the prediction to
-        with a specific gear name. Values are gear to use for the
-        prediction. If the name of a fishery is not in the keys of this
-        argument, the gear chosen for that fishery is the most present
-        in its entries.
+#     Parameters
+#     ----------
+#     fishery : dict
+#         Key are fisheries name and value are Dataframe containing
+#         catch and effort entries.
+#     conserve_no_catch : bool, optional
+#         Conserve or not entries with catch equal to zero.
+#     conserve_empty : bool, optional
+#         Conserve or not entries with catch and effort equal to zero.
+#     gear_to_choose : dict, optional
+#         Keys are fisheries name you want to perform the prediction to
+#         with a specific gear name. Values are gear to use for the
+#         prediction. If the name of a fishery is not in the keys of this
+#         argument, the gear chosen for that fishery is the most present
+#         in its entries.
 
-    See Also
-    --------
-    predictEffort
-    sklearn.linear_model.LinearRegression
+#     See Also
+#     --------
+#     predictEffort
+#     sklearn.linear_model.LinearRegression
 
-    Returns
-    -------
-    dict
-        Modified `fishery` dictionary with new effort values where
-        effort was equal to zero and catch was not.
-    """
+#     Returns
+#     -------
+#     dict
+#         Modified `fishery` dictionary with new effort values where
+#         effort was equal to zero and catch was not.
+#     """
     
-    dict_update = {}
-    for key, value in fishery.items() :
-        if key in gear_to_choose :
-            gear = gear_to_choose[key]
-        else :
-            gear_list, index = np.unique(value[gear_label],
-                                         return_counts=True)
-            gear = gear_list[np.argmax(index)]
+#     dict_update = {}
+#     for key, value in fishery.items() :
+#         if key in gear_to_choose :
+#             gear = gear_to_choose[key]
+#         else :
+#             gear_list, index = np.unique(value[gear_label],
+#                                          return_counts=True)
+#             gear = gear_list[np.argmax(index)]
 
-        new_value = _predictEffort(value,conserve_no_catch,conserve_empty,gear,
-                                  catch_label,gear_label,effort_label)
-        dict_update[key] = new_value
+#         new_value = _predictEffort(value,conserve_no_catch,conserve_empty,gear,
+#                                   catch_label,gear_label,effort_label)
+#         dict_update[key] = new_value
     
-    fishery.update(dict_update)
+#     fishery.update(dict_update)
     
-    return fishery
+#     return fishery
 
 ## WRAPPER #############################################################
 
