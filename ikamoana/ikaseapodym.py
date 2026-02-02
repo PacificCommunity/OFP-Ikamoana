@@ -169,7 +169,7 @@ class IkaSeapodym(IkaSimulation) :
             length_list = np.array(
                 [float(x) for x in root.find('length').find(sp_name).text.split()])
             index = np.absolute(length_list-start_length).argmin()
-            params["start_age"] = index
+            params["start_age"] = index + 1
 
             delta_time_seapodym = int(float(root.find('deltaT').attrib['value'])*86400)
             params["delta_time_seapodym"] = delta_time_seapodym
@@ -402,6 +402,7 @@ class IkaSeapodym(IkaSimulation) :
         minlat_idx = latfun(min(self.ocean.U.lat.data))
         maxlat_idx = latfun(max(self.ocean.U.lat.data))
         if "time" in field.indexes :
+            print(f'Warning: reducing time dimension in field {field.name} to first index!')
             return field.isel(time=0, lat=slice(minlat_idx,maxlat_idx+1),
                               lon=slice(minlon_idx,maxlon_idx+1))
         else :
@@ -486,9 +487,8 @@ class IkaSeapodym(IkaSimulation) :
             #start_field = standardiseCoords(start_field)
             start_field = latitudeDirection(start_field, south_to_north=True)
             start_field = self._rescaleFieldWithUCoordinates(start_field)
-
             start_field = parcels.Field.from_xarray(
-                start_field.sel(Time=self.ika_params['start_time'], method='nearest'), name="start_distribution",
+                start_field, name="start_distribution",
                 dimensions={d:d for d in list(start_field.indexes)},
                 interp_method='nearest')
 
