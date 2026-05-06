@@ -163,18 +163,21 @@ def RandomWalkNonUniformDiffusion(particle, fieldset, time):
 ######################## Mortality Kernels #########################
 
 def FishingMortality(particle, fieldset, time):
-    # particle.Fmor = fieldset.F[time, particle.depth, particle.lat, particle.lon]/fieldset.SEAPODYM_dt
-    particle.Fmor = fieldset.F[time, particle.depth, particle.lat, particle.lon]#/particle.dt
+    # Fishing mortality field already scaled to F/second, will be rescaled to Ika simulation timestep in during the update kernels below
+    particle.Fmor = fieldset.F[time, particle.depth, particle.lat, particle.lon]
 
 def NaturalMortality(particle, fieldset, time):
     Mnat = fieldset.MPmax * math.exp(-fieldset.MPexp*particle.age_class) + fieldset.MSmax*math.pow(particle.age_class, fieldset.MSslope)
-    Mvar = Mnat * math.pow(1 - fieldset.Mrange,
-                           1 - fieldset.H[time, particle.depth, particle.lat, particle.lon] / 2)
-    particle.Nmor = Mvar/fieldset.cohort_dt
+    Rage = fieldset.Mvar_range_age_max * ((1 + math.pow(0.5, fieldset.Mvar_range_age_slope)) / (1 + math.pow(particle.age_class - 0.5, fieldset.Mvar_range_age_slope)))
+    Mvar = Mnat * math.pow(1 + fieldset.Mrange + Rage,
+                           1 - fieldset.H[time, particle.depth, particle.lat, particle.lon]) #/ 2)
+    # Natural mortality calculated on the fly, so will be at SEAPODYM temporal resolution- must rescale to seconds here
+    # will be further scaled to the Ika simulation timestep in update kernels below
+    particle.Nmor = Mvar/fieldset.cohort_dt#*particle.dt
 
 
 def UpdateSurvivalProbNOnly(particle, fieldset, time):
-    depletion = particle.SurvProb - particle.SurvProb * math.exp(-particle.Nmor)
+    depletion = particle.SurvProb - particle.SurvProb * math.exp(-particle.Nmor*particle.dt)
     particle.depletionN = depletion
     particle.SurvProb -= depletion
 
