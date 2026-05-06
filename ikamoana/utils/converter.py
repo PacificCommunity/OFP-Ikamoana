@@ -3,6 +3,7 @@ from typing import Union
 import numpy as np
 import parcels
 import xarray as xr
+import pandas as pd
 
 
 def convertToField(
@@ -25,13 +26,14 @@ def convertToDataArray(field: parcels.Field) -> xr.DataArray:
     origin = np.datetime64(str(field.grid.time_origin))
     time_list = field.grid.time
     convert = lambda origin, time : origin + np.timedelta64(int(time), "s")
-    time_list = [convert(origin, time) for time in time_list]
+    time_list = pd.DatetimeIndex([convert(origin, time) for time in time_list])
     
     return xr.DataArray(
         data=field.data,
         coords={"time":time_list,
                 "lat":field.lat,
-                "lon":field.lon}
+                "lon":field.lon},
+        dims=["time", "lat", "lon"]    # explicit dims required in newer xarray
     )
 
 def convertToNauticMiles(

@@ -342,6 +342,7 @@ class IkaSimulation :
             if sk in behaviours.AllKernels :
                 sampler = behaviours.AllKernels[sk]
                 self.fish.execute(self.fish.Kernel(sampler),dt=0)
+                print(f"Initial particle sampling using {sk} done")
             else :
                 raise ValueError(("{} kernel is not defined by "
                                   "behaviours.AllKernels.").format(sk))

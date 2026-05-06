@@ -193,14 +193,24 @@ class IkaSeapodym(IkaSimulation) :
             tree = ET.parse(params['seapodym_file'])
             seapodym_root = tree.getroot()
             species_name = seapodym_root.find("sp_name").text
-
+            #small helper function
+            def get_attrib(root, path_of_tags, attrib, default=None):
+                node = root
+                for tag in path_of_tags:
+                    node = node.find(tag)
+                    if node is None:
+                        return default
+                return type(default)(node.attrib.get(attrib, default))
+            
             params["mortality_constants"] = {
                 'MPmax': float(seapodym_root.find('Mp_mean_max').attrib[species_name]),
                 'MPexp': float(seapodym_root.find('Mp_mean_exp').attrib[species_name]),
                 'MSmax': float(seapodym_root.find('Ms_mean_max').attrib[species_name]),
                 'MSslope': float(seapodym_root.find('Ms_mean_slope').attrib[species_name]),
-                'Mrange': float(seapodym_root.find('M_mean_range').attrib[species_name])}
-
+                'Mrange': float(seapodym_root.find('M_mean_range').attrib[species_name]),
+                'Mvar_range_age_max': get_attrib(seapodym_root, ['M_var_range_age_max'], species_name, default=3/(1+pow(0.5, 3))),
+                'Mvar_range_age_slope': get_attrib(seapodym_root, ['M_var_range_age_slope'], species_name, default=3)}
+            print(params["mortality_constants"])
         tree = ET.parse(filepath)
         root = tree.getroot()
         params = {}

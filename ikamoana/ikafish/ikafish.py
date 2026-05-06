@@ -55,6 +55,21 @@ class IkaFishDebug(JITParticle):
     Ty           = Variable('Ty', dtype=np.float64)
     Rx_component = Variable('Rx_component')
     Ry_component = Variable('Ry_component')
+    CapProb = Variable('CapProb')
+    SurvProb = Variable('SurvProb', initial=1)
+    depletionF = Variable('depletionF')
+    depletionN = Variable('depletionN')
+    Fmor = Variable('Fmor')
+    Nmor = Variable('Nmor')
+    Zint = Variable('Zint')
+    TAL = Variable('TAL', to_write=False)
+    Mix3CapProb = Variable('Mix3CapProb')
+    Mix6CapProb = Variable('Mix6CapProb')
+    Mix9CapProb = Variable('Mix9CapProb')
+    Mix3SurvProb = Variable('Mix3SurvProb', to_write=True, initial=1)
+    Mix6SurvProb = Variable('Mix6SurvProb', to_write=True, initial=1)
+    Mix9SurvProb = Variable('Mix9SurvProb', to_write=True, initial=1)
+    region = Variable('region')
 
     def __init__(self, *args, **kwargs):
         """Custom initialisation function which calls the base
