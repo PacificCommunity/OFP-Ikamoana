@@ -481,7 +481,7 @@ def diffusion(
     
 def fishingMortality(
         fh_structure: HabitatDataStructure, effort_ds: xr.Dataset,
-        fisheries_parameters: dict, start_age: int = 0, evolving: bool = True,
+        fisheries_parameters: dict, time_zero: np.datetime64, start_age: int = 0, evolving: bool = True,
         convertion_tab: Dict[str, Union[str,int,float]] = None,
         ) -> xr.DataArray :
     """Convert effort by fishery to fishing mortality by applying
@@ -503,6 +503,9 @@ def fishingMortality(
         the names of the fisheries in the SEAPODYM configuration file.
     start_age : int, optional
         The cohort number of the first timestep.
+    time_zero : np.datetime64
+        The initial time period of SEAPODYM. Used to compute catchability
+        as a dynamic function of time.
     evolving : bool, optional
         Specify whether the age of the cohort changes over time (True)
         or not (False).
@@ -565,7 +568,9 @@ def fishingMortality(
         #Time needs to be number of timesteps since the initial time period of SEAPODYM
         if slope != 0.0:
             t = int((time - init_time) / np.timedelta64(1, 'D') / dt)
-            q = q * (1+slope*t)
+            # q = q * (1+slope*t) # Previous version of SEAPODYM catchability dynamic function
+            tm = t/dt
+            q = q + slope*tm
         return q
 
     ## NOTE : Original code
@@ -574,7 +579,7 @@ def fishingMortality(
 
     length_fun = fh_structure.findLengthByCohort
     init_year, init_month = fh_structure.init_time.split('-')
-    init_time = np.datetime64(f'{init_year}-{init_month.zfill(2)}-15')
+    init_time = time_zero if time_zero is not None else np.datetime64(f"{init_year}-{init_month}-15", "D")
 
     fishing_mortality = {}
     for p_name, params in fisheries_parameters.items() :
@@ -593,7 +598,7 @@ def fishingMortality(
 
             if evolving :
                 c_nb = fh_structure.cohorts_number
-                tmp = np.arange(start_age, c_nb)
+                tmp = np.arange(start_age, start_age+effort_ds.time.data.size)
                 age = np.concatenate(
                     (tmp,np.repeat(c_nb-1, effort_ds.time.data.size-tmp.size)))
             else :
@@ -602,11 +607,16 @@ def fishingMortality(
                 # length in cm
                 length = length_fun(age[t]) if evolving else length_fun(age)
                 #Calc catchability as a dynamic function of time
+                if params['q'] == 1.0 :
+                    params['dyn'] = 0.0
                 time_q = catchability(q, params['dyn'], effort_ds.time.data[t], 
                                  init_time, fh_structure.parameters_dictionary["deltaT"])
                 f_data[t,:,:] = data[t,:,:] * time_q * selectivity_fun(length)
-                # HARD CODED transform from monthly F to per second
-                f_data[t,:,:] = f_data[t,:,:] / (30*24*60*60)
+                #debug statements
+                #Scale to F per second for Ikamoana
+                f_data[t,:,:] = f_data[t,:,:] / (fh_structure.parameters_dictionary["deltaT"]*24*60*60)
+            
+            print(f"Fishery: {p_name}, across age array: {age}, from {effort_ds.time.data[0]} to {effort_ds.time.data[-1]}, mean F per time step: {np.nanmean(f_data, axis=(1,2))*(fh_structure.parameters_dictionary['deltaT']*24*60*60)}")
 
             fishing_mortality[f_name] = xr.DataArray(
                 f_data,
@@ -614,9 +624,12 @@ def fishingMortality(
                 attrs=effort_ds[f_name].attrs)
 
     fishing_mortality_ds = xr.Dataset(fishing_mortality)
+
+    # For debugging, export an nc file with each fishery separated
+    #fishing_mortality_ds.to_netcdf('fishing_mortality_{}.nc'.format('_'.join(fisheries_parameters.keys())))
+
     fishing_mortality_ds.attrs.update(effort_ds.attrs)
     fishing_mortality_ds.attrs["Fisheries"] = list(fishing_mortality.keys())
-
     return fisherieseffort.sumDataSet(fishing_mortality_ds, name="F")
 
 

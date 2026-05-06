@@ -119,6 +119,7 @@ class IkamoanaFieldsDataStructure :
         self.timestep=deltaT*24*60*60
         """Delta time from SEAPODYM configuration file. May be different
         than `dt` in IKAMOANA configuration file."""
+        self.Tzero = np.datetime64(f"{int(root.find('save_first_date').attrib['year'])}-{int(root.find('save_first_date').attrib['month']):02d}-15", "D")
         
         ## TAXIS ####################################
         self.vmax_a=float(root.find('MSS_species').attrib[sp_name])
@@ -164,6 +165,9 @@ class IkamoanaFieldsDataStructure :
             os.path.join(directory_fishery,path)for path in files_list]
 
         ## PARAMETERS ####################################
+        # First get a list of the catch removal fisheries, as these will be treated differently
+        cr_text = root.find("mask_fishery_no_effort").find(species_name).text
+        cr_fishery_flags = [int(x) for x in cr_text.split()]
         nb_fishery = int(root.find('nb_fishery').attrib['value'])
         list_fishery_name = root.find('list_fishery_name').text.split()
 
@@ -176,15 +180,21 @@ class IkamoanaFieldsDataStructure :
         f_param = {}
         for f in list_fishery_name :
             tmp_dict = {
+                "catch_removal": bool(cr_fishery_flags[list_fishery_name.index(f)]),
                 "function_type":int(root.find("s_sp_fishery").find(f).find(
                     "function_type").attrib["value"]),
                 "q":float(root.find("q_sp_fishery").find(f).attrib[species_name]),
-                "dyn":float(root.find('q_sp_fishery').find(f).find(
-                    "variable").attrib['dyn']),
+                #"dyn":float(root.find('q_sp_fishery').find(f).find(
+                #    "variable").attrib['dyn']), # Previous code for dyn attribute, now replaced by slope child tag
+                "dyn": float(root.find('q_sp_fishery').find(f).find("slope").attrib['bet']),
                 "variable":float(root.find(
                     "s_sp_fishery").find(f).attrib[species_name]),
                 "length_threshold":float(root.find('s_sp_fishery').find(f).find(
                     "length_threshold").attrib[species_name])}
+            if tmp_dict['catch_removal'] :
+                print(f"Fishery {f} is a catch removal fishery! Setting q=1 and slope=0 as default values")
+                tmp_dict['q'] = 1
+                tmp_dict['dyn'] = 0
 
             if tmp_dict['function_type'] == 3 :
                 tmp_dict['right_asymptote'] = float(

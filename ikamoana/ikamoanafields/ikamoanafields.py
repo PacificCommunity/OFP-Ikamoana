@@ -299,6 +299,7 @@ class IkamoanaFields :
             filepath = ika_struct.fishery_filepaths,
             space_reso = fh_struct.parameters_dictionary['space_reso'],
             time_reso = fh_struct.parameters_dictionary['deltaT'],
+            time_zero = ika_struct.Tzero,
             coords=fh_struct.coords,
             skiprows = ika_struct.skiprows,
             selected_fisheries = selected_fisheries,
@@ -311,14 +312,29 @@ class IkamoanaFields :
         else :
             effort_ds = fisherieseffort.effortByFishery(**param_dict)
         if export_filepath is not None :
-            effort_ds.to_netcdf(export_filepath)
+            effort_ds.to_netcdf(export_filepath) # Export full dataset with everything at all timeperiods
+        print(f"fishery coords = {param_dict['coords']}") 
 
+        fh = self.feeding_habitat
+        # Ensure that the effort dataset has the same coordinates as the feeding habitat
+        
+        effort_ds = effort_ds.sel(lat=slice(param_dict['coords']['lat'][fh.attrs['lat_min']], param_dict['coords']['lat'][fh.attrs['lat_max']]),
+                                  lon=slice(param_dict['coords']['lon'][fh.attrs['lon_min']], param_dict['coords']['lon'][fh.attrs['lon_max']]),
+                                  time=slice(param_dict['coords']['time'][fh.attrs['time_start']], param_dict['coords']['time'][fh.attrs['time_end']]))
+        effort_ds = latitudeDirection(effort_ds, south_to_north=True)
+        effort_ds = effort_ds.transpose('time', 'lat', 'lon')
+        desired_coord_order = ['time', 'lat', 'lon']
+        effort_ds = effort_ds.assign_coords(
+            {k: effort_ds.coords[k] for k in desired_coord_order}
+        )
+        
         params_fisheries = self.ikamoana_fields_structure.f_param
 
-        return core.fishingMortality(
-            self.feeding_habitat_structure.data_structure, effort_ds,
-            params_fisheries, convertion_tab=ika_struct.selected_fisheries)
-
+        fh_struct = self.feeding_habitat_structure.data_structure
+        #fh_struct.cohorts_number = fh.attrs['cohort_end'] - fh.attrs['cohort_start'] + 1
+        return core.fishingMortality(fh_struct, effort_ds,
+            params_fisheries, time_zero=self.ikamoana_fields_structure.Tzero, start_age=fh.attrs['cohort_start'], convertion_tab=ika_struct.selected_fisheries)
+    
     def computeDiffusion(
             self, landmask: xr.DataArray = None, lat_min: int = None,
             lat_max: int = None, lon_min: int = None, lon_max: int = None,

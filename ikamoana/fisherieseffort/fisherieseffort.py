@@ -77,7 +77,8 @@ def readFiles(
     
     df_list = []
     for path, skip in zip(filepath, skiprows) :
-        df_list.append(pd.read_table(path, skiprows=skip))
+        print(f"Reading fisheries file {path}")
+        df_list.append(pd.read_table(path, skiprows=skip, encoding='latin-1'))
     
     fishery = pd.concat(df_list)
     
@@ -378,16 +379,21 @@ def sumDataSet(fisheries: xr.Dataset, name: str = None) -> xr.DataArray :
     """
     
     f_name_list = list(fisheries)
-    sum = np.nan_to_num(fisheries[f_name_list[0]])
+    # sum = np.nan_to_num(fisheries[f_name_list[0]])
     
-    for f in f_name_list[1:] :
-        sum = sum + np.nan_to_num(fisheries[f])
+    # for f in f_name_list[1:] :
+    #     sum = sum + np.nan_to_num(fisheries[f])
     
-    return xr.DataArray(data=sum,
-                        coords=fisheries.coords,
-                        name=name,
-                        attrs={"Type":"Sum of Effort",
-                               **fisheries.attrs})
+    # return xr.DataArray(data=sum,
+    #                     coords=fisheries.coords,
+    #                     dims=fisheries.dims,
+    #                     name=name,
+    #                     attrs={"Type":"Sum of Effort",
+    #                            **fisheries.attrs})
+
+    result = sum(fisheries[f].fillna(0) for f in f_name_list)
+
+    return result.rename(name).assign_attrs({"Type": "Sum of Effort", **fisheries.attrs})
 
 def toTextFile(
         fisheries: Union[dict, pd.DataFrame], filepath: str = './ouput.txt',
