@@ -610,7 +610,7 @@ def plotByGear(
 
 # TODO : since this module has changed, the doc string should be rewrited
 def effortByFishery(
-        filepath: Union[str,List[str]], space_reso: float, time_reso: int,
+        filepath: Union[str,List[str]], space_reso: float, time_reso: int, time_zero: np.datetime64,
         coords: xr.Coordinate, skiprows: Union[int,List[int]] = 2,
         selected_fisheries: Union[str,List[str]] = None,
         predict_effort: bool = False, verbose: bool = False

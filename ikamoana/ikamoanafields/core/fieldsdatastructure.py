@@ -120,6 +120,7 @@ class IkamoanaFieldsDataStructure :
         """Delta time from SEAPODYM configuration file. May be different
         than `dt` in IKAMOANA configuration file."""
         self.Tzero = np.datetime64(f"{int(root.find('save_first_date').attrib['year'])}-{int(root.find('save_first_date').attrib['month']):02d}-15", "D")
+        print(f'Tzero = {self.Tzero}')
         
         ## TAXIS ####################################
         self.vmax_a=float(root.find('MSS_species').attrib[sp_name])
@@ -179,6 +180,7 @@ class IkamoanaFieldsDataStructure :
 
         f_param = {}
         for f in list_fishery_name :
+            slope_node = root.find('q_sp_fishery').find(f).find("slope")
             tmp_dict = {
                 "catch_removal": bool(cr_fishery_flags[list_fishery_name.index(f)]),
                 "function_type":int(root.find("s_sp_fishery").find(f).find(
@@ -186,7 +188,7 @@ class IkamoanaFieldsDataStructure :
                 "q":float(root.find("q_sp_fishery").find(f).attrib[species_name]),
                 #"dyn":float(root.find('q_sp_fishery').find(f).find(
                 #    "variable").attrib['dyn']), # Previous code for dyn attribute, now replaced by slope child tag
-                "dyn": float(root.find('q_sp_fishery').find(f).find("slope").attrib['bet']),
+                "dyn": float(slope_node.attrib[species_name]) if slope_node is not None else 0.0,
                 "variable":float(root.find(
                     "s_sp_fishery").find(f).attrib[species_name]),
                 "length_threshold":float(root.find('s_sp_fishery').find(f).find(
